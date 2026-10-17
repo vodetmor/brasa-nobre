@@ -46,12 +46,28 @@ export function applyTheme(r) {
 }
 
 // Abre uma folha (modal). Retorna { el, close }.
+// Janela de baixo (caixa, cadastro). O botão voltar do celular fecha a janela em vez de sair da página.
+const openSheets = [];
+let sheetSkipPop = false;
+addEventListener('popstate', () => {
+  if (sheetSkipPop) { sheetSkipPop = false; return; }
+  openSheets.at(-1)?.(true);
+});
 export function sheet(innerHtml, { onClose } = {}) {
   const back = h(`<div class="sheet-backdrop"><div class="sheet" role="dialog" aria-modal="true">${innerHtml}</div></div>`);
-  const close = () => { back.remove(); onClose?.(); };
+  let closed = false;
+  const close = (fromHistory = false) => {
+    if (closed) return;
+    closed = true;
+    openSheets.splice(openSheets.indexOf(close), 1);
+    if (fromHistory !== true && history.state?.sheet) { sheetSkipPop = true; history.back(); }
+    back.remove(); onClose?.();
+  };
   back.addEventListener('click', e => { if (e.target === back) close(); });
-  back.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', close));
+  back.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => close()));
   document.body.append(back);
+  history.pushState({ sheet: true }, '');
+  openSheets.push(close);
   return { el: back.querySelector('.sheet'), close };
 }
 

@@ -40,6 +40,7 @@ async function init() {
   document.title = `${r.name} · Mesa ${data.table.number}`;
   cart = cart.filter(l => byId(l.product_id));
   render();
+  setupBackButton();
   live(`/api/m/${token}/stream`, {
     order: o => {
       if (!mine[o.id]) return;
@@ -329,9 +330,32 @@ function spyNav() {
   $$('.m-section').forEach(s => obs.observe(s));
 }
 
+// ---------- botão voltar do celular ----------
+// Cada tela sobreposta (prato, sacola, conta) ganha uma entrada no histórico: o voltar do Android fecha só ela.
+// Sem nada aberto, o primeiro voltar sobe para o topo do cardápio e limpa a busca; só o seguinte sai do site.
+let skipPop = false;
+function setupBackButton() {
+  // o Chrome ignora no voltar as entradas criadas sem toque do usuário: a "trava" entra no primeiro toque
+  const arm = () => { if (!history.state?.guard && !history.state?.ov) history.pushState({ guard: true }, ''); };
+  addEventListener('pointerdown', arm, { once: true, capture: true });
+  addEventListener('popstate', () => {
+    if (skipPop) { skipPop = false; return; }
+    if (overlay) { closeOverlay(true, true); return; }
+    const q = $('#q');
+    if (scrollY > 150 || q?.value) {
+      if (q && q.value) { q.value = ''; q.dispatchEvent(new Event('input')); }
+      const all = $('[data-chip="all"]');
+      if (all && !all.classList.contains('on')) all.click();
+      scrollTo({ top: 0, behavior: 'smooth' });
+      history.pushState({ guard: true }, '');
+    }
+  });
+}
+
 // ---------- telas sobrepostas ----------
 function openOverlay(kind, html, extra = {}) {
-  closeOverlay(false);
+  closeOverlay(false, true);
+  if (!history.state?.ov) history.pushState({ ov: true }, '');
   const el = document.createElement('div');
   el.className = 'm-over';
   el.dataset.theme = data.restaurant.theme || 'premium';
@@ -344,7 +368,9 @@ function openOverlay(kind, html, extra = {}) {
   return el;
 }
 
-function closeOverlay(update = true) {
+function closeOverlay(update = true, fromHistory = false) {
+  // fechado pelo botão da tela: tira a entrada do histórico também, sem fechar de novo no popstate
+  if (!fromHistory && overlay && history.state?.ov) { skipPop = true; history.back(); }
   overlay?.el.remove();
   overlay = null;
   document.documentElement.style.overflow = '';
