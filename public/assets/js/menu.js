@@ -71,7 +71,7 @@ function render() {
   $('#app').innerHTML = `
     <header class="m-top">
       <span class="m-table">Mesa ${data.table.number}${data.table.label ? ` · ${esc(data.table.label)}` : ''}</span>
-      <span class="m-links"><button data-go="conta">Minha conta</button><button data-go="garcom">Chamar garçom</button></span>
+      <span class="m-links">${hasContact(r) ? '<button data-go="contato">Contato</button>' : ''}<button data-go="conta">Minha conta</button><button data-go="garcom">Chamar garçom</button></span>
     </header>
     <section class="m-mast">
       ${r.logo_url ? `<img class="m-logo" src="${esc(r.logo_url)}" alt="">` : ''}
@@ -88,7 +88,6 @@ function render() {
         <div class="m-section-head"><span class="n">${String(gi + 1).padStart(2, '0')}</span><h2>${esc(g.c.name)}</h2></div>
         ${g.items.map((p, i) => item(p, i % 2 === 1)).join('')}
       </section>`).join('')}
-    ${contactHtml(r)}
     <footer class="m-foot">
       <div class="m-sig">Bom apetite.</div>
       ${r.address ? `${esc(r.address)}<br>` : ''}O pagamento é feito no caixa, ao final.
@@ -97,6 +96,7 @@ function render() {
 
   $$('.m-nav button').forEach(b => b.addEventListener('click', () => $(`#cat-${b.dataset.cat}`).scrollIntoView({ behavior: 'smooth' })));
   $('[data-go="conta"]').addEventListener('click', showAccount);
+  $('[data-go="contato"]')?.addEventListener('click', showContact);
   $('[data-go="garcom"]').addEventListener('click', () => callStaff('garcom'));
   $('#open-cart').addEventListener('click', showCart);
   $('#app').addEventListener('click', onListClick);
@@ -105,21 +105,63 @@ function render() {
 }
 
 
-// Contato do restaurante no fim do cardápio: WhatsApp e "Salvar contato" (cartão de visita .vcf para a agenda).
-function contactHtml(r) {
+// ---------- contato (botão da barra de baixo) ----------
+// Página tipo "linktree" do restaurante: WhatsApp, redes, iFood, site, como chegar e salvar na agenda.
+// Link sem https ganha o https; "@usuario" (sem barra) vira o link da rede.
+const urlOf = v => {
+  v = String(v || '').trim();
+  if (/^https?:\/\//i.test(v)) return v;
+  return /^[\w-]+(\.[\w-]+)+(\/|$)/.test(v) ? `https://${v}` : '';
+};
+const social = (v, base) => (v = String(v || '').trim()).includes('/') ? urlOf(v) : `${base}${v.replace(/^@/, '')}`;
+function contactLinks(r) {
   const digits = String(r.whatsapp || '').replace(/\D/g, '');
-  if (!digits && !r.address) return '';
   const phone = digits ? (digits.length <= 11 ? `55${digits}` : digits) : '';
+  return {
+    phone,
+    links: [
+      phone && ['whatsapp', 'WhatsApp', `https://wa.me/${phone}`],
+      r.instagram && ['instagram', 'Instagram', social(r.instagram, 'https://instagram.com/')],
+      r.tiktok && ['tiktok', 'TikTok', social(r.tiktok, 'https://www.tiktok.com/@')],
+      r.facebook && ['facebook', 'Facebook', social(r.facebook, 'https://facebook.com/')],
+      r.ifood && ['ifood', 'Peça no iFood', urlOf(r.ifood)],
+      r.website && ['site', 'Site', urlOf(r.website)],
+      r.address && ['maps', 'Como chegar', `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${r.name}, ${r.address}`)}`],
+    ].filter(l => l && l[2]),
+  };
+}
+const hasContact = r => contactLinks(r).links.length > 0;
+const NET = {
+  whatsapp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 18.8z"/><path d="M9 9.5c.3 2 2.3 4.2 4.6 4.7l1.1-1.1 2 .9-.4 1.4c-3.6.6-8-3.6-7.6-7.5l1.5-.4.9 2z" stroke-width="1.4"/></svg>',
+  instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r=".6" fill="currentColor"/></svg>',
+  tiktok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5"/><path d="M14 3c.4 2.6 2.2 4.4 5 4.6"/></svg>',
+  facebook: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M14.5 21v-8h3l.5-3.5h-3.5V7.6c0-1 .4-1.6 1.7-1.6H18V3.1A20 20 0 0 0 15.6 3C13 3 11 4.5 11 7.3v2.2H8V13h3v8"/></svg>',
+  ifood: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+  site: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 2.5 14.4 0 17M12 3.5c-2.5 2.6-2.5 14.4 0 17"/></svg>',
+  maps: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>',
+  save: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20c.7-3.6 3.3-5.5 6.5-5.5s5.8 1.9 6.5 5.5M19 8v6M16 11h6"/></svg>',
+};
+function showContact() {
+  const r = data.restaurant;
+  const { phone, links } = contactLinks(r);
   const vcard = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${r.name}`, `ORG:${r.name}`,
     phone ? `TEL;TYPE=CELL:+${phone}` : '', r.address ? `ADR;TYPE=WORK:;;${r.address};;;;` : '',
-    `URL:${location.origin}`, 'END:VCARD'].filter(Boolean).join('\r\n');
-  return `<div class="m-contact">
-    <div class="t"><small>Contato</small><strong>${esc(r.name)}</strong>${r.address ? `<span>${esc(r.address)}</span>` : ''}</div>
-    <div class="a">
-      ${phone ? `<a class="wa" href="https://wa.me/${phone}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
-      <a class="sv" href="data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}" download="${esc(r.name)}.vcf">Salvar contato</a>
-    </div>
-  </div>`;
+    ...links.filter(([k]) => ['instagram', 'site'].includes(k)).map(l => `URL:${l[2]}`),
+    'END:VCARD'].filter(Boolean).join('\r\n');
+  openOverlay('contact', `
+    ${topbar('Contato')}
+    <div class="m-links-page">
+      <div class="lk-head">
+        ${r.logo_url ? `<img src="${esc(r.logo_url)}" alt="">` : `<span class="lk-mono">${esc(r.name[0])}</span>`}
+        <h2>${esc(r.name)}</h2>
+        ${r.tagline ? `<p>${esc(r.tagline)}</p>` : ''}
+        ${r.address ? `<p class="lk-addr">${esc(r.address)}</p>` : ''}
+      </div>
+      <div class="lk-list">
+        ${links.map(([k, l, u], i) => `<a class="lk ${i ? '' : 'main'}" href="${esc(u)}" target="_blank" rel="noopener">${NET[k]}<span>${l}</span></a>`).join('')}
+        <a class="lk" href="data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}" download="${esc(r.name)}.vcf">${NET.save}<span>Salvar contato</span></a>
+      </div>
+    </div>`);
 }
 
 const ICON = {
@@ -129,6 +171,7 @@ const ICON = {
   menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>',
   bag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
   receipt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>',
+  contact: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4.5 4.5 0 0 1 0-6.4l2.6-2.6a4.5 4.5 0 0 1 6.4 6.4L17.5 13"/><path d="M14 10a4.5 4.5 0 0 1 0 6.4l-2.6 2.6a4.5 4.5 0 0 1-6.4-6.4L6.5 11"/></svg>',
   hand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11m0-1.5V4.5a1.5 1.5 0 0 1 3 0V11m0-4.5a1.5 1.5 0 0 1 3 0V14a6 6 0 0 1-6 6h-.5a6 6 0 0 1-4.6-2.2L3.6 14.6a1.6 1.6 0 0 1 2.4-2.1L8 14.5"/></svg>',
 };
 
@@ -167,12 +210,11 @@ function renderPremium() {
         <div class="t"><small>Precisa de algo?</small><strong>O garçom vem até a sua mesa</strong></div>
         <button data-go="garcom">Chamar</button>
       </div>
-      ${contactHtml(r)}
       <footer class="m-foot">O pagamento é feito no caixa, ao final.</footer>
     </main>
     <nav class="p-nav"><div class="p-nav-inner">
-      <button class="p-tab on" data-go="topo">${ICON.menu}Cardápio</button>
       <button class="p-tab" data-go="buscar">${ICON.search}Buscar</button>
+      <button class="p-tab" data-go="contato">${ICON.contact}Contato</button>
       <button class="p-cartbtn" id="open-cart" aria-label="Ver pedido">${ICON.bag}<span class="b" hidden></span></button>
       <button class="p-tab" data-go="conta">${ICON.receipt}Conta</button>
       <button class="p-tab" data-go="garcom">${ICON.hand}Garçom</button>
@@ -184,7 +226,7 @@ function renderPremium() {
   }));
   $$('[data-go="garcom"]').forEach(b => b.addEventListener('click', () => callStaff('garcom')));
   $('[data-go="conta"]').addEventListener('click', showAccount);
-  $('[data-go="topo"]').addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  $('[data-go="contato"]').addEventListener('click', showContact);
   $('[data-go="buscar"]').addEventListener('click', () => { $('#q').focus(); $('#q').scrollIntoView({ block: 'center', behavior: 'smooth' }); });
   $('#open-cart').addEventListener('click', () => cartCount() ? showCart() : toast('Toque no + de um prato para pedir'));
   $('#q').addEventListener('input', () => filter());

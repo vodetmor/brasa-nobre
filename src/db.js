@@ -17,6 +17,11 @@ const MIGRATIONS = [
   ['order_items', 'removed', "TEXT DEFAULT ''"],
   ['table_sessions', 'payment_provider', "TEXT DEFAULT ''"],
   ['table_sessions', 'payment_ref', "TEXT DEFAULT ''"],
+  ['restaurants', 'instagram', "TEXT DEFAULT ''"],
+  ['restaurants', 'tiktok', "TEXT DEFAULT ''"],
+  ['restaurants', 'facebook', "TEXT DEFAULT ''"],
+  ['restaurants', 'ifood', "TEXT DEFAULT ''"],
+  ['restaurants', 'website', "TEXT DEFAULT ''"],
 ];
 
 export const engine = config.databaseUrl ? 'postgres' : 'sqlite';

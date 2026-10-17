@@ -16,6 +16,12 @@ CREATE TABLE IF NOT EXISTS restaurants (
   text_color TEXT DEFAULT '#ffffff',
   whatsapp TEXT DEFAULT '',
   address TEXT DEFAULT '',
+  -- redes do botão Contato do cardápio (@usuário ou link)
+  instagram TEXT DEFAULT '',
+  tiktok TEXT DEFAULT '',
+  facebook TEXT DEFAULT '',
+  ifood TEXT DEFAULT '',
+  website TEXT DEFAULT '',
   staff_pin TEXT NOT NULL,
   -- 1 = só aceita pedido se o caixa abriu a mesa (proteção contra trote)
   require_open_table INTEGER NOT NULL DEFAULT 0,

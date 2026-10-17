@@ -140,6 +140,10 @@ function renderConfig() {
       <h3>Contato</h3>
       <label class="field"><span>WhatsApp (com DDD)</span><input class="input" name="whatsapp" inputmode="tel" value="${esc(R.whatsapp)}" placeholder="11999998888"></label>
       <label class="field"><span>Endereço</span><input class="input" name="address" value="${esc(R.address)}"></label>
+      <p class="muted small-text">Aparecem no botão "Contato" do cardápio. Pode colar o @ ou o link; deixe em branco o que não usa.</p>
+      ${[['instagram', 'Instagram', '@seurestaurante'], ['tiktok', 'TikTok', '@seurestaurante'], ['facebook', 'Facebook', 'facebook.com/seurestaurante'],
+        ['ifood', 'iFood (link da loja)', 'https://www.ifood.com.br/delivery/...'], ['website', 'Site', 'seurestaurante.com.br']]
+        .map(([f, l, ph]) => `<label class="field"><span>${l}</span><input class="input" name="${f}" value="${esc(R[f] || '')}" placeholder="${ph}"></label>`).join('')}
     </div>
 
     <div class="card grid">

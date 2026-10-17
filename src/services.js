@@ -35,7 +35,7 @@ export async function defaultMenuToken(slug) {
 }
 
 const RESTAURANT_FIELDS = ['name', 'tagline', 'logo_url', 'cover_url', 'primary_color', 'accent_color', 'bg_color',
-  'text_color', 'whatsapp', 'address', 'staff_pin', 'require_open_table', 'accepting_orders', 'service_fee_pct', 'theme'];
+  'text_color', 'whatsapp', 'address', 'instagram', 'tiktok', 'facebook', 'ifood', 'website', 'staff_pin', 'require_open_table', 'accepting_orders', 'service_fee_pct', 'theme'];
 
 export async function createRestaurant({ slug, name, staff_pin, tables = 10, ...rest }) {
   slug = String(slug || '').toLowerCase().trim();

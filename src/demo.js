@@ -29,6 +29,7 @@ export const DEMOS = [
     slug: 'brasa-nobre', name: 'Brasa Nobre', staff_pin: '1234', tables: 12, theme: 'premium',
     tagline: 'Espetaria e cozinha de brasa. Restaurante fictício para demonstração.',
     address: 'Quadra 10, Sobradinho - DF (endereço fictício)', whatsapp: '61900000000', cover_url: FOTO.capa,
+    instagram: '@brasanobre.demo', tiktok: '@brasanobre.demo',
     primary_color: '#d9a441', accent_color: '#d9a441', bg_color: '#121110', text_color: '#ffffff',
     menu: {
       'Espetinhos': [
@@ -62,6 +63,7 @@ export const DEMOS = [
     slug: 'bistro-jardim', name: 'Bistrô Jardim', staff_pin: '4321', tables: 6, theme: 'claro',
     tagline: 'Cozinha caseira com tema claro. Restaurante fictício para demonstração.',
     address: 'Rua das Flores, 20 (endereço fictício)', whatsapp: '61900000001', cover_url: bd('capa.jpg'),
+    instagram: '@bistrojardim.demo',
     primary_color: '#8a3b12', accent_color: '#8a3b12', bg_color: '#f3ede3', text_color: '#1b1714', service_fee_pct: 10,
     menu: {
       'Entradas': [
