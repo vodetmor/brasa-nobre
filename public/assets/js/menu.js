@@ -483,11 +483,6 @@ function showDish(id) {
          </model-viewer>`
       : p.image_url ? `<img src="${esc(p.image_url)}" alt="${esc(p.name)}">` : '';
     media.style.position = 'relative';
-    // modelos gerados por IA vêm com ~1 m: no AR o prato aparece no tamanho real de mesa (~28 cm), sem o cliente ajustar
-    media.querySelector('model-viewer')?.addEventListener('load', e => {
-      const mv = e.target, d = mv.getDimensions(), big = Math.max(d.x, d.z);
-      if (big > 0.5) { const s = (0.28 / big).toFixed(4); mv.scale = `${s} ${s} ${s}`; mv.updateFraming(); }
-    }, { once: true });
   };
   show(has3d ? '3d' : 'foto');
   el.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => show(b.dataset.mode)));
