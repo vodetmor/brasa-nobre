@@ -5,3 +5,6 @@ uploads/*
 !uploads/.gitkeep
 .env
 *.tgz
+
+.vercel
+.env*
