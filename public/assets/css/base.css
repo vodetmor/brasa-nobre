@@ -97,5 +97,13 @@ label.field > span { color: var(--muted); }
 .topbar .brand { font-weight: 800; font-size: 1.05rem; }
 .topbar .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
 .topbar .dot.on { background: var(--ok); }
-.topbar nav a { color: var(--muted); text-decoration: none; margin-right: .8rem; font-size: .92rem; }
-.topbar nav a.active { color: var(--text); font-weight: 700; }
+.topbar nav, .staff-nav { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+.topbar nav::-webkit-scrollbar { display: none; }
+.topbar nav a, .staff-nav a {
+  display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; min-height: 40px; padding: 0 14px;
+  border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  text-decoration: none; font-size: .9rem; font-weight: 600; white-space: nowrap; transition: border-color .15s, background .15s;
+}
+.topbar nav a svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; opacity: .8; }
+.topbar nav a:hover { border-color: var(--primary); }
+.topbar nav a.active { background: var(--primary); border-color: var(--primary); color: #15110c; }

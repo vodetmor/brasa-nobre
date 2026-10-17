@@ -2,6 +2,7 @@
 import { all, get, run, tx, newToken } from './db.js';
 import { HttpError } from './lib/http.js';
 import { publish, staffChannel, tableChannel } from './lib/realtime.js';
+import { charge } from './lib/payments.js';
 
 export const ORDER_STATUSES = ['received', 'preparing', 'ready', 'delivered', 'canceled'];
 const PAYMENT_METHODS = ['dinheiro', 'pix', 'cartao', 'outro'];
@@ -19,7 +20,7 @@ export async function publicRestaurant(r) {
 }
 
 export async function listRestaurants() {
-  return await all(`SELECT r.id, r.slug, r.name, r.tagline, r.primary_color, r.logo_url,
+  return await all(`SELECT r.id, r.slug, r.name, r.tagline, r.primary_color, r.logo_url, r.cover_url, r.theme, r.bg_color,
     (SELECT COUNT(*) FROM tables t WHERE t.restaurant_id = r.id) AS tables,
     (SELECT COUNT(*) FROM products p WHERE p.restaurant_id = r.id) AS products,
     (SELECT token FROM tables t WHERE t.restaurant_id = r.id AND t.active = 1 ORDER BY t.number LIMIT 1) AS first_token
@@ -179,7 +180,11 @@ export async function sessionSummary(sessionId) {
   const orders = await Promise.all((await all('SELECT * FROM orders WHERE session_id = ? ORDER BY id', sessionId)).map(withItems));
   const subtotal = orders.filter(o => o.status !== 'canceled').reduce((s, o) => s + o.total_cents, 0);
   const service = Math.round(subtotal * (r.service_fee_pct || 0) / 100);
-  return { session, orders, subtotal_cents: subtotal, service_cents: service, total_cents: subtotal + service, service_fee_pct: r.service_fee_pct };
+  // conta separada por pessoa (quem pôs o nome no pedido); sem nome, fica como "Mesa N"
+  const people = new Map();
+  for (const o of orders) if (o.status !== 'canceled') people.set(o.customer_name, (people.get(o.customer_name) || 0) + o.total_cents);
+  const by_customer = [...people].map(([name, subtotal_cents]) => ({ name, subtotal_cents }));
+  return { session, orders, by_customer, subtotal_cents: subtotal, service_cents: service, total_cents: subtotal + service, service_fee_pct: r.service_fee_pct };
 }
 
 export async function listOpenSessions(restaurantId) {
@@ -191,15 +196,18 @@ export async function listOpenSessions(restaurantId) {
     WHERE s.restaurant_id = ? AND s.status = 'open' ORDER BY t.number`, restaurantId);
 }
 
-export async function closeSession(restaurantId, sessionId, paymentMethod) {
+export async function closeSession(restaurantId, sessionId, paymentMethod, { useTerminal = false } = {}) {
   if (!PAYMENT_METHODS.includes(paymentMethod)) throw new HttpError(400, 'Forma de pagamento inválida');
   const sum = await sessionSummary(sessionId);
   if (!sum || sum.session.restaurant_id !== restaurantId) throw new HttpError(404, 'Comanda não encontrada');
   if (sum.session.status !== 'open') throw new HttpError(409, 'Comanda já fechada');
+  // cartão ou Pix na maquininha: só fecha a conta se a cobrança for aprovada
+  const pay = useTerminal && ['cartao', 'pix'].includes(paymentMethod)
+    ? await charge({ amount_cents: sum.total_cents, method: paymentMethod }) : null;
   await tx(async () => {
     await run(`UPDATE table_sessions SET status = 'closed', closed_at = datetime('now'), payment_method = ?,
-      subtotal_cents = ?, service_cents = ?, total_cents = ? WHERE id = ?`,
-      paymentMethod, sum.subtotal_cents, sum.service_cents, sum.total_cents, sessionId);
+      subtotal_cents = ?, service_cents = ?, total_cents = ?, payment_provider = ?, payment_ref = ? WHERE id = ?`,
+      paymentMethod, sum.subtotal_cents, sum.service_cents, sum.total_cents, pay?.provider || '', pay?.ref || '', sessionId);
     // pedidos não cancelados viram "entregue" ao fechar a conta
     await run("UPDATE orders SET status = 'delivered', updated_at = datetime('now') WHERE session_id = ? AND status NOT IN ('canceled', 'delivered')", sessionId);
     await run("UPDATE service_calls SET status = 'done' WHERE table_id = ? AND status = 'open'", sum.session.table_id);
@@ -326,11 +334,95 @@ export async function resolveCall(restaurantId, id) {
 export async function dayReport(restaurantId, date) {
   const d = date || (await get("SELECT date('now', 'localtime') AS d")).d;
   const sessions = await all(`SELECT payment_method, COUNT(*) AS n, SUM(total_cents) AS total FROM table_sessions
-    WHERE restaurant_id = ? AND status = 'closed' AND date(closed_at, 'localtime') = ? GROUP BY payment_method`, restaurantId, d);
+    WHERE restaurant_id = ? AND status = 'closed' AND date(closed_at, 'localtime') = ? GROUP BY payment_method ORDER BY total DESC`, restaurantId, d);
   const top = await all(`SELECT i.name, SUM(i.qty) AS qty, SUM(i.qty * i.unit_price_cents) AS total FROM order_items i
     JOIN orders o ON o.id = i.order_id WHERE o.restaurant_id = ? AND o.status != 'canceled'
     AND date(o.created_at, 'localtime') = ? GROUP BY i.name ORDER BY qty DESC LIMIT 10`, restaurantId, d);
-  const orders = await get(`SELECT COUNT(*) AS n, COALESCE(SUM(total_cents), 0) AS total FROM orders WHERE restaurant_id = ?
+  const orders = await get(`SELECT COUNT(*) AS n, COALESCE(SUM(total_cents), 0) AS total,
+    COUNT(DISTINCT session_id) AS tabs FROM orders WHERE restaurant_id = ?
     AND status != 'canceled' AND date(created_at, 'localtime') = ?`, restaurantId, d);
-  return { date: d, by_payment: sessions, top_items: top, orders };
+  const canceled = await get(`SELECT COUNT(*) AS n FROM orders WHERE restaurant_id = ? AND status = 'canceled'
+    AND date(created_at, 'localtime') = ?`, restaurantId, d);
+  // pessoas identificadas = nomes diferentes por comanda (pedido sem nome conta como a mesa)
+  const people = await get(`SELECT COUNT(*) AS n FROM (SELECT DISTINCT session_id, customer_name FROM orders
+    WHERE restaurant_id = ? AND status != 'canceled' AND date(created_at, 'localtime') = ?) x`, restaurantId, d);
+  const open = await get(`SELECT COUNT(*) AS n FROM table_sessions WHERE restaurant_id = ? AND status = 'open'`, restaurantId);
+  const closed = sessions.reduce((a, p) => ({ n: a.n + p.n, total: a.total + (p.total || 0) }), { n: 0, total: 0 });
+  return {
+    date: d, by_payment: sessions, top_items: top, orders,
+    summary: {
+      received_cents: closed.total, closed_tabs: closed.n, avg_ticket_cents: closed.n ? Math.round(closed.total / closed.n) : 0,
+      orders: orders.n, orders_cents: orders.total, tabs: orders.tabs, people: people.n, canceled: canceled.n, open_tabs: open.n,
+    },
+  };
+}
+
+// ---------- dashboard (hoje, 7 dias, 30 dias) ----------
+// Busca os pedidos e contas do período atual e do anterior (para comparar) e agrega aqui; volume de restaurante é pequeno.
+const PERIODS = { hoje: 1, '7d': 7, '30d': 30 };
+const localDay = (d, tz) => d.toLocaleDateString('sv-SE', { timeZone: tz });
+const localHour = (utcText, tz) => Number(new Date(String(utcText).replace(' ', 'T') + 'Z')
+  .toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', hour12: false }).slice(0, 2)) % 24;
+const localDayOf = (utcText, tz) => localDay(new Date(String(utcText).replace(' ', 'T') + 'Z'), tz);
+
+export async function dashboard(restaurantId, period = 'hoje', tz = 'America/Sao_Paulo') {
+  const days = PERIODS[period] || 1;
+  const now = new Date();
+  const dayList = n => Array.from({ length: n }, (_, i) => localDay(new Date(now - (n - 1 - i) * 86400_000), tz));
+  const all2 = dayList(days * 2);
+  const cur = all2.slice(days), prev = all2.slice(0, days);
+  const from = all2[0], to = all2[all2.length - 1];
+
+  const orders = await all(`SELECT id, status, total_cents, session_id, customer_name, created_at FROM orders
+    WHERE restaurant_id = ? AND date(created_at, 'localtime') BETWEEN ? AND ?`, restaurantId, from, to);
+  const tabs = await all(`SELECT payment_method, total_cents, closed_at FROM table_sessions
+    WHERE restaurant_id = ? AND status = 'closed' AND date(closed_at, 'localtime') BETWEEN ? AND ?`, restaurantId, from, to);
+  const top = await all(`SELECT i.name, SUM(i.qty) AS qty, SUM(i.qty * i.unit_price_cents) AS total FROM order_items i
+    JOIN orders o ON o.id = i.order_id WHERE o.restaurant_id = ? AND o.status != 'canceled'
+    AND date(o.created_at, 'localtime') BETWEEN ? AND ? GROUP BY i.name ORDER BY qty DESC LIMIT 8`, restaurantId, cur[0], to);
+  const open = await get(`SELECT COUNT(*) AS n FROM table_sessions WHERE restaurant_id = ? AND status = 'open'`, restaurantId);
+
+  const inCur = new Set(cur);
+  const kpis = list => {
+    const os = list.o, ts = list.t;
+    const valid = os.filter(o => o.status !== 'canceled');
+    const received = ts.reduce((s, t) => s + (t.total_cents || 0), 0);
+    return {
+      received_cents: received,
+      orders: valid.length,
+      orders_cents: valid.reduce((s, o) => s + o.total_cents, 0),
+      delivered: os.filter(o => o.status === 'delivered').length,
+      canceled: os.filter(o => o.status === 'canceled').length,
+      closed_tabs: ts.length,
+      avg_ticket_cents: ts.length ? Math.round(received / ts.length) : 0,
+      people: new Set(valid.map(o => `${o.session_id}|${o.customer_name}`)).size,
+    };
+  };
+  const split = pred => ({ o: orders.filter(o => pred(localDayOf(o.created_at, tz))), t: tabs.filter(t => pred(localDayOf(t.closed_at, tz))) });
+  const now_ = kpis(split(d => inCur.has(d)));
+  const before = kpis(split(d => !inCur.has(d)));
+  const curO = orders.filter(o => o.status !== 'canceled' && inCur.has(localDayOf(o.created_at, tz)));
+
+  // gráfico: por hora (hoje) ou por dia (7/30 dias)
+  const series = days === 1
+    ? Array.from({ length: 24 }, (_, h) => {
+        const os = curO.filter(o => localHour(o.created_at, tz) === h);
+        return { label: `${String(h).padStart(2, '0')}h`, orders: os.length, cents: os.reduce((s, o) => s + o.total_cents, 0) };
+      })
+    : cur.map(d => {
+        const os = curO.filter(o => localDayOf(o.created_at, tz) === d);
+        return { label: `${d.slice(8, 10)}/${d.slice(5, 7)}`, orders: os.length, cents: os.reduce((s, o) => s + o.total_cents, 0) };
+      });
+  const pays = {};
+  for (const t of tabs) if (inCur.has(localDayOf(t.closed_at, tz))) {
+    const p = (pays[t.payment_method] ||= { payment_method: t.payment_method, n: 0, total: 0 });
+    p.n++; p.total += t.total_cents || 0;
+  }
+  return {
+    period, from: cur[0], to, kpis: now_, previous: before, series,
+    by_payment: Object.values(pays).sort((a, b) => b.total - a.total),
+    top_items: top, open_tabs: open.n,
+    status: Object.fromEntries(['received', 'preparing', 'ready', 'delivered', 'canceled']
+      .map(s => [s, orders.filter(o => o.status === s && inCur.has(localDayOf(o.created_at, tz))).length])),
+  };
 }

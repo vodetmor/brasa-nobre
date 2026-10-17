@@ -15,6 +15,8 @@ const MIGRATIONS = [
   ['restaurants', 'theme', "TEXT NOT NULL DEFAULT 'premium'"],
   ['products', 'ingredients', "TEXT DEFAULT ''"],
   ['order_items', 'removed', "TEXT DEFAULT ''"],
+  ['table_sessions', 'payment_provider', "TEXT DEFAULT ''"],
+  ['table_sessions', 'payment_ref', "TEXT DEFAULT ''"],
 ];
 
 export const engine = config.databaseUrl ? 'postgres' : 'sqlite';

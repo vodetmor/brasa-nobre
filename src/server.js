@@ -9,6 +9,7 @@ import { Router, HttpError, readJson, readBody, sendJson, serveStatic, clientIp 
 import { issueStaffCookie, clearStaffCookie, isStaff, requireStaff, requirePlatform } from './lib/auth.js';
 import { subscribe, pollEvents, realtimeMode, staffChannel, tableChannel } from './lib/realtime.js';
 import { ensureDemo } from './demo.js';
+import { paymentProvider } from './lib/payments.js';
 import { allow } from './lib/ratelimit.js';
 import * as S from './services.js';
 
@@ -17,7 +18,8 @@ const UPLOADS = resolve(ROOT, 'uploads');
 const api = new Router();
 
 // ---------- público: cliente na mesa ----------
-api.get('/api/config', () => ({ public_url: config.publicUrl, realtime: realtimeMode, uploads: !config.serverless }));
+api.get('/api/config', () => ({ public_url: config.publicUrl, realtime: realtimeMode, uploads: !config.serverless,
+  default_slug: config.defaultSlug, payment_provider: paymentProvider }));
 api.get('/api/restaurants', () => S.listRestaurants());
 
 api.get('/api/m/:token', async ({ params }) => {
@@ -116,8 +118,10 @@ api.get('/api/r/:slug/sessions/:id', async ({ req, params }) => {
   return sum;
 });
 
-api.post('/api/r/:slug/sessions/:id/close', async ({ req, params }) =>
-  S.closeSession(await staffId(req, params.slug), Number(params.id), (await readJson(req)).payment_method));
+api.post('/api/r/:slug/sessions/:id/close', async ({ req, params }) => {
+  const body = await readJson(req);
+  return S.closeSession(await staffId(req, params.slug), Number(params.id), body.payment_method, { useTerminal: !!body.terminal });
+});
 
 api.post('/api/r/:slug/tables/:id/open', async ({ req, params }) => {
   const id = await staffId(req, params.slug);
@@ -131,6 +135,9 @@ api.post('/api/r/:slug/calls/:id/done', async ({ req, params }) => {
   await S.resolveCall(await staffId(req, params.slug), Number(params.id));
   return { ok: true };
 });
+
+api.get('/api/r/:slug/dashboard', async ({ req, params, query }) =>
+  S.dashboard(await staffId(req, params.slug), query.get('period') || 'hoje', config.timezone));
 
 api.get('/api/r/:slug/report', async ({ req, params, query }) => S.dayReport(await staffId(req, params.slug), query.get('date')));
 
@@ -201,7 +208,8 @@ api.post('/api/platform/restaurants', async ({ req }) => {
 
 // ---------- páginas ----------
 const PAGES = [
-  [/^\/(painel|plataforma)\/?$/, 'plataforma-demo.html'],
+  [/^\/indice\/?$/, 'indice.html'],
+  [/^\/r\/[^/]+\/painel\/?$/, 'painel.html'],
   [/^\/m\/[^/]+\/?$/, 'menu.html'],
   [/^\/r\/[^/]+\/cozinha\/?$/, 'cozinha.html'],
   [/^\/r\/[^/]+\/caixa\/?$/, 'caixa.html'],
@@ -229,10 +237,11 @@ export async function handle(req, res) {
     if (path === '/') {
       // abre direto no cardápio (mesa 1 do restaurante padrão); sem restaurante, vai para o painel
       const token = await S.defaultMenuToken(config.defaultSlug);
-      res.writeHead(302, { Location: token ? `/m/${token}` : '/painel' });
+      res.writeHead(302, { Location: token ? `/m/${token}` : '/indice' });
       res.end();
       return;
     }
+    if (/^\/(plataforma|painel)\/?$/.test(path)) { res.writeHead(302, { Location: '/indice' }); res.end(); return; }
     const page = PAGES.find(([re]) => re.test(path));
     if (page && serveStatic(res, PUBLIC, page[1], req)) return;
     if (path.startsWith('/uploads/') && serveStatic(res, UPLOADS, decodeURIComponent(path.slice(9)), req)) return;
@@ -253,6 +262,6 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) createServer(
   console.log(`\nCardápio SaaS rodando:`);
   console.log(`  Neste PC:        http://localhost:${config.port}`);
   for (const ip of ips) console.log(`  Celular (Wi-Fi): http://${ip}:${config.port}`);
-  console.log(`  Painel (cozinha, caixa, cadastro): http://localhost:${config.port}/painel`);
+  console.log(`  Restaurantes (índice):  http://localhost:${config.port}/indice`);
   console.log(`  Agência:         http://localhost:${config.port}/agencia  (chave: PLATFORM_KEY)\n`);
 });

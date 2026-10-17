@@ -75,7 +75,9 @@ CREATE TABLE IF NOT EXISTS table_sessions (
   payment_method TEXT,                          -- dinheiro | pix | cartao | outro
   subtotal_cents INTEGER,
   service_cents INTEGER,
-  total_cents INTEGER
+  total_cents INTEGER,
+  payment_provider TEXT DEFAULT '',             -- maquininha usada (simulado, mercadopago, stone...)
+  payment_ref TEXT DEFAULT ''                   -- código da transação na maquininha
 );
 
 CREATE TABLE IF NOT EXISTS orders (

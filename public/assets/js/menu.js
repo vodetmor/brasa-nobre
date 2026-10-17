@@ -87,6 +87,7 @@ function render() {
         <div class="m-section-head"><span class="n">${String(gi + 1).padStart(2, '0')}</span><h2>${esc(g.c.name)}</h2></div>
         ${g.items.map((p, i) => item(p, i % 2 === 1)).join('')}
       </section>`).join('')}
+    ${contactHtml(r)}
     <footer class="m-foot">
       <div class="m-sig">Bom apetite.</div>
       ${r.address ? `${esc(r.address)}<br>` : ''}O pagamento é feito no caixa, ao final.
@@ -100,6 +101,24 @@ function render() {
   $('#app').addEventListener('click', onListClick);
   spyNav();
   renderBar();
+}
+
+
+// Contato do restaurante no fim do cardápio: WhatsApp e "Salvar contato" (cartão de visita .vcf para a agenda).
+function contactHtml(r) {
+  const digits = String(r.whatsapp || '').replace(/\D/g, '');
+  if (!digits && !r.address) return '';
+  const phone = digits ? (digits.length <= 11 ? `55${digits}` : digits) : '';
+  const vcard = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${r.name}`, `ORG:${r.name}`,
+    phone ? `TEL;TYPE=CELL:+${phone}` : '', r.address ? `ADR;TYPE=WORK:;;${r.address};;;;` : '',
+    `URL:${location.origin}`, 'END:VCARD'].filter(Boolean).join('\r\n');
+  return `<div class="m-contact">
+    <div class="t"><small>Contato</small><strong>${esc(r.name)}</strong>${r.address ? `<span>${esc(r.address)}</span>` : ''}</div>
+    <div class="a">
+      ${phone ? `<a class="wa" href="https://wa.me/${phone}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+      <a class="sv" href="data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}" download="${esc(r.name)}.vcf">Salvar contato</a>
+    </div>
+  </div>`;
 }
 
 const ICON = {
@@ -147,7 +166,8 @@ function renderPremium() {
         <div class="t"><small>Precisa de algo?</small><strong>O garçom vem até a sua mesa</strong></div>
         <button data-go="garcom">Chamar</button>
       </div>
-      <footer class="m-foot">${r.address ? `${esc(r.address)}<br>` : ''}O pagamento é feito no caixa, ao final.</footer>
+      ${contactHtml(r)}
+      <footer class="m-foot">O pagamento é feito no caixa, ao final.</footer>
     </main>
     <nav class="p-nav"><div class="p-nav-inner">
       <button class="p-tab on" data-go="topo">${ICON.menu}Cardápio</button>

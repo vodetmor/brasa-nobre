@@ -285,3 +285,16 @@ body.m-body { background: var(--paper-bg, #f3ede3); }
   .m-over.is-dish .m-dock { position: static; padding: 24px 0 0; border: 0; background: none; }
   .m-over:not(.is-dish) .m-over-inner { max-width: 720px; }
 }
+
+/* contato do restaurante (os dois temas) */
+.m-contact { margin: 14px 20px 0; padding: 18px 20px; border-radius: 26px; border: 1px solid var(--line, rgba(127,127,127,.25));
+  display: grid; gap: 14px; }
+.m-contact .t small { display: block; color: var(--gold, var(--accent)); font-weight: 700; font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; }
+.m-contact .t strong { display: block; font-size: 1.02rem; margin-top: 2px; }
+.m-contact .t span { display: block; font-size: .85rem; opacity: .7; margin-top: 2px; }
+.m-contact .a { display: flex; gap: 8px; flex-wrap: wrap; }
+.m-contact .a a { flex: 1 1 140px; height: 44px; display: grid; place-items: center; border-radius: 999px; text-decoration: none;
+  font-weight: 700; font-size: .88rem; }
+.m-contact .wa { background: var(--gold, var(--accent)); color: var(--dark, #fff); }
+.m-contact .sv { border: 1px solid currentColor; color: inherit; }
+@media (min-width: 900px) { .m-contact { max-width: 720px; } }

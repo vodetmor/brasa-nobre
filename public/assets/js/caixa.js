@@ -342,6 +342,9 @@ function closeView(t, o) {
   return `${sheetHead(`Fechar conta · ${esc(tableName(t))}`, 'Escolha a forma de pagamento')}
     <div class="big-total">${money(d.total_cents)}</div>
     ${totalsHtml(d)}
+    ${(d.by_customer || []).length > 1 ? `<section class="cx-section"><h3>Por pessoa</h3>
+      <div class="per-person">${d.by_customer.map(c => `<div><span>${esc(c.name)}</span><b>${money(c.subtotal_cents)}</b></div>`).join('')}</div>
+      ${d.service_cents ? '<p class="muted" style="font-size:.82rem;margin:.3em 0 0">Sem a taxa de serviço.</p>' : ''}</section>` : ''}
     <section class="cx-section"><h3>Forma de pagamento</h3>
       <div class="pay-grid">${Object.entries(PAY).map(([k, l]) =>
         `<button type="button" data-pay="${k}" class="${o.pay === k ? 'active' : ''}" aria-pressed="${o.pay === k}">${l}</button>`).join('')}</div>
@@ -352,11 +355,23 @@ function closeView(t, o) {
       <div class="cash-quick">${quick.map(v => `<button class="btn soft small" type="button" data-cash="${v}">${money(v)}</button>`).join('')}</div>
       <div id="change-out">${changeHtml(change)}</div>
     </section>` : ''}
+    ${o.charging ? `<div class="terminal ${o.charging}" role="status">${TERMINAL[o.charging]}</div>` : ''}
     <div class="cx-actions">
-      <button class="btn ghost" type="button" data-act="back">Voltar</button>
-      <button class="btn ok" type="button" data-act="confirm-close" ${o.pay ? '' : 'disabled'}>Confirmar pagamento</button>
+      <button class="btn ghost" type="button" data-act="back" ${o.charging ? 'disabled' : ''}>Voltar</button>
+      ${TERMINAL_PAY.includes(o.pay)
+        ? `<button class="btn ghost" type="button" data-act="confirm-close" ${o.charging ? 'disabled' : ''}>Recebi por fora</button>
+           <button class="btn ok" type="button" data-act="charge" ${o.charging ? 'disabled' : ''}>Cobrar ${money(d.total_cents)} na maquininha</button>`
+        : `<button class="btn ok" type="button" data-act="confirm-close" ${o.pay ? '' : 'disabled'}>Confirmar pagamento</button>`}
     </div>`;
 }
+
+// Maquininha: hoje simulada (PAYMENT_PROVIDER no servidor escolhe a operadora quando for integrada).
+const TERMINAL_PAY = ['cartao', 'pix'];
+const TERMINAL = {
+  sending: 'Enviando o valor para a maquininha…',
+  waiting: 'Aguardando o cliente passar o cartão ou pagar o Pix…',
+  approved: 'Pagamento aprovado. Fechando a conta…',
+};
 
 function changeHtml(change) {
   if (change === null) return '';
@@ -429,7 +444,7 @@ async function onSheetClick(e) {
   try {
     if (act === 'dismiss') { o.close(); return; }
     if (act === 'back') { o.view = 'detail'; renderSheet(); refreshSheet(); return; }
-    if (act === 'close-view') { o.view = 'close'; o.pay = null; o.received = ''; renderSheet(); return; }
+    if (act === 'close-view') { o.view = 'close'; o.pay = null; o.received = ''; o.charging = null; renderSheet(); return; }
     if (act === 'launch') { o.view = 'launch'; o.cart = new Map(); o.customer = ''; o.search = ''; renderSheet(); return; }
     if (act === 'print') { printReceipt(o); return; }
     if (b.dataset.pay) { o.pay = b.dataset.pay; renderSheet(); if (o.pay === 'dinheiro') $('#received', o.el)?.focus(); return; }
@@ -457,6 +472,21 @@ async function onSheetClick(e) {
       await api(`/api/r/${slug}/tables/${o.tableId}/open`, { method: 'POST' });
       toast(`${tableName(tableById(o.tableId))} aberta.`);
       await refresh();
+      return;
+    }
+    if (act === 'charge') {
+      const d = o.detail;
+      if (!d || !TERMINAL_PAY.includes(o.pay)) return;
+      const step = (st, ms) => { o.charging = st; renderSheet(); return new Promise(r => setTimeout(r, ms)); };
+      try {
+        await step('sending', 700);
+        await step('waiting', 1600);
+        const res = await api(`/api/r/${slug}/sessions/${d.session.id}/close`, { method: 'POST', body: { payment_method: o.pay, terminal: true } });
+        await step('approved', 700);
+        toast(`Pago na maquininha: ${money(d.total_cents)} (${PAY[o.pay]}) · ${res.session.payment_ref}`);
+        o.close();
+        scheduleRefresh(0);
+      } catch (err) { o.charging = null; renderSheet(); throw err; }
       return;
     }
     if (act === 'confirm-close') {

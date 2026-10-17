@@ -4,7 +4,7 @@
 import { run, get, tx, engine } from './db.js';
 import * as S from './services.js';
 
-export const SEED_VERSION = '4';
+export const SEED_VERSION = '6';
 
 const ai = f => `/demo/ai/${f}`;
 const bn = f => `/demo/brasa-nobre/${f}`;
@@ -28,7 +28,7 @@ export const DEMOS = [
   {
     slug: 'brasa-nobre', name: 'Brasa Nobre', staff_pin: '1234', tables: 12, theme: 'premium',
     tagline: 'Espetaria e cozinha de brasa. Restaurante fictício para demonstração.',
-    address: 'Endereço fictício', cover_url: FOTO.capa,
+    address: 'Quadra 10, Sobradinho - DF (endereço fictício)', whatsapp: '61900000000', cover_url: FOTO.capa,
     primary_color: '#d9a441', accent_color: '#d9a441', bg_color: '#121110', text_color: '#ffffff',
     menu: {
       'Espetinhos': [
@@ -59,8 +59,9 @@ export const DEMOS = [
     },
   },
   {
-    slug: 'bistro-demo', name: 'Bistrô Demo', staff_pin: '4321', tables: 6, theme: 'claro',
-    tagline: 'Exemplo do tema claro (editorial). Restaurante fictício.', address: 'Endereço fictício', cover_url: bd('capa.jpg'),
+    slug: 'bistro-jardim', name: 'Bistrô Jardim', staff_pin: '4321', tables: 6, theme: 'claro',
+    tagline: 'Cozinha caseira com tema claro. Restaurante fictício para demonstração.',
+    address: 'Rua das Flores, 20 (endereço fictício)', whatsapp: '61900000001', cover_url: bd('capa.jpg'),
     primary_color: '#8a3b12', accent_color: '#8a3b12', bg_color: '#f3ede3', text_color: '#1b1714', service_fee_pct: 10,
     menu: {
       'Entradas': [
@@ -69,7 +70,7 @@ export const DEMOS = [
       ],
       'Pratos': [
         ['Prato executivo', 'Arroz, feijão, salada, farofa e bife acebolado.', 4200, { image_url: FOTO.pf, model_glb_url: MODELO.pf, badge: 'Chef recomenda', ingredients: 'Arroz, Feijão, Alface, Tomate, Farofa, Bife, Cebola' }],
-        ['Jantinha dupla', 'Dois espetinhos com acompanhamentos.', 4800, { image_url: bd('jantinha2.jpg'), model_glb_url: MODELO.jantinha2, ingredients: 'Arroz, Feijão tropeiro, Vinagrete, Mandioca, 2 espetinhos' }],
+        ['Jantinha dupla', 'Dois espetinhos com acompanhamentos.', 4800, { image_url: bd('jantinha2.jpg'), ingredients: 'Arroz, Feijão tropeiro, Vinagrete, Mandioca, 2 espetinhos' }],
       ],
       'Bebidas': [
         ['Suco de maracujá', 'Natural, 400 ml.', 1400, { image_url: bd('suco.jpg'), ingredients: 'Maracujá, Açúcar, Gelo' }],
@@ -80,7 +81,7 @@ export const DEMOS = [
 ];
 
 // Demos antigos que não existem mais.
-const OLD = ['central-do-espeto'];
+const OLD = ['central-do-espeto', 'bistro-demo'];
 
 export async function seedDemos({ force = false, log = () => {} } = {}) {
   return tx(async () => {

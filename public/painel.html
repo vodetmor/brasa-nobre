@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121110">
+  <meta name="robots" content="noindex">
+  <title>Painel do restaurante</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Figtree:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <style>
+    :root { --font: "Figtree", system-ui, sans-serif; }
+    html, body { overflow-x: hidden; }
+    .pn { max-width: 1040px; margin: 0 auto; padding: 24px 16px 56px; display: grid; gap: 28px; }
+    .pn-head { display: flex; align-items: center; gap: 14px; }
+    .pn-logo { width: 52px; height: 52px; border-radius: 14px; flex: 0 0 auto; display: grid; place-items: center;
+      background: var(--surface-2); color: var(--primary); font: 600 1.4rem "Fraunces", serif; overflow: hidden; }
+    .pn-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .pn-head h1 { font: 600 1.6rem/1.1 "Fraunces", serif; color: var(--primary); margin: 0; }
+    .pn-head p { margin: 2px 0 0; color: var(--muted); font-size: .92rem; }
+    .pn-kicker { font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+
+    .tiles { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media (min-width: 760px) { .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    .tile { display: grid; gap: 4px; padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); text-decoration: none; min-height: 112px; align-content: space-between; transition: border-color .15s; }
+    .tile:hover { border-color: var(--primary); }
+    .tile b { font-size: 1.05rem; }
+    .tile span { color: var(--muted); font-size: .85rem; }
+    .tile svg { width: 26px; height: 26px; stroke: var(--primary); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    .day { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .day h2 { font: 600 1.25rem "Fraunces", serif; margin: 0; }
+    .day input { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; color-scheme: dark; }
+    .stats { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media (min-width: 760px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; min-width: 0; }
+    .stat small { display: block; color: var(--muted); font-size: .8rem; }
+    .stat strong { display: block; font-size: 1.35rem; font-variant-numeric: tabular-nums; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stat.main { grid-column: 1 / -1; }
+    .stat.main strong { font-size: 2rem; color: var(--primary); }
+    @media (min-width: 760px) { .stat.main { grid-column: span 1; } }
+
+    .cols { display: grid; gap: 10px; margin-top: 10px; }
+    @media (min-width: 760px) { .cols { grid-template-columns: 1fr 1fr; } }
+    .box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; min-width: 0; }
+    .box h3 { font-size: .95rem; margin: 0 0 12px; }
+    .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 6px 0; }
+    .row + .row { border-top: 1px solid var(--border); }
+    .row .n { color: var(--muted); font-size: .85rem; }
+    .bar { grid-column: 1 / -1; height: 6px; border-radius: 6px; background: var(--surface-2); overflow: hidden; }
+    .bar i { display: block; height: 100%; background: var(--primary); border-radius: 6px; }
+    .empty { color: var(--muted); font-size: .9rem; margin: 0; }
+    .tip { color: var(--muted); font-size: .88rem; margin: 0; }
+    .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
+    .seg button { border: 0; background: transparent; padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: .88rem; color: var(--muted); cursor: pointer; min-height: 36px; }
+    .seg button[aria-pressed="true"] { background: var(--primary); color: #15110c; }
+    .delta { display: inline-block; margin-top: 4px; font-size: .78rem; font-weight: 600; color: var(--muted); }
+    .delta.up { color: #5fbf73; } .delta.down { color: #e5735f; }
+    .chart { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 3px; align-items: end; height: 150px; padding-top: 8px; }
+    .chart .c { position: relative; height: 100%; display: flex; align-items: flex-end; }
+    .chart .c i { display: block; width: 100%; border-radius: 4px 4px 0 0; background: var(--primary); min-height: 2px; opacity: .9; }
+    .chart .c i.zero { background: var(--surface-2); }
+    .chart .c:hover i { opacity: 1; filter: brightness(1.15); }
+    .axis { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 3px; margin-top: 6px; font-size: .68rem; color: var(--muted); text-align: center; }
+    .axis span { overflow: hidden; white-space: nowrap; }
+    .chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .chart-head b { font-size: 1.1rem; }
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+    .flow div { background: var(--surface-2); border-radius: 12px; padding: 10px 8px; text-align: center; min-width: 0; }
+    .flow b { display: block; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+    .flow small { color: var(--muted); font-size: .72rem; }
+    .flow .ok b { color: #5fbf73; } .flow .no b { color: #e5735f; }
+  </style>
+</head>
+<body>
+  <main class="pn" id="app"><p class="muted">Carregando…</p></main>
+  <script type="module">
+    import { api, esc, money, applyTheme, slugFromPath } from '/assets/js/common.js';
+
+    const PERIOD = {
+      hoje: { label: 'Hoje', vs: 'vs ontem', chart: 'Vendas por hora', every: 3 },
+      '7d': { label: '7 dias', vs: 'vs 7 dias antes', chart: 'Vendas por dia', every: 1 },
+      '30d': { label: '30 dias', vs: 'vs 30 dias antes', chart: 'Vendas por dia', every: 5 },
+    };
+    const PAY = { dinheiro: 'Dinheiro', pix: 'Pix', cartao: 'Cartão', outro: 'Outro' };
+    const ICON = {
+      menu: '<svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 18.5h4"/></svg>',
+      cozinha: '<svg viewBox="0 0 24 24"><path d="M6 13.5a6 6 0 1 1 12 0V18H6z"/><path d="M4 21h16M12 4V2.5"/></svg>',
+      caixa: '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h3"/></svg>',
+      admin: '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
+    };
+
+    const slug = slugFromPath();
+    const [{ restaurant: r }, list] = await Promise.all([api(`/api/r/${slug}/public`), api('/api/restaurants')]);
+    applyTheme(r);
+    document.title = `${r.name} · Painel`;
+    const token = list.find(x => x.slug === slug)?.first_token;
+
+    document.getElementById('app').innerHTML = `
+      <header class="pn-head">
+        <div class="pn-logo">${r.logo_url ? `<img src="${esc(r.logo_url)}" alt="">` : esc(r.name[0])}</div>
+        <div><h1>${esc(r.name)}</h1><p>Painel do restaurante</p></div>
+      </header>
+      <section>
+        <p class="pn-kicker">Telas</p>
+        <div class="tiles">
+          ${token ? `<a class="tile" href="/m/${token}" target="_blank">${ICON.menu}<div><b>Cardápio</b><br><span>O que o cliente vê na mesa 1</span></div></a>` : ''}
+          <a class="tile" href="/r/${slug}/cozinha">${ICON.cozinha}<div><b>Cozinha</b><br><span>Pedidos chegando na hora</span></div></a>
+          <a class="tile" href="/r/${slug}/caixa">${ICON.caixa}<div><b>Caixa</b><br><span>Comandas e fechar conta</span></div></a>
+          <a class="tile" href="/r/${slug}/admin">${ICON.admin}<div><b>Cardápio e mesas</b><br><span>Pratos, preços, QR Codes</span></div></a>
+        </div>
+      </section>
+      <section>
+        <div class="day"><h2>Como está indo</h2>
+          <div class="seg" id="period">${Object.entries(PERIOD).map(([k, v], i) => `<button type="button" data-p="${k}" aria-pressed="${!i}">${v.label}</button>`).join('')}</div></div>
+        <div id="report"><p class="empty">Carregando…</p></div>
+      </section>
+      <p class="tip">Para mostrar: deixe a Cozinha aberta no computador e faça um pedido pelo Cardápio no celular. <a href="/indice">Ver todos os restaurantes</a></p>`;
+
+    let period = 'hoje';
+    const pct = (a, b) => {
+      if (!b) return a ? '<span class="delta up">novo</span>' : '<span class="delta">—</span>';
+      const v = Math.round((a - b) / b * 100);
+      return `<span class="delta ${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${v > 0 ? '▲' : v < 0 ? '▼' : ''} ${Math.abs(v)}% ${PERIOD[period].vs}</span>`;
+    };
+    async function loadReport() {
+      const rep = await api(`/api/r/${slug}/dashboard?period=${period}`);
+      const k = rep.kpis, b = rep.previous;
+      const maxPay = Math.max(1, ...rep.by_payment.map(p => p.total));
+      const maxTop = Math.max(1, ...rep.top_items.map(i => i.qty));
+      const maxS = Math.max(1, ...rep.series.map(x => x.cents));
+      const st = rep.status;
+      const stat = (cls, label, value, now, before) =>
+        `<div class="stat ${cls}"><small>${label}</small><strong>${value}</strong>${before === undefined ? '' : pct(now, before)}</div>`;
+      document.getElementById('report').innerHTML = `
+        <div class="stats">
+          ${stat('main', 'Faturamento recebido', money(k.received_cents), k.received_cents, b.received_cents)}
+          ${stat('', 'Pedidos', k.orders, k.orders, b.orders)}
+          ${stat('', 'Ticket médio por conta', money(k.avg_ticket_cents), k.avg_ticket_cents, b.avg_ticket_cents)}
+          ${stat('', 'Contas fechadas', k.closed_tabs, k.closed_tabs, b.closed_tabs)}
+          ${stat('', 'Pessoas atendidas', k.people, k.people, b.people)}
+          ${stat('', 'Mesas abertas agora', rep.open_tabs)}
+        </div>
+        <div class="box" style="margin-top:10px">
+          <div class="chart-head"><h3>${PERIOD[period].chart}</h3><b>${money(k.orders_cents)}</b></div>
+          <div class="chart" role="img" aria-label="${PERIOD[period].chart}">${rep.series.map(x =>
+            `<div class="c" title="${x.label}: ${money(x.cents)} · ${x.orders} pedido${x.orders === 1 ? '' : 's'}"><i class="${x.cents ? '' : 'zero'}" style="height:${Math.max(2, Math.round(x.cents / maxS * 100))}%"></i></div>`).join('')}</div>
+          <div class="axis">${rep.series.map((x, i) => `<span>${i % PERIOD[period].every === 0 ? x.label : ''}</span>`).join('')}</div>
+        </div>
+        <div class="box" style="margin-top:10px"><h3>Pedidos na cozinha</h3>
+          <div class="flow">
+            <div><b>${st.received}</b><small>Novos</small></div>
+            <div><b>${st.preparing}</b><small>Em preparo</small></div>
+            <div><b>${st.ready}</b><small>Prontos</small></div>
+            <div class="ok"><b>${st.delivered}</b><small>Entregues</small></div>
+            <div class="no"><b>${st.canceled}</b><small>Cancelados</small></div>
+          </div>
+        </div>
+        <div class="cols">
+          <div class="box"><h3>Como pagaram</h3>${rep.by_payment.length ? rep.by_payment.map(p => `
+            <div class="row"><span>${esc(PAY[p.payment_method] || p.payment_method)} <span class="n">· ${p.n} conta${p.n > 1 ? 's' : ''}</span></span>
+              <b>${money(p.total)}</b><div class="bar"><i style="width:${Math.round(p.total / maxPay * 100)}%"></i></div></div>`).join('')
+            : '<p class="empty">Nenhuma conta fechada no período.</p>'}</div>
+          <div class="box"><h3>Mais vendidos</h3>${rep.top_items.length ? rep.top_items.slice(0, 6).map(i => `
+            <div class="row"><span>${esc(i.name)} <span class="n">· ${i.qty}x</span></span><b>${money(i.total)}</b>
+              <div class="bar"><i style="width:${Math.round(i.qty / maxTop * 100)}%"></i></div></div>`).join('')
+            : '<p class="empty">Nenhum pedido no período.</p>'}</div>
+        </div>`;
+    }
+    document.getElementById('period').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-p]');
+      if (!btn) return;
+      period = btn.dataset.p;
+      document.querySelectorAll('#period button').forEach(x => x.setAttribute('aria-pressed', x === btn));
+      loadReport();
+    });
+    await loadReport();
+    setInterval(() => { if (!document.hidden) loadReport().catch(() => {}); }, 15000);
+  </script>
+</body>
+</html>

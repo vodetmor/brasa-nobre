@@ -100,14 +100,24 @@ try {
   const allowed = await call(`/api/m/${table.token}/orders`, { method: 'POST', body: { customer_name: 'Ana', items: [{ product_id: p[0].id, qty: 1 }] } });
   ok(allowed.status === 200, 'após o caixa abrir a mesa, o pedido passa');
 
-  // outro restaurante não enxerga dados deste (multi-cliente)
-  const other = await call('/api/r/bistro-demo/orders', { cookie });
-  ok(other.status === 401, 'login de um restaurante não vale em outro');
-
+  const slug2 = `teste-${PORT}-${Date.now()}`;
   const created = await fetch(`${BASE}/api/platform/restaurants`, { method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-platform-key': process.env.PLATFORM_KEY || 'admin' },
-    body: JSON.stringify({ slug: `teste-${PORT}-${Date.now()}`, name: 'Teste Novo', staff_pin: '9999', tables: 3 }) });
+    body: JSON.stringify({ slug: slug2, name: 'Teste Novo', staff_pin: '9999', tables: 3 }) });
   ok(created.status === 200, 'plataforma cria novo restaurante');
+
+  // outro restaurante não enxerga dados deste (multi-cliente)
+  const other = await call(`/api/r/${slug2}/orders`, { cookie });
+  ok(other.status === 401, 'login de um restaurante não vale em outro');
+
+  // maquininha (simulada): cobra, aprova e fecha a conta sozinha
+  const s2 = (await call(`/api/r/${slug}/sessions`, { cookie })).data.find(x => x.table_id === table.id);
+  const paid = await call(`/api/r/${slug}/sessions/${s2.id}/close`, { method: 'POST', cookie, body: { payment_method: 'cartao', terminal: true } });
+  ok(paid.status === 200 && paid.data.session.payment_ref?.startsWith('SIM-'), 'cobrança na maquininha fecha a conta com o código da transação');
+  const rep2 = (await call(`/api/r/${slug}/report`, { cookie })).data.summary;
+  const dash = (await call(`/api/r/${slug}/dashboard?period=7d`, { cookie })).data;
+  ok(dash.series.length === 7 && dash.kpis.received_cents === rep2.received_cents && dash.status.delivered >= 1, 'dashboard de 7 dias bate com o relatório do dia');
+  ok(rep2.closed_tabs === 2 && rep2.received_cents > 0 && rep2.avg_ticket_cents > 0, 'relatório soma contas, faturamento e ticket médio');
   ctrl.abort();
 } catch (e) {
   console.error(e); failed++;
