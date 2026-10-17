@@ -1,0 +1,52 @@
+/* Painel da cozinha (KDS): tablet ou PC, letras grandes, leitura de longe. */
+.k-tools { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); align-items: center; }
+.k-tools select { width: auto; min-height: 38px; padding: .3em .6em; }
+.k-tools .printer-state { font-size: .85rem; }
+
+.calls { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px 0; }
+.call {
+  display: flex; align-items: center; gap: 10px; padding: .55em .6em .55em 1em; border-radius: 999px; font-weight: 750;
+  background: color-mix(in srgb, var(--warn) 25%, transparent); color: var(--warn); animation: pulse 1.4s ease-in-out infinite;
+}
+.call.conta { background: color-mix(in srgb, var(--ok) 28%, transparent); color: #a5d6a7; }
+@keyframes pulse { 50% { filter: brightness(1.35); } }
+
+.board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; padding: 14px 16px 40px; align-items: start; }
+@media (max-width: 900px) { .board { grid-template-columns: 1fr; } }
+.col h2 { display: flex; align-items: center; gap: .5em; font-size: 1.05rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.col h2 .count { background: var(--surface-2); color: var(--text); border-radius: 999px; padding: 0 .6em; font-size: .9rem; }
+.col .list { display: grid; gap: 12px; }
+.col .empty { color: var(--muted); font-size: .9rem; padding: 1rem; border: 1px dashed var(--border); border-radius: var(--radius); text-align: center; }
+
+.ticket { background: var(--surface); border: 1px solid var(--border); border-left: 6px solid var(--warn); border-radius: var(--radius); padding: 12px 14px; }
+.ticket.preparing { border-left-color: #42a5f5; }
+.ticket.ready { border-left-color: var(--ok); }
+.ticket.new { animation: flash 1s ease 3; }
+@keyframes flash { 50% { background: color-mix(in srgb, var(--primary) 35%, var(--surface)); } }
+.ticket .top { display: flex; align-items: baseline; gap: 10px; }
+.ticket .mesa { font-size: 1.7rem; font-weight: 900; letter-spacing: -.01em; }
+.ticket .num { color: var(--muted); font-weight: 700; }
+.ticket .age { margin-left: auto; font-weight: 800; font-size: .95rem; }
+.ticket .age.late { color: var(--danger); }
+.ticket .age.mid { color: var(--warn); }
+.ticket .who { font-weight: 700; margin: 2px 0 8px; }
+.ticket ul { list-style: none; margin: 0 0 8px; padding: 0; font-size: 1.12rem; }
+.ticket li { padding: 3px 0; }
+.ticket li b { display: inline-block; min-width: 2.2em; }
+.ticket li { padding: 6px 0; border-bottom: 1px dashed color-mix(in srgb, currentColor 18%, transparent); }
+.ticket li:last-child { border-bottom: 0; }
+.ticket li .iname { font-weight: 700; }
+.ticket li .isem { display: block; margin: 3px 0 0 2.2em; color: #ff6b5e; font-weight: 800; font-size: .95rem; letter-spacing: .02em; }
+.ticket li .iingr { display: block; padding-left: 2.2em; color: var(--muted); font-size: .85rem; }
+.ticket li .inote { display: block; margin: 3px 0 0 2.2em; color: var(--accent); font-weight: 700; font-size: .95rem; }
+.ticket .onote { background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 8px; padding: .4em .6em; margin-bottom: 8px; font-weight: 600; }
+.ticket .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.ticket .actions .btn.main { flex: 1; min-height: 50px; font-size: 1.05rem; }
+
+.sound-cta { position: fixed; inset: 0; z-index: 800; background: rgba(0,0,0,.75); display: grid; place-items: center; padding: 16px; }
+.sound-cta .card { max-width: 420px; text-align: center; }
+
+/* foto do prato no ticket, para a cozinha reconhecer de relance */
+.ticket li.has-img { position: relative; padding-left: 64px; min-height: 60px; }
+.ticket li .ithumb { position: absolute; left: 0; top: 6px; width: 54px; height: 54px; object-fit: cover; border-radius: 10px; }
+.ticket li.has-img .isem, .ticket li.has-img .iingr, .ticket li.has-img .inote { margin-left: 0; padding-left: 0; }

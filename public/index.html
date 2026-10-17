@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#121212">
+  <title>Plataforma · Cardápio digital</title>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <style>
+    main { max-width: 900px; margin: 0 auto; padding: 32px 16px 60px; }
+    .lead { color: var(--muted); max-width: 60ch; }
+    .rest { display: grid; gap: .6rem; }
+    .rest .links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 24px 0; }
+    .flow .card b { display: block; margin-bottom: .2em; }
+    .swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; vertical-align: middle; margin-right: .4em; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Cardápio digital</h1>
+    <p class="lead">Demonstração com restaurantes fictícios. Abra o cardápio no celular, faça um pedido e veja ele chegar na cozinha. Cada restaurante tem cardápio por mesa (QR Code + NFC), pedidos em tempo real para a cozinha, comanda no caixa e pratos em 3D/AR.</p>
+    <div class="flow">
+      <div class="card"><b>1. Mesa</b><span class="muted">Cliente lê o QR ou encosta o celular na tag NFC.</span></div>
+      <div class="card"><b>2. Cardápio</b><span class="muted">Escolhe, vê o prato em 3D/AR, informa o nome.</span></div>
+      <div class="card"><b>3. Cozinha</b><span class="muted">Pedido aparece na hora, com som e impressão.</span></div>
+      <div class="card"><b>4. Caixa</b><span class="muted">Comanda soma tudo; fecha a conta no final.</span></div>
+    </div>
+    <h2>Restaurantes</h2>
+    <div class="grid" id="list"><p class="muted">Carregando…</p></div>
+    <p class="muted" style="margin-top:28px">Dica: deixe a cozinha aberta no computador e faça o pedido pelo celular.</p>
+  </main>
+  <script type="module">
+    import { api, esc } from '/assets/js/common.js';
+    const list = await api('/api/restaurants');
+    document.getElementById('list').innerHTML = list.map(r => `
+      <div class="card rest">
+        <div><span class="swatch" style="background:${esc(r.primary_color)}"></span><strong>${esc(r.name)}</strong>
+          <span class="muted"> · ${r.tables} mesas · ${r.products} itens</span></div>
+        ${r.tagline ? `<span class="muted">${esc(r.tagline)}</span>` : ''}
+        <div class="links">
+          ${r.first_token ? `<a class="btn small" href="/m/${r.first_token}">Cardápio (mesa 1)</a>` : ''}
+          <a class="btn small soft" href="/r/${r.slug}/cozinha">Cozinha</a>
+          <a class="btn small soft" href="/r/${r.slug}/caixa">Caixa</a>
+          <a class="btn small soft" href="/r/${r.slug}/admin">Cardápio e mesas</a>
+          <a class="btn small ghost" href="/r/${r.slug}/qrcodes">QR Codes</a>
+        </div>
+        <span class="muted" style="font-size:.85rem">O link do cliente (mesa) está em "Cardápio e mesas" e nos QR Codes.</span>
+      </div>`).join('') || '<p class="muted">Nenhum restaurante. Rode <code>npm run seed</code>.</p>';
+  </script>
+</body>
+</html>

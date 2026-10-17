@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121212">
+  <title>Administração</title>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/admin.css">
+  <script type="module" src="/assets/vendor/model-viewer.min.js"></script>
+</head>
+<body>
+  <header class="topbar" id="topbar"></header>
+  <main class="adm" id="app" hidden>
+    <div class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="config">Configurações</button>
+      <button role="tab" data-tab="menu">Cardápio</button>
+      <button role="tab" data-tab="tables">Mesas</button>
+      <button role="tab" data-tab="report">Relatório do dia</button>
+    </div>
+    <section data-panel="config" id="p-config"></section>
+    <section data-panel="menu" id="p-menu"></section>
+    <section data-panel="tables" id="p-tables"></section>
+    <section data-panel="report" id="p-report"></section>
+  </main>
+  <script type="module" src="/assets/js/admin.js"></script>
+</body>
+</html>

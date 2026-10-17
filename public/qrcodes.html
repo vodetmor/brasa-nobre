@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121212">
+  <title>QR Codes das mesas</title>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <style>
+    html, body { overflow-x: hidden; }
+    .topbar nav { display: flex; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+    .topbar nav::-webkit-scrollbar { display: none; }
+    .topbar nav a { white-space: nowrap; }
+    .qr-wrap { max-width: 900px; margin: 0 auto; padding: 1rem 16px 48px; display: grid; gap: 1rem; }
+    .controls { display: grid; gap: .9rem; }
+    .controls h3 { margin: 0; }
+    .opts { display: grid; gap: .8rem; grid-template-columns: 1fr; }
+    @media (min-width: 600px) { .opts { grid-template-columns: 1fr 1fr; } }
+    .pick { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .pick label {
+      display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .7rem; border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--border); background: var(--surface); font-size: .88rem; min-height: 36px; user-select: none;
+    }
+    .pick label:has(input:checked) { background: color-mix(in srgb, var(--primary) 30%, var(--surface)); border-color: var(--primary); }
+    .pick input { accent-color: var(--primary); }
+    .check { display: flex; gap: .5rem; align-items: center; font-size: .92rem; cursor: pointer; }
+    .notice {
+      padding: .8rem 1rem; border-radius: 12px; font-size: .92rem;
+      background: color-mix(in srgb, var(--warn) 16%, var(--bg)); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+    }
+    .notice code { word-break: break-all; }
+
+    /* ----- folhas A4 (escalam na tela com unidades de contêiner; no papel 1cqw = 2,1mm) ----- */
+    .sheets { display: grid; gap: 1.2rem; justify-items: center; }
+    .page {
+      container-type: inline-size; width: 100%; max-width: 210mm; aspect-ratio: 210 / 297; background: #fff; color: #1a1a1a;
+      box-shadow: 0 6px 30px rgba(0,0,0,.45); border-radius: 4px; overflow: hidden;
+    }
+    .page-inner { box-sizing: border-box; width: 100%; height: 100%; padding: 4cqw; display: grid; gap: 0; }
+    .card-qr {
+      --c: var(--primary);
+      display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center;
+      border: 1px dashed #bbb; margin: -0.5px; overflow: hidden; min-height: 0; background: #fff;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .cq-head { width: 100%; background: var(--c); color: #fff; display: flex; align-items: center; justify-content: center; gap: .3em; padding: .45em .6em; }
+    .cq-head img { height: 1.6em; width: 1.6em; object-fit: cover; border-radius: .3em; background: #fff; }
+    .cq-name { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cq-mesa { font-weight: 900; line-height: 1; color: var(--c); letter-spacing: -.02em; }
+    .cq-label { font-weight: 600; color: #555; margin-top: .15em; }
+    .cq-qr { flex: 1; min-height: 0; display: grid; place-items: center; width: 100%; }
+    .cq-qr svg { height: 100%; width: auto; max-width: 100%; aspect-ratio: 1; display: block; }
+    .cq-foot { display: flex; align-items: center; justify-content: center; gap: .45em; padding: 0 .6em .6em; color: #222; font-weight: 600; line-height: 1.2; }
+    .cq-foot svg { flex: 0 0 auto; width: 2.2em; height: 2.2em; color: var(--c); }
+    .cq-url { font-family: ui-monospace, Menlo, Consolas, monospace; color: #666; word-break: break-all; padding: 0 .6em; }
+
+    /* tamanhos: 2x2 (grande), 2x3 (médio), 3x4 (pequeno) */
+    .size-g .page-inner { grid-template: repeat(2, 1fr) / repeat(2, 1fr); }
+    .size-m .page-inner { grid-template: repeat(3, 1fr) / repeat(2, 1fr); }
+    .size-p .page-inner { grid-template: repeat(4, 1fr) / repeat(3, 1fr); }
+    .size-g .card-qr { font-size: 2.5cqw; gap: 1.6cqw; padding-bottom: 1cqw; }
+    .size-g .cq-mesa { font-size: 9cqw; }
+    .size-g .cq-qr { padding: 0 4cqw; }
+    .size-m .card-qr { font-size: 2.05cqw; gap: 1cqw; }
+    .size-m .cq-mesa { font-size: 6.6cqw; }
+    .size-m .cq-qr { padding: 0 3cqw; }
+    .size-p .card-qr { font-size: 1.5cqw; gap: .6cqw; }
+    .size-p .cq-mesa { font-size: 4.6cqw; }
+    .size-p .cq-qr { padding: 0 2cqw; }
+    .cq-url { font-size: .62em; }
+
+    @page { size: A4 portrait; margin: 0; }
+    @media print {
+      html, body { background: #fff !important; overflow: visible; }
+      .no-print, .topbar, .toast { display: none !important; }
+      .qr-wrap { padding: 0; max-width: none; display: block; }
+      .sheets { display: block; }
+      .page { width: 210mm; max-width: none; height: 297mm; aspect-ratio: auto; box-shadow: none; border-radius: 0; break-after: page; page-break-after: always; }
+      .page:last-child { break-after: auto; page-break-after: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar" id="topbar"></header>
+  <main class="qr-wrap" id="app" hidden>
+    <div class="no-print" id="notices"></div>
+    <section class="card controls no-print">
+      <div class="row wrap"><h3 class="spacer">QR Codes das mesas</h3><button class="btn" id="print">Imprimir</button></div>
+      <div class="opts">
+        <label class="field"><span>Tamanho do cartão</span>
+          <select class="input" id="size">
+            <option value="g">Grande: 4 por folha (2×2)</option>
+            <option value="m" selected>Médio: 6 por folha (2×3)</option>
+            <option value="p">Pequeno: 12 por folha (3×4)</option>
+          </select></label>
+        <div class="grid" style="gap:.5rem;align-content:end">
+          <label class="check"><input type="checkbox" id="show-url"> Mostrar o link embaixo do QR</label>
+          <label class="check"><input type="checkbox" id="show-label" checked> Mostrar apelido da mesa</label>
+        </div>
+      </div>
+      <div class="grid" style="gap:.5rem">
+        <div class="row wrap"><span class="muted spacer">Mesas para imprimir</span>
+          <button class="btn ghost small" id="all">Todas</button><button class="btn ghost small" id="none">Nenhuma</button></div>
+        <div class="pick" id="pick"></div>
+      </div>
+      <p class="muted" style="margin:0;font-size:.85rem">Dica: no diálogo de impressão escolha papel A4, margens "Nenhuma" e ative "Gráficos de plano de fundo" para sair com as cores.</p>
+    </section>
+    <div class="sheets" id="sheets"></div>
+  </main>
+  <script src="/assets/vendor/qrcode.js"></script>
+  <script type="module" src="/assets/js/qrcodes.js"></script>
+</body>
+</html>

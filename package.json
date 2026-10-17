@@ -1,0 +1,22 @@
+{
+  "name": "cardapio-saas",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cardápio digital multi-restaurante: QR Code + NFC por mesa, pedidos em tempo real, painel da cozinha, caixa (comanda) e 3D/AR.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/server.js",
+    "seed": "node --disable-warning=ExperimentalWarning scripts/seed.js",
+    "novo-cliente": "node --disable-warning=ExperimentalWarning scripts/new-tenant.js",
+    "test": "node --disable-warning=ExperimentalWarning scripts/smoke-test.js",
+    "fotos": "node --disable-warning=ExperimentalWarning scripts/fotos.js",
+    "assets": "node scripts/assets.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  }
+}

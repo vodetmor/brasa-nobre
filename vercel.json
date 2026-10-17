@@ -1,0 +1,19 @@
+{
+  "buildCommand": "node scripts/assets.js",
+  "outputDirectory": "public",
+  "functions": {
+    "api/index.js": { "includeFiles": "src/**", "maxDuration": 15 }
+  },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index" },
+    { "source": "/", "destination": "/api/index" },
+    { "source": "/m/:token", "destination": "/menu.html" },
+    { "source": "/r/:slug/cozinha", "destination": "/cozinha.html" },
+    { "source": "/r/:slug/caixa", "destination": "/caixa.html" },
+    { "source": "/r/:slug/admin", "destination": "/admin.html" },
+    { "source": "/r/:slug/qrcodes", "destination": "/qrcodes.html" },
+    { "source": "/plataforma", "destination": "/index.html" },
+    { "source": "/painel", "destination": "/index.html" },
+    { "source": "/agencia", "destination": "/plataforma.html" }
+  ]
+}

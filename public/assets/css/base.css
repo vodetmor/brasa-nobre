@@ -1,0 +1,101 @@
+/* Base visual compartilhada. As cores do restaurante entram por variáveis CSS (applyTheme em common.js).
+   O design de cada cliente pode trocar só estas variáveis ou ganhar um CSS próprio em /assets/css/temas/. */
+:root {
+  --primary: #d32f2f;
+  --accent: #ff9800;
+  --bg: #121212;
+  --text: #ffffff;
+  --surface: color-mix(in srgb, var(--text) 6%, var(--bg));
+  --surface-2: color-mix(in srgb, var(--text) 11%, var(--bg));
+  --border: color-mix(in srgb, var(--text) 16%, transparent);
+  --muted: color-mix(in srgb, var(--text) 62%, var(--bg));
+  --ok: #43a047;
+  --warn: #fbc02d;
+  --danger: #e53935;
+  --radius: 14px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; font-family: var(--font); background: var(--bg); color: var(--text);
+  line-height: 1.4; -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); }
+img { max-width: 100%; display: block; }
+h1, h2, h3 { line-height: 1.15; margin: 0 0 .4em; }
+button, input, select, textarea { font: inherit; color: inherit; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4em;
+  border: 0; border-radius: 999px; padding: .7em 1.2em; cursor: pointer;
+  background: var(--primary); color: #fff; font-weight: 650; text-decoration: none;
+  transition: transform .08s ease, filter .15s ease; min-height: 44px;
+}
+.btn:active { transform: scale(.97); }
+.btn:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn.soft { background: var(--surface-2); color: var(--text); }
+.btn.ok { background: var(--ok); }
+.btn.warn { background: var(--warn); color: #222; }
+.btn.danger { background: var(--danger); }
+.btn.small { padding: .4em .9em; min-height: 34px; font-size: .9rem; }
+.btn.block { width: 100%; }
+
+.input, select.input, textarea.input {
+  width: 100%; padding: .7em .9em; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); outline: none; min-height: 44px;
+}
+.input:focus { border-color: var(--accent); }
+label.field { display: grid; gap: .3em; font-size: .9rem; color: var(--muted); }
+label.field > span { color: var(--muted); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+.muted { color: var(--muted); }
+.row { display: flex; gap: .6rem; align-items: center; }
+.row.wrap { flex-wrap: wrap; }
+.spacer { flex: 1; }
+.grid { display: grid; gap: 1rem; }
+.pill {
+  display: inline-block; padding: .15em .6em; border-radius: 999px; font-size: .75rem; font-weight: 650;
+  background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent);
+}
+.hidden { display: none !important; }
+
+/* aviso flutuante */
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 1000;
+  background: #222; color: #fff; padding: .8em 1.2em; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.4);
+  max-width: calc(100vw - 32px); animation: toast-in .2s ease;
+}
+.toast.error { background: var(--danger); }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } }
+
+/* janela modal / folha de baixo */
+.sheet-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 900; display: flex; align-items: flex-end; justify-content: center; }
+.sheet {
+  background: var(--bg); width: 100%; max-width: 640px; max-height: 92vh; overflow: auto;
+  border-radius: 20px 20px 0 0; padding: 1.2rem 1rem calc(1.2rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border); animation: sheet-in .22s ease;
+}
+@media (min-width: 700px) { .sheet-backdrop { align-items: center; } .sheet { border-radius: 20px; } }
+@keyframes sheet-in { from { transform: translateY(40px); opacity: 0; } }
+
+/* tela de login da equipe */
+.login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.login-box { width: 100%; max-width: 360px; text-align: center; }
+.login-box .input { text-align: center; font-size: 1.6rem; letter-spacing: .4em; }
+
+/* barra superior das telas da equipe */
+.topbar {
+  position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: .8rem; flex-wrap: wrap;
+  padding: .7rem 1rem; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar .brand { font-weight: 800; font-size: 1.05rem; }
+.topbar .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
+.topbar .dot.on { background: var(--ok); }
+.topbar nav a { color: var(--muted); text-decoration: none; margin-right: .8rem; font-size: .92rem; }
+.topbar nav a.active { color: var(--text); font-weight: 700; }

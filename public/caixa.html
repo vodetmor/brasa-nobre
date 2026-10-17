@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121212">
+  <title>Caixa</title>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/caixa.css">
+</head>
+<body>
+  <header class="topbar" id="topbar"></header>
+  <main class="cx" id="app" hidden>
+    <section class="cx-summary" id="summary" aria-label="Resumo do dia"></section>
+    <section class="cx-calls" id="calls" aria-label="Chamados abertos" hidden></section>
+    <div class="cx-filters" role="tablist" id="filters">
+      <button type="button" data-filter="all" class="active">Todas</button>
+      <button type="button" data-filter="open">Abertas</button>
+      <button type="button" data-filter="free">Livres</button>
+      <button type="button" data-filter="calling">Chamando</button>
+    </div>
+    <section class="cx-grid" id="tables" aria-label="Mesas"></section>
+  </main>
+  <div id="print-area" aria-hidden="true"></div>
+  <script type="module" src="/assets/js/caixa.js"></script>
+</body>
+</html>

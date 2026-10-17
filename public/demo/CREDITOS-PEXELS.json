@@ -1,0 +1,38 @@
+{
+ "brasa-nobre/capa.jpg": {
+  "foto": "https://www.pexels.com/pt-br/foto/fogo-incendio-ardente-queimadura-9392837/",
+  "autor": "Luke Seago"
+ },
+ "brasa-nobre/frango.jpg": {
+  "foto": "https://www.pexels.com/pt-br/foto/frango-galinha-cozinhando-cozimento-9646858/",
+  "autor": "Mouktik Joshi"
+ },
+ "brasa-nobre/misto.jpg": {
+  "foto": "https://www.pexels.com/pt-br/foto/deliciosos-espetinhos-de-carne-e-legumes-grelhados-na-churrasqueira-37198642/",
+  "autor": "Thomas Fritscher"
+ },
+ "brasa-nobre/agua.jpg": {
+  "foto": "https://www.pexels.com/pt-br/foto/agua-movimento-esguicho-salpicar-9639901/",
+  "autor": "Dima Valkov"
+ },
+ "brasa-nobre/suco.jpg": {
+  "foto": "https://www.pexels.com/pt-br/foto/frutas-frutos-natureza-morta-vista-do-topo-9681172/",
+  "autor": "Studio Naae"
+ },
+ "bistro-demo/capa.jpg": {
+  "foto": "https://www.pexels.com/pt-br/foto/fogo-incendio-quente-picante-13525911/",
+  "autor": "Sarah-Claude Lévesque St-Louis"
+ },
+ "bistro-demo/mandioca.jpg": {
+  "foto": "https://www.pexels.com/pt-br/foto/placa-prato-almoco-refeicao-5249331/",
+  "autor": "Asfand Munib"
+ },
+ "bistro-demo/jantinha2.jpg": {
+  "foto": "https://www.pexels.com/pt-br/foto/placa-prato-legumes-vegetais-19362399/",
+  "autor": "Иван Григорьев"
+ },
+ "bistro-demo/suco.jpg": {
+  "foto": "https://www.pexels.com/pt-br/foto/mao-coquetel-aperitivo-drink-15823268/",
+  "autor": "Amirho3in tavkoli"
+ }
+}
