@@ -117,16 +117,21 @@ const social = (v, base) => (v = String(v || '').trim()).includes('/') ? urlOf(v
 function contactLinks(r) {
   const digits = String(r.whatsapp || '').replace(/\D/g, '');
   const phone = digits ? (digits.length <= 11 ? `55${digits}` : digits) : '';
+  const local = digits.slice(-11);
+  const fone = local.length >= 10 ? `(${local.slice(0, 2)}) ${local.slice(2, -4)}-${local.slice(-4)}` : digits;
+  const at = v => String(v || '').includes('/') ? '' : `@${String(v).trim().replace(/^@/, '')}`;
+  const host = u => { try { return new URL(u).host.replace(/^www\./, ''); } catch { return ''; } };
+  // [rede, rótulo, link, linha de baixo]
   return {
     phone,
     links: [
-      phone && ['whatsapp', 'WhatsApp', `https://wa.me/${phone}`],
-      r.instagram && ['instagram', 'Instagram', social(r.instagram, 'https://instagram.com/')],
-      r.tiktok && ['tiktok', 'TikTok', social(r.tiktok, 'https://www.tiktok.com/@')],
-      r.facebook && ['facebook', 'Facebook', social(r.facebook, 'https://facebook.com/')],
-      r.ifood && ['ifood', 'Peça no iFood', urlOf(r.ifood)],
-      r.website && ['site', 'Site', urlOf(r.website)],
-      r.address && ['maps', 'Como chegar', `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${r.name}, ${r.address}`)}`],
+      phone && ['whatsapp', 'WhatsApp', `https://wa.me/${phone}`, fone],
+      r.instagram && ['instagram', 'Instagram', social(r.instagram, 'https://instagram.com/'), at(r.instagram)],
+      r.tiktok && ['tiktok', 'TikTok', social(r.tiktok, 'https://www.tiktok.com/@'), at(r.tiktok)],
+      r.facebook && ['facebook', 'Facebook', social(r.facebook, 'https://facebook.com/'), at(r.facebook)],
+      r.ifood && ['ifood', 'Peça no iFood', urlOf(r.ifood), 'Delivery em casa'],
+      r.website && ['site', 'Site', urlOf(r.website), host(urlOf(r.website))],
+      r.address && ['maps', 'Como chegar', `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${r.name}, ${r.address}`)}`, r.address],
     ].filter(l => l && l[2]),
   };
 }
@@ -148,20 +153,38 @@ function showContact() {
     phone ? `TEL;TYPE=CELL:+${phone}` : '', r.address ? `ADR;TYPE=WORK:;;${r.address};;;;` : '',
     ...links.filter(([k]) => ['instagram', 'site'].includes(k)).map(l => `URL:${l[2]}`),
     'END:VCARD'].filter(Boolean).join('\r\n');
-  openOverlay('contact', `
-    ${topbar('Contato')}
-    <div class="m-links-page">
-      <div class="lk-head">
-        ${r.logo_url ? `<img src="${esc(r.logo_url)}" alt="">` : `<span class="lk-mono">${esc(r.name[0])}</span>`}
-        <h2>${esc(r.name)}</h2>
-        ${r.tagline ? `<p>${esc(r.tagline)}</p>` : ''}
-        ${r.address ? `<p class="lk-addr">${esc(r.address)}</p>` : ''}
-      </div>
-      <div class="lk-list">
-        ${links.map(([k, l, u], i) => `<a class="lk ${i ? '' : 'main'}" href="${esc(u)}" target="_blank" rel="noopener">${NET[k]}<span>${l}</span></a>`).join('')}
-        <a class="lk" href="data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}" download="${esc(r.name)}.vcf">${NET.save}<span>Salvar contato</span></a>
-      </div>
-    </div>`);
+  const all = [...links.map(([k, l, u, sub]) => ({ k, l, sub, attrs: `href="${esc(u)}" target="_blank" rel="noopener"` })),
+    { k: 'save', l: 'Salvar contato', sub: 'Guarda o restaurante na sua agenda',
+      attrs: `href="data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}" download="${esc(r.name)}.vcf"` }];
+  const row = ({ k, l, sub, attrs }, i) => `<a class="lk${i ? '' : ' main'}" ${attrs}>
+      <span class="lk-ic">${NET[k]}</span><span class="lk-t"><b>${l}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span><span class="lk-go" aria-hidden="true">→</span></a>`;
+  if (premium()) {
+    // mesma capa do cardápio: foto escurecida, nome em dourado, folha clara com cards escuros
+    const [first, ...rest] = r.name.split(' ');
+    openOverlay('contact', `
+      <div class="lk-page is-premium">
+        <header class="p-hero lk-hero">
+          ${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" onerror="this.remove()">` : ''}<div class="p-shade"></div>
+          <div class="p-hero-top"><button class="p-chip lk-back" data-back>← Voltar</button></div>
+          <div class="p-hero-text">
+            <div class="p-kicker">Contato</div>
+            <h1>${esc(first)}${rest.length ? `<em>${esc(rest.join(' '))}</em>` : ''}</h1>
+            ${r.tagline ? `<p>${esc(r.tagline)}</p>` : ''}
+          </div>
+        </header>
+        <main class="p-sheet lk-sheet"><div class="lk-list">${all.map(row).join('')}</div>
+          <footer class="m-foot">Toque para abrir. Até a próxima!</footer></main>
+      </div>`);
+  } else {
+    openOverlay('contact', `
+      ${topbar('Contato')}
+      <div class="lk-page is-claro">
+        <section class="m-mast"><div class="m-kicker">Fale com a gente</div><h1>${esc(r.name)}</h1>${r.tagline ? `<p>${esc(r.tagline)}</p>` : ''}</section>
+        ${r.cover_url ? `<div class="m-cover"><img src="${esc(r.cover_url)}" alt=""></div>` : ''}
+        <div class="lk-list">${all.map(row).join('')}</div>
+        <footer class="m-foot"><div class="m-sig">Até a próxima.</div></footer>
+      </div>`);
+  }
 }
 
 const ICON = {
