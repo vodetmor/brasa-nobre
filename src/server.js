@@ -201,7 +201,7 @@ api.post('/api/platform/restaurants', async ({ req }) => {
 
 // ---------- páginas ----------
 const PAGES = [
-  [/^\/(painel|plataforma)\/?$/, 'index.html'],
+  [/^\/(painel|plataforma)\/?$/, 'plataforma-demo.html'],
   [/^\/m\/[^/]+\/?$/, 'menu.html'],
   [/^\/r\/[^/]+\/cozinha\/?$/, 'cozinha.html'],
   [/^\/r\/[^/]+\/caixa\/?$/, 'caixa.html'],
