@@ -159,17 +159,20 @@ export async function staffGate(slug) {
   });
 }
 
-const NAV_ICON = {
+export const NAV_ICON = {
   painel: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
   cozinha: '<svg viewBox="0 0 24 24"><path d="M6 13.5a6 6 0 1 1 12 0V18H6z"/><path d="M4 21h16M12 4V2.5"/></svg>',
   caixa: '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h3"/></svg>',
   admin: '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
   qrcodes: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v7h-7"/></svg>',
 };
+export const STAFF_TABS = [['painel', 'Painel'], ['cozinha', 'Cozinha'], ['caixa', 'Caixa'], ['admin', 'Cardápio e mesas'], ['qrcodes', 'QR Codes']];
+// Dentro do /painel (aba em iframe) a navegação é a do painel: a tela não repete os botões.
+export const embedded = window.top !== window.self;
 export function staffNav(slug, active) {
-  const links = [['painel', 'Painel'], ['cozinha', 'Cozinha'], ['caixa', 'Caixa'], ['admin', 'Cardápio e mesas'], ['qrcodes', 'QR Codes']];
-  return `<nav aria-label="Telas do restaurante">${links.map(([p, l]) =>
-    `<a href="/r/${slug}/${p}" class="${p === active ? 'active' : ''}"${p === active ? ' aria-current="page"' : ''}>${NAV_ICON[p]}${l}</a>`).join('')}</nav>`;
+  if (embedded) return '';
+  return `<nav aria-label="Telas do restaurante">${STAFF_TABS.map(([p, l]) =>
+    `<a href="/r/${slug}/painel${p === 'painel' ? '' : `#${p}`}" class="${p === active ? 'active' : ''}"${p === active ? ' aria-current="page"' : ''}>${NAV_ICON[p]}${l}</a>`).join('')}</nav>`;
 }
 
 // URL pública da mesa (usada no QR Code e na tag NFC).

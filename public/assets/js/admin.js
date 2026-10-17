@@ -429,7 +429,7 @@ function renderTables() {
     <form class="row wrap" id="add-tables">
       <label class="field grow"><span>Adicionar mesas</span><input class="input" type="number" name="count" min="1" max="200" value="1" required></label>
       <button class="btn">Adicionar</button>
-      <a class="btn soft" href="/r/${esc(slug)}/qrcodes">Imprimir QR Codes</a>
+      <a class="btn soft" href="/r/${esc(slug)}/painel#qrcodes" target="_top">Imprimir QR Codes</a>
     </form>
     <p class="muted small-text">Cada mesa tem um link secreto usado no QR Code e na tag NFC. Novas mesas recebem o próximo número.</p>
   </div>

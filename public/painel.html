@@ -72,12 +72,27 @@
     .flow b { display: block; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
     .flow small { color: var(--muted); font-size: .72rem; }
     .flow .ok b { color: #5fbf73; } .flow .no b { color: #e5735f; }
+
+    /* todas as telas numa página só: cada aba abre uma vez e fica carregada */
+    .pn-bar { flex-wrap: nowrap; }
+    .pn-bar .brand { display: none; }
+    @media (min-width: 760px) { .pn-bar .brand { display: inline; } }
+    .pn-bar nav { flex: 1 1 auto; min-width: 0; }
+    .tile { cursor: pointer; }
+    .pn-frame { position: fixed; left: 0; right: 0; bottom: 0; top: var(--bar-h, 61px); width: 100%; height: calc(100dvh - var(--bar-h, 61px));
+      border: 0; background: var(--bg); }
+    .pn-frame.menu { max-width: 430px; margin: 0 auto; }
+    @media (min-width: 760px) { .pn-frame.menu { top: calc(var(--bar-h, 61px) + 16px); height: calc(100dvh - var(--bar-h, 61px) - 32px);
+      border: 1px solid var(--border); border-radius: 22px; } }
+    body.framed { overflow: hidden; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
+  <header class="topbar pn-bar" id="bar"></header>
   <main class="pn" id="app"><p class="muted">Carregando…</p></main>
   <script type="module">
-    import { api, esc, money, applyTheme, slugFromPath } from '/assets/js/common.js';
+    import { api, esc, money, applyTheme, slugFromPath, STAFF_TABS, NAV_ICON } from '/assets/js/common.js';
 
     const PERIOD = {
       hoje: { label: 'Hoje', vs: 'vs ontem', chart: 'Vendas por hora', every: 3 },
@@ -106,10 +121,10 @@
       <section>
         <p class="pn-kicker">Telas</p>
         <div class="tiles">
-          ${token ? `<a class="tile" href="/m/${token}" target="_blank">${ICON.menu}<div><b>Cardápio</b><br><span>O que o cliente vê na mesa 1</span></div></a>` : ''}
-          <a class="tile" href="/r/${slug}/cozinha">${ICON.cozinha}<div><b>Cozinha</b><br><span>Pedidos chegando na hora</span></div></a>
-          <a class="tile" href="/r/${slug}/caixa">${ICON.caixa}<div><b>Caixa</b><br><span>Comandas e fechar conta</span></div></a>
-          <a class="tile" href="/r/${slug}/admin">${ICON.admin}<div><b>Cardápio e mesas</b><br><span>Pratos, preços, QR Codes</span></div></a>
+          ${token ? `<a class="tile" href="#menu">${ICON.menu}<div><b>Cardápio</b><br><span>O que o cliente vê na mesa 1</span></div></a>` : ''}
+          <a class="tile" href="#cozinha">${ICON.cozinha}<div><b>Cozinha</b><br><span>Pedidos chegando na hora</span></div></a>
+          <a class="tile" href="#caixa">${ICON.caixa}<div><b>Caixa</b><br><span>Comandas e fechar conta</span></div></a>
+          <a class="tile" href="#admin">${ICON.admin}<div><b>Cardápio e mesas</b><br><span>Pratos, preços, QR Codes</span></div></a>
         </div>
       </section>
       <section>
@@ -118,6 +133,39 @@
         <div id="report"><p class="empty">Carregando…</p></div>
       </section>
       <p class="tip">Para mostrar: deixe a Cozinha aberta no computador e faça um pedido pelo Cardápio no celular. <a href="/indice">Ver todos os restaurantes</a></p>`;
+
+    // ---------- abas ----------
+    const app = document.getElementById('app'), bar = document.getElementById('bar');
+    const TABS = [...STAFF_TABS, ...(token ? [['menu', 'Visão do cliente']] : [])];
+    const SRC = { menu: `/m/${token}` };
+    bar.innerHTML = `<span class="brand">${esc(r.name)}</span><nav aria-label="Telas do restaurante">${TABS.map(([p, l]) =>
+      `<a href="#${p}" data-tab="${p}">${NAV_ICON[p] || ICON.menu}${l}</a>`).join('')}</nav>`;
+    new ResizeObserver(() => document.documentElement.style.setProperty('--bar-h', `${bar.offsetHeight}px`)).observe(bar);
+    const frames = {};
+    function showTab() {
+      let tab = location.hash.slice(1);
+      if (!TABS.some(([p]) => p === tab)) tab = 'painel';
+      app.hidden = tab !== 'painel';
+      document.body.classList.toggle('framed', tab !== 'painel');
+      if (tab !== 'painel' && !frames[tab]) {
+        const f = document.createElement('iframe');
+        f.className = `pn-frame ${tab}`;
+        f.title = TABS.find(([p]) => p === tab)[1];
+        f.allow = 'screen-wake-lock; xr-spatial-tracking; clipboard-write; web-share; fullscreen';
+        f.src = SRC[tab] || `/r/${slug}/${tab}`;
+        document.body.append(f);
+        frames[tab] = f;
+      }
+      for (const [k, f] of Object.entries(frames)) f.hidden = k !== tab;
+      bar.querySelectorAll('[data-tab]').forEach(a => {
+        const on = a.dataset.tab === tab;
+        a.classList.toggle('active', on);
+        on ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current');
+      });
+      if (tab === 'painel') loadReport().catch(() => {});
+      else frames[tab].focus();
+    }
+    addEventListener('hashchange', showTab);
 
     let period = 'hoje';
     const pct = (a, b) => {
@@ -176,8 +224,8 @@
       document.querySelectorAll('#period button').forEach(x => x.setAttribute('aria-pressed', x === btn));
       loadReport();
     });
-    await loadReport();
-    setInterval(() => { if (!document.hidden) loadReport().catch(() => {}); }, 15000);
+    showTab();
+    setInterval(() => { if (!document.hidden && !app.hidden) loadReport().catch(() => {}); }, 15000);
   </script>
 </body>
 </html>
