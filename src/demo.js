@@ -4,7 +4,7 @@
 import { run, get, all, tx, engine } from './db.js';
 import * as S from './services.js';
 
-export const SEED_VERSION = '7';
+export const SEED_VERSION = '8';
 
 const ai = f => `/demo/ai/${f}`;
 const bn = f => `/demo/brasa-nobre/${f}`;
@@ -27,7 +27,7 @@ const MODELO = {
 // Item: [nome, descrição, preço em centavos, { image_url, ingredients, options, badge, model_glb_url }]
 export const DEMOS = [
   // Cliente real (Central do Espeto, Sobradinho-DF): nome, pratos, preços e contato do cardápio impresso
-  // que o Ribeiro enviou em 20/10/2026. Fotos são ilustrativas até chegarem as da casa.
+  // que o Ribeiro enviou em 20/10/2026. Prato feito com foto do Instagram da casa; o resto é ilustrativo até chegarem as da casa.
   // Atenção: enquanto estiver aqui, mudar SEED_VERSION recria o restaurante e apaga pedidos. Quando o
   // cliente começar a usar de verdade, tirar daqui e cuidar do cardápio pelo /r/central-do-espeto/admin.
   {
@@ -39,7 +39,7 @@ export const DEMOS = [
     menu: {
       'Prato feito': [
         ['Prato feito', '1 carne + 1 arroz + 1 feijão + 1 acompanhamento.', 2000, {
-          image_url: ai('ce-pf.webp'), badge: 'Monte do seu jeito',
+          image_url: ce('pf.jpg'), badge: 'Monte do seu jeito',
           options: [
             'Arroz: Arroz branco, Arroz com brócolis',
             'Feijão: Feijão tropeiro, Feijão de caldo',
