@@ -1,7 +1,7 @@
 // Restaurantes de demonstração (fictícios) e o seed que os cria.
 // Usado pelo npm run seed (PC) e sozinho no primeiro acesso da Vercel (ensureDemo).
 // Quando SEED_VERSION muda, os demos são recriados.
-import { run, get, tx, engine } from './db.js';
+import { run, get, all, tx, engine } from './db.js';
 import * as S from './services.js';
 
 export const SEED_VERSION = '7';
@@ -119,10 +119,17 @@ export async function seedDemos({ force = false, log = () => {} } = {}) {
     if (engine === 'postgres') await run('SELECT pg_advisory_xact_lock(4243)');
     const current = (await get("SELECT value FROM meta WHERE key = 'seed_version'"))?.value;
     if (!force && current === SEED_VERSION) return false;
+    // links das mesas (QR/NFC já gravados) continuam valendo depois de recriar: guarda o token de cada mesa
+    const keep = {};
+    for (const t of await all('SELECT r.slug, t.number, t.token FROM tables t JOIN restaurants r ON r.id = t.restaurant_id')) keep[`${t.slug}:${t.number}`] = t.token;
     for (const slug of [...OLD, ...DEMOS.map(d => d.slug)]) await run('DELETE FROM restaurants WHERE slug = ?', slug);
     for (const d of DEMOS) {
       const { menu, ...info } = d;
       const r = await S.createRestaurant(info);
+      for (const t of await all('SELECT id, number FROM tables WHERE restaurant_id = ?', r.id)) {
+        const old = keep[`${d.slug}:${t.number}`];
+        if (old) await run('UPDATE tables SET token = ? WHERE id = ?', old, t.id);
+      }
       let pos = 0;
       for (const [cat, items] of Object.entries(menu)) {
         const c = await S.saveCategory(r.id, { name: cat, position: pos++ });
