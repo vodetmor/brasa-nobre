@@ -4,7 +4,7 @@
 import { run, get, all, tx, engine } from './db.js';
 import * as S from './services.js';
 
-export const SEED_VERSION = '10';
+export const SEED_VERSION = '11';
 
 const ai = f => `/demo/ai/${f}`;
 const bn = f => `/demo/brasa-nobre/${f}`;
@@ -33,7 +33,7 @@ export const DEMOS = [
   {
     slug: 'central-do-espeto', name: 'Central do Espeto', staff_pin: '1234', tables: 10, theme: 'premium',
     tagline: 'Sabor de verdade, feito com amor!',
-    address: 'Qd. 08, Banca da Serra, frente à Melancia, Sobradinho I - DF', whatsapp: '61996115754', cover_url: FOTO.capa, logo_url: ce('logo.svg'),
+    address: 'Qd. 08, Banca da Serra, frente à Melancia, Sobradinho I - DF', whatsapp: '61996115754', cover_url: ce('capa.jpg'), logo_url: ce('logo.svg'),
     instagram: '@centraldoespetof',
     primary_color: '#d4a03c', accent_color: '#d4a03c', bg_color: '#0d0c0b', text_color: '#ffffff',
     menu: {
