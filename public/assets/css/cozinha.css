@@ -37,6 +37,7 @@
 .ticket li:last-child { border-bottom: 0; }
 .ticket li .iname { font-weight: 700; }
 .ticket li .isem { display: block; margin: 3px 0 0 2.2em; color: #ff6b5e; font-weight: 800; font-size: .95rem; letter-spacing: .02em; }
+.ticket li .ichoice { display: block; margin: 3px 0 0 2.2em; font-weight: 700; font-size: 1rem; }
 .ticket li .iingr { display: block; padding-left: 2.2em; color: var(--muted); font-size: .85rem; }
 .ticket li .inote { display: block; margin: 3px 0 0 2.2em; color: var(--accent); font-weight: 700; font-size: .95rem; }
 .ticket .onote { background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 8px; padding: .4em .6em; margin-bottom: 8px; font-weight: 600; }
@@ -49,4 +50,4 @@
 /* foto do prato no ticket, para a cozinha reconhecer de relance */
 .ticket li.has-img { position: relative; padding-left: 64px; min-height: 60px; }
 .ticket li .ithumb { position: absolute; left: 0; top: 6px; width: 54px; height: 54px; object-fit: cover; border-radius: 10px; }
-.ticket li.has-img .isem, .ticket li.has-img .iingr, .ticket li.has-img .inote { margin-left: 0; padding-left: 0; }
+.ticket li.has-img .ichoice, .ticket li.has-img .isem, .ticket li.has-img .iingr, .ticket li.has-img .inote { margin-left: 0; padding-left: 0; }

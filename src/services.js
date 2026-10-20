@@ -101,7 +101,7 @@ export async function menuFor(restaurantId, { all: includeHidden = false } = {})
   const categories = await all('SELECT * FROM categories WHERE restaurant_id = ? ORDER BY position, id', restaurantId);
   const products = await all(`SELECT * FROM products WHERE restaurant_id = ? ${includeHidden ? '' : 'AND available = 1'}
     ORDER BY position, id`, restaurantId);
-  return { categories, products };
+  return { categories, products: products.map(p => ({ ...p, option_groups: parseOptions(p.options) })) };
 }
 
 // Destaques do cardápio: mais pedidos (últimos 30 dias, ou o selo "mais pedido") e econômicos (mais baratos).
@@ -131,7 +131,23 @@ export async function deleteCategory(restaurantId, id) {
   await run('DELETE FROM categories WHERE id = ? AND restaurant_id = ?', id, restaurantId);
 }
 
-const PRODUCT_FIELDS = ['category_id', 'name', 'description', 'price_cents', 'image_url', 'model_glb_url', 'model_usdz_url', 'badge', 'ingredients', 'available', 'position'];
+const PRODUCT_FIELDS = ['category_id', 'name', 'description', 'price_cents', 'image_url', 'model_glb_url', 'model_usdz_url', 'badge', 'ingredients', 'options', 'available', 'position'];
+
+// Escolhas do prato ("monte do seu jeito"): uma linha por grupo, o cliente escolhe uma opção de cada.
+//   Arroz: Arroz branco, Arroz com brócolis
+//   Carne: Bife de cupim, Parmegiana de frango +5
+// "+5" (ou "+5,50") soma ao preço do prato.
+export function parseOptions(text) {
+  return String(text || '').split(/\r?\n/).map(line => {
+    const i = line.indexOf(':');
+    if (i < 1) return null;
+    const choices = line.slice(i + 1).split(',').map(c => c.trim()).filter(Boolean).map(c => {
+      const m = c.match(/^(.*?)\s*\+\s*(\d+(?:[.,]\d{1,2})?)$/);
+      return m ? { name: m[1].trim(), add_cents: Math.round(Number(m[2].replace(',', '.')) * 100) } : { name: c, add_cents: 0 };
+    });
+    return choices.length ? { name: line.slice(0, i).trim(), choices } : null;
+  }).filter(Boolean);
+}
 
 export async function saveProduct(restaurantId, data) {
   const p = {};
@@ -224,7 +240,8 @@ export const splitList = v => String(v || '').split(',').map(x => x.trim()).filt
 async function withItems(o) {
   const items = await all(`SELECT i.*, COALESCE(p.ingredients, '') AS ingredients, COALESCE(p.image_url, '') AS image_url FROM order_items i
     LEFT JOIN products p ON p.id = i.product_id WHERE i.order_id = ? ORDER BY i.id`, o.id);
-  return { ...o, items: items.map(i => ({ ...i, ingredients: splitList(i.ingredients), removed: splitList(i.removed) })) };
+  return { ...o, items: items.map(i => ({ ...i, ingredients: splitList(i.ingredients), removed: splitList(i.removed),
+    choices: String(i.choices || '').split(';').map(x => x.trim()).filter(Boolean) })) };
 }
 
 export async function orderFull(id) {
@@ -258,9 +275,18 @@ export async function createOrder({ table, restaurant }, body, ip) {
     // só aceita tirar ingredientes que o prato realmente tem
     const known = splitList(p.ingredients);
     const removed = (Array.isArray(it.removed) ? it.removed : []).map(String).filter(x => known.includes(x));
-    lines.push({ p, qty, note: String(it.note || '').trim().slice(0, 140), removed: removed.join(', ') });
+    // escolhas: uma opção válida por grupo; o acréscimo também vem do banco
+    let unit = p.price_cents;
+    const picked = [];
+    for (const g of parseOptions(p.options)) {
+      const c = g.choices.find(c => c.name === String(it.choices?.[g.name] ?? ''));
+      if (!c) throw new HttpError(400, `Escolha ${g.name.toLowerCase()} em ${p.name}`);
+      unit += c.add_cents;
+      picked.push(`${g.name}: ${c.name}`);
+    }
+    lines.push({ p, qty, unit, note: String(it.note || '').trim().slice(0, 140), removed: removed.join(', '), choices: picked.join('; ') });
   }
-  const total = lines.reduce((s, l) => s + l.p.price_cents * l.qty, 0);
+  const total = lines.reduce((s, l) => s + l.unit * l.qty, 0);
   const source = ['qr', 'nfc', 'garcom', 'whatsapp'].includes(body.source) ? body.source : 'qr';
 
   const id = await tx(async () => {
@@ -271,8 +297,8 @@ export async function createOrder({ table, restaurant }, body, ip) {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, restaurant.id, table.id, session.id, n + 1, name,
       String(body.note || '').trim().slice(0, 200), total, source, ip);
     for (const l of lines) {
-      await run('INSERT INTO order_items (order_id, product_id, name, unit_price_cents, qty, note, removed) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        lastInsertRowid, l.p.id, l.p.name, l.p.price_cents, l.qty, l.note, l.removed);
+      await run('INSERT INTO order_items (order_id, product_id, name, unit_price_cents, qty, note, removed, choices) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        lastInsertRowid, l.p.id, l.p.name, l.unit, l.qty, l.note, l.removed, l.choices);
     }
     return Number(lastInsertRowid);
   });

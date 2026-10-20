@@ -89,7 +89,7 @@ function renderTopbar() {
     <span class="brand">${esc(S.restaurant.name)} · Caixa</span>
     <span class="dot" id="live-dot" title="Tempo real desconectado"></span>
     ${staffNav(slug, 'caixa')}
-    <button class="btn warn small sound-btn" id="sound-btn" type="button">🔔 Ativar som</button>`;
+    <button class="btn warn small sound-btn" id="sound-btn" type="button">Ativar som</button>`;
   $('#sound-btn').addEventListener('click', enableSound);
 }
 
@@ -264,6 +264,7 @@ function orderHtml(o) {
       <span class="q">${esc(i.qty)}×</span>
       <span class="n">${esc(i.name)} <span class="u">${money(i.unit_price_cents)}</span></span>
       <span>${money(i.unit_price_cents * i.qty)}</span>
+      ${i.choices?.length ? `<span class="note">${i.choices.map(c => esc(c.split(': ').pop())).join(' · ')}</span>` : ''}
       ${i.note ? `<span class="note">Obs.: ${esc(i.note)}</span>` : ''}
     </li>`).join('')}</ul>
     ${o.note ? `<div class="o-note">Obs. do pedido: ${esc(o.note)}</div>` : ''}
@@ -387,7 +388,7 @@ function launchView(t, o) {
   const groups = cats.map(c => ({ c, items: prods.filter(p => (p.category_id ?? null) === c.id || (c.id === null && !S.categories.some(k => k.id === p.category_id))) }))
     .filter(g => g.items.length);
   const cartLines = [...o.cart.entries()];
-  const total = cartLines.reduce((s, [id, l]) => s + (S.products.find(p => p.id === id)?.price_cents || 0) * l.qty, 0);
+  const total = cartLines.reduce((s, [id, l]) => s + lineUnit(id, l) * l.qty, 0);
   return `${sheetHead(`Lançar pedido · ${esc(tableName(t))}`, 'Pedido feito pela equipe (vai direto para a cozinha)')}
     <label class="field"><span>Nome do cliente (opcional)</span>
       <input class="input" id="l-customer" maxlength="40" value="${esc(o.customer)}" placeholder="Garçom" autocomplete="off"></label>
@@ -414,12 +415,20 @@ function prodHtml(p, o) {
   </div>`;
 }
 
+// preço do item lançado: prato + acréscimo das escolhas (ex.: parmegiana +R$ 5)
+function lineUnit(id, l) {
+  const p = S.products.find(x => x.id === id);
+  return (p?.price_cents || 0) + (p?.option_groups || []).reduce((s, g) => s + (g.choices.find(c => c.name === l.choices?.[g.name])?.add_cents || 0), 0);
+}
+
 function cartHtml(o) {
   const lines = [...o.cart.entries()];
   if (!lines.length) return '<p class="muted">Toque em + para adicionar itens.</p>';
   return `<h3>Itens do pedido</h3>${lines.map(([id, l]) => {
     const p = S.products.find(x => x.id === id);
-    return `<div class="cart-line"><div class="row"><strong>${l.qty}× ${esc(p?.name)}</strong><span>${money((p?.price_cents || 0) * l.qty)}</span></div>
+    return `<div class="cart-line"><div class="row"><strong>${l.qty}× ${esc(p?.name)}</strong><span>${money(lineUnit(id, l) * l.qty)}</span></div>
+      ${(p?.option_groups || []).map(g => `<label class="field"><span>${esc(g.name)}</span><select class="input" data-choice="${id}" data-group="${esc(g.name)}">
+        ${g.choices.map(c => `<option ${l.choices?.[g.name] === c.name ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>`).join('')}
       <input class="input" data-note="${id}" maxlength="140" placeholder="Observação (ex.: sem cebola)" value="${esc(l.note)}" autocomplete="off"></div>`;
   }).join('')}`;
 }
@@ -451,7 +460,9 @@ async function onSheetClick(e) {
     if (b.dataset.cash) { o.received = (Number(b.dataset.cash) / 100).toFixed(2).replace('.', ','); renderSheet(); return; }
     if (b.dataset.inc || b.dataset.dec) {
       const id = Number(b.dataset.inc || b.dataset.dec);
-      const cur = o.cart.get(id) || { qty: 0, note: '' };
+      // prato com escolhas começa na primeira opção de cada grupo; a equipe troca no seletor
+      const p = S.products.find(x => x.id === id);
+      const cur = o.cart.get(id) || { qty: 0, note: '', choices: Object.fromEntries((p?.option_groups || []).map(g => [g.name, g.choices[0].name])) };
       cur.qty = Math.max(0, Math.min(50, cur.qty + (b.dataset.inc ? 1 : -1)));
       if (cur.qty) o.cart.set(id, cur); else o.cart.delete(id);
       rerenderLaunchParts();
@@ -501,7 +512,7 @@ async function onSheetClick(e) {
       return;
     }
     if (act === 'send-order') {
-      const items = [...o.cart.entries()].map(([product_id, l]) => ({ product_id, qty: l.qty, note: l.note.trim() }));
+      const items = [...o.cart.entries()].map(([product_id, l]) => ({ product_id, qty: l.qty, note: l.note.trim(), choices: l.choices }));
       if (!items.length) return;
       b.disabled = true;
       const name = o.customer.trim();
@@ -532,6 +543,10 @@ function onSheetInput(e) {
   } else if (el.id === 'l-customer') o.customer = el.value;
   else if (el.id === 'l-search') { o.search = el.value; rerenderLaunchParts(); }
   else if (el.dataset.note) { const l = o.cart.get(Number(el.dataset.note)); if (l) l.note = el.value; }
+  else if (el.dataset.choice) {
+    const l = o.cart.get(Number(el.dataset.choice));
+    if (l) { l.choices[el.dataset.group] = el.value; rerenderLaunchParts(); }
+  }
 }
 
 async function doneCall(id, btn) {

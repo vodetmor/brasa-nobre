@@ -18,6 +18,7 @@ export function ticketLines(order, restaurant, cols = 32) {
   out.push({ t: line });
   for (const i of order.items) {
     out.push({ t: `${i.qty}x ${i.name}`, bold: true });
+    for (const c of i.choices || []) out.push({ t: `   ${c.split(': ').pop()}`, bold: true });
     if (i.removed?.length) out.push({ t: `   SEM ${i.removed.join(', ')}`, bold: true });
     if (i.note) out.push({ t: `   OBS: ${i.note}` });
   }

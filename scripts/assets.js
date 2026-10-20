@@ -4,7 +4,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ROOT } from '../src/config.js';
-import { REMOTE, remoteUrl } from '../src/demo-assets.js';
+import { REMOTE, remoteUrls } from '../src/demo-assets.js';
 import { realScale, targetSize } from '../src/glb-scale.js';
 
 const dir = resolve(ROOT, 'public/demo/ai');
@@ -13,12 +13,18 @@ let fail = 0;
 for (const file of Object.keys(REMOTE)) {
   const dest = resolve(dir, file);
   if (existsSync(dest)) continue;
-  try {
-    const r = await fetch(remoteUrl(file));
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    writeFileSync(dest, Buffer.from(await r.arrayBuffer()));
-    console.log(`+ ${file}`);
-  } catch (e) { fail++; console.error(`x ${file}: ${e.message}`); }
+  let err;
+  for (const url of remoteUrls(file)) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      writeFileSync(dest, Buffer.from(await r.arrayBuffer()));
+      console.log(`+ ${file}`);
+      err = null;
+      break;
+    } catch (e) { err = e; }
+  }
+  if (err) { fail++; console.error(`x ${file}: ${err.message}`); }
 }
 
 for (const sub of ['public/demo/ai', 'public/demo/brasa-nobre', 'public/models']) {

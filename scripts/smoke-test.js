@@ -118,6 +118,18 @@ try {
   const dash = (await call(`/api/r/${slug}/dashboard?period=7d`, { cookie })).data;
   ok(dash.series.length === 7 && dash.kpis.received_cents === rep2.received_cents && dash.status.delivered >= 1, 'dashboard de 7 dias bate com o relatório do dia');
   ok(rep2.closed_tabs === 2 && rep2.received_cents > 0 && rep2.avg_ticket_cents > 0, 'relatório soma contas, faturamento e ticket médio');
+
+  // prato feito com escolhas (Central do Espeto): exige uma opção por grupo e soma o acréscimo
+  const ce = (await call('/api/r/central-do-espeto/admin', { cookie: (await call('/api/r/central-do-espeto/login', { method: 'POST', body: { pin: '1234' } })).res.headers.get('set-cookie')?.split(';')[0] })).data;
+  const ceMenu = (await call(`/api/m/${ce.tables[0].token}`)).data;
+  const pf = ceMenu.products.find(x => x.option_groups.length);
+  ok(pf && pf.option_groups.map(g => g.name).join() === 'Arroz,Feijão,Carne,Acompanhamento', 'prato feito traz os grupos de escolha');
+  const sem = await call(`/api/m/${ce.tables[0].token}/orders`, { method: 'POST', body: { items: [{ product_id: pf.id, qty: 1, choices: { Arroz: 'Arroz branco' } }] } });
+  ok(sem.status === 400, 'prato feito sem todas as escolhas é recusado');
+  const parm = await call(`/api/m/${ce.tables[0].token}/orders`, { method: 'POST', body: { items: [{ product_id: pf.id, qty: 2,
+    choices: { Arroz: 'Arroz com brócolis', 'Feijão': 'Feijão de caldo', Carne: 'Parmegiana de frango', Acompanhamento: 'Batata frita' } }] } });
+  ok(parm.status === 200 && parm.data.total_cents === 2 * (pf.price_cents + 500), 'parmegiana soma R$ 5 no prato feito (calculado no servidor)');
+  ok(parm.data?.items[0].choices.includes('Carne: Parmegiana de frango'), 'cozinha recebe as escolhas do prato');
   ctrl.abort();
 } catch (e) {
   console.error(e); failed++;

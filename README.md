@@ -34,6 +34,7 @@ Copie `.env.example` para `.env` para trocar porta, chave da plataforma e segred
 
 | Restaurante (fictício) | Visual | Observação |
 |---|---|---|
+| Central do Espeto (cliente real, abre em `/`) | premium (preto e dourado) | Cardápio real: prato feito montado (arroz, feijão, carne, acompanhamento) e pratos da casa. Fotos ilustrativas até chegarem as da casa |
 | Brasa Nobre | premium (escuro) | Espetaria com fotos, ingredientes e um prato em 3D (guacamole) |
 | Bistrô Demo | claro (editorial) | Exemplo do segundo tema, taxa de serviço de 10% |
 

@@ -66,6 +66,8 @@ CREATE TABLE IF NOT EXISTS products (
   badge TEXT DEFAULT '',
   -- ingredientes separados por vírgula; o cliente pode tirar algum e a cozinha vê
   ingredients TEXT DEFAULT '',
+  -- escolhas do prato, uma linha por grupo: "Arroz: Branco, Com brócolis" ("+5" soma R$ 5)
+  options TEXT DEFAULT '',
   available INTEGER NOT NULL DEFAULT 1,
   position INTEGER NOT NULL DEFAULT 0
 );
@@ -110,7 +112,8 @@ CREATE TABLE IF NOT EXISTS order_items (
   unit_price_cents INTEGER NOT NULL,
   qty INTEGER NOT NULL,
   note TEXT DEFAULT '',
-  removed TEXT DEFAULT ''                       -- ingredientes que o cliente pediu para tirar
+  removed TEXT DEFAULT '',                      -- ingredientes que o cliente pediu para tirar
+  choices TEXT DEFAULT ''                       -- escolhas feitas ("Arroz: Branco; Carne: Cupim")
 );
 
 -- Chamados da mesa: chamar garçom, pedir a conta.

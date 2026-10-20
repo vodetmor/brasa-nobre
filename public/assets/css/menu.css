@@ -160,6 +160,7 @@ body.m-body { background: var(--paper-bg, #f3ede3); }
 .p-round { width: 42px; height: 42px; border-radius: 50%; border: 1px solid rgba(255,255,255,.5); background: none; color: #fff; display: grid; place-items: center; cursor: pointer; }
 .p-round svg { width: 20px; height: 20px; }
 .p-hero-text { margin-top: auto; padding-top: 70px; }
+.p-logo { display: block; width: 56px; height: 56px; object-fit: contain; margin-bottom: 12px; }
 .p-kicker { color: var(--gold); font-weight: 700; font-size: .78rem; letter-spacing: .22em; text-transform: uppercase; margin-bottom: 8px; }
 .p-hero h1 { font-family: var(--serif); font-weight: 600; color: var(--gold); font-size: clamp(2.7rem, 13vw, 4rem); line-height: .92; letter-spacing: -.02em; margin: 0; }
 .p-hero h1 em { display: block; font-style: italic; font-weight: 500; }
@@ -240,6 +241,10 @@ body.m-body { background: var(--paper-bg, #f3ede3); }
 .m-ingr button { height: 38px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--ink); background: none; color: var(--ink); font: 600 .86rem var(--sans); cursor: pointer; }
 .m-ingr button[aria-pressed="true"] { border-color: var(--line); color: var(--ink-2); text-decoration: line-through; background: var(--paper-2); }
 .m-ingr button[aria-pressed="true"]::before { content: "sem "; text-decoration: none; display: inline-block; margin-right: 3px; font-weight: 800; color: #b3261e; }
+/* escolhas do prato (uma por grupo): a escolhida fica preenchida */
+.m-opts button small { font-weight: 500; opacity: .75; }
+.m-opts button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--paper); text-decoration: none; }
+.m-opts button[aria-pressed="true"]::before { content: none; }
 
 /* filtros rápidos: todos, mais pedidos, econômicos, 3D */
 .p-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 18px 20px 0; }

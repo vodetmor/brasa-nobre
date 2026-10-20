@@ -14,17 +14,22 @@ const store = {
 };
 
 let data;
-let cart = store.get(K.cart, []);      // [{ product_id, qty, note, removed: [] }]
+let cart = store.get(K.cart, []);      // [{ product_id, qty, note, removed: [], choices: { grupo: opção } }]
 let mine = store.get(K.mine, {});      // { [orderId]: order }
 let overlay = null;                    // tela sobreposta aberta
 const byId = id => data.products.find(p => p.id === id);
 const qtyOf = id => cart.filter(l => l.product_id === id).reduce((s, l) => s + l.qty, 0);
 const cartCount = () => cart.reduce((s, l) => s + l.qty, 0);
 const premium = () => (data.restaurant.theme || 'premium') === 'premium';
-const sameLine = (l, note, removed) => l.note === note && [...(l.removed || [])].sort().join() === [...removed].sort().join();
+const sameLine = (l, note, removed, choices = {}) => l.note === note && [...(l.removed || [])].sort().join() === [...removed].sort().join()
+  && JSON.stringify(l.choices || {}) === JSON.stringify(choices);
+const groupsOf = p => p.option_groups || [];
+// preço da linha: prato + acréscimo das opções escolhidas (o servidor recalcula)
+const unitOf = l => { const p = byId(l.product_id);
+  return p.price_cents + groupsOf(p).reduce((s, g) => s + (g.choices.find(c => c.name === l.choices?.[g.name])?.add_cents || 0), 0); };
 const ingredientsOf = p => String(p.ingredients || '').split(',').map(x => x.trim()).filter(Boolean);
-const extras = l => [l.removed?.length ? `Sem ${l.removed.join(', ')}` : '', l.note].filter(Boolean).join(' · ');
-const cartTotal = () => cart.reduce((s, l) => s + byId(l.product_id).price_cents * l.qty, 0);
+const extras = l => [...Object.values(l.choices || {}), l.removed?.length ? `Sem ${l.removed.join(', ')}` : '', l.note].filter(Boolean).join(' · ');
+const cartTotal = () => cart.reduce((s, l) => s + unitOf(l) * l.qty, 0);
 
 init();
 
@@ -38,7 +43,9 @@ async function init() {
   app.style.setProperty('--primary', r.primary_color || '#a8231b');
   document.body.style.background = premium() ? '#121110' : getComputedStyle(app).getPropertyValue('--paper');
   document.title = `${r.name} · Mesa ${data.table.number}`;
-  cart = cart.filter(l => byId(l.product_id));
+  // descarta linhas de pratos que sumiram ou cujas opções mudaram
+  cart = cart.filter(l => { const p = byId(l.product_id);
+    return p && groupsOf(p).every(g => g.choices.some(c => c.name === l.choices?.[g.name])); });
   render();
   setupBackButton();
   live(`/api/m/${token}/stream`, {
@@ -211,6 +218,7 @@ function renderPremium() {
         <button class="p-round" data-go="garcom" aria-label="Chamar garçom">${ICON.bell}</button>
       </div>
       <div class="p-hero-text">
+        ${r.logo_url ? `<img class="p-logo" src="${esc(r.logo_url)}" alt="">` : ''}
         <div class="p-kicker">Cardápio da casa</div>
         <h1>${esc(first)}${rest.length ? `<em>${esc(rest.join(' '))}</em>` : ''}</h1>
         ${r.tagline ? `<p>${esc(r.tagline)}</p>` : ''}
@@ -220,8 +228,7 @@ function renderPremium() {
       <div class="p-search"><label><input id="q" type="search" placeholder="Buscar no cardápio" autocomplete="off">${ICON.search}</label></div>
       ${r.accepting_orders ? '' : '<div class="m-closed">No momento os pedidos pelo cardápio estão pausados. Chame o atendente.</div>'}
       <div class="p-menuhead"><h2>Cardápio</h2></div>
-      <div class="p-chips">${[['all', 'Todos'], ['popular', 'Mais pedidos'], ['cheap', 'Econômicos'], ...(data.products.some(p => p.model_glb_url) ? [['3d', 'Em 3D']] : [])]
-        .map(([k, l], i) => `<button data-chip="${k}" class="${i ? '' : 'on'}">${l}</button>`).join('')}</div>
+      ${chipsHtml()}
       <nav class="p-tabs">${groups.map((g, i) => `<button data-cat="${g.c.id}" class="${i ? '' : 'on'}">${esc(g.c.name)}</button>`).join('')}</nav>
       <div id="sections">${groups.map(g => `
         <section class="p-section" id="cat-${g.c.id}">
@@ -284,6 +291,12 @@ const badgeOf = p => p.badge || (data.highlights?.popular.includes(p.id) ? 'Mais
 const norm = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 let chip = 'all';
+// Atalhos só aparecem quando separam alguma coisa (cardápio pequeno ou tudo no mesmo preço não tem "Econômicos").
+function chipsHtml() {
+  const useful = ([k]) => { const n = data.products.filter(CHIP[k]).length; return n > 0 && n < data.products.length; };
+  const list = [['popular', 'Mais pedidos'], ['cheap', 'Econômicos'], ['3d', 'Em 3D']].filter(useful);
+  return list.length ? `<div class="p-chips">${[['all', 'Todos'], ...list].map(([k, l], i) => `<button data-chip="${k}" class="${i ? '' : 'on'}">${l}</button>`).join('')}</div>` : '';
+}
 const CHIP = {
   all: () => true,
   popular: p => data.highlights?.popular.includes(p.id),
@@ -340,15 +353,18 @@ function buyControl(p) {
 
 function onListClick(e) {
   const inc = e.target.closest('[data-inc]'), dec = e.target.closest('[data-dec]'), open = e.target.closest('[data-open]');
-  if (inc) { change(Number(inc.dataset.inc), +1); return; }
+  // prato com escolhas (arroz, carne...) abre a tela do prato para escolher
+  if (inc) { const id = Number(inc.dataset.inc); if (groupsOf(byId(id)).length && !overlay) showDish(id); else change(id, +1); return; }
   if (dec) { change(Number(dec.dataset.dec), -1); return; }
   if (open && !overlay) showDish(Number(open.dataset.open));
 }
 
 // Adiciona/remove 1 unidade. Itens com observação ou ingrediente retirado viram linhas separadas.
-function change(id, d, note = '', removed = []) {
-  let line = cart.find(l => l.product_id === id && sameLine(l, note, removed)) || (d < 0 && [...cart].reverse().find(l => l.product_id === id));
-  if (!line && d > 0) cart.push(line = { product_id: id, qty: 0, note, removed });
+function change(id, d, note = '', removed = [], choices) {
+  // "+" sem escolhas num prato que tem opções repete a última combinação pedida
+  choices ??= [...cart].reverse().find(l => l.product_id === id)?.choices || {};
+  let line = cart.find(l => l.product_id === id && sameLine(l, note, removed, choices)) || (d < 0 && [...cart].reverse().find(l => l.product_id === id));
+  if (!line && d > 0) cart.push(line = { product_id: id, qty: 0, note, removed, choices });
   if (!line) return;
   line.qty += d;
   if (line.qty <= 0) cart.splice(cart.indexOf(line), 1);
@@ -460,6 +476,8 @@ function showDish(id) {
       <h2>${esc(p.name)}</h2>
       ${p.description ? `<p>${esc(p.description)}</p>` : ''}
       <div class="m-price">${money(p.price_cents)}</div>
+      ${groupsOf(p).map(g => `<div class="m-label">${esc(g.name)} <span>escolha 1</span></div>
+        <div class="m-ingr m-opts" data-group="${esc(g.name)}">${g.choices.map(c => `<button type="button" data-opt="${esc(c.name)}" aria-pressed="false">${esc(c.name)}${c.add_cents ? ` <small>+ ${money(c.add_cents)}</small>` : ''}</button>`).join('')}</div>`).join('')}
       ${ingredientsOf(p).length ? `<div class="m-label">Ingredientes <span>toque para tirar</span></div>
         <div class="m-ingr">${ingredientsOf(p).map(x => `<button type="button" data-ingr="${esc(x)}" aria-pressed="false">${esc(x)}</button>`).join('')}</div>` : ''}
       <label class="m-label" for="d-note">Alguma observação?</label>
@@ -486,19 +504,37 @@ function showDish(id) {
   };
   show(has3d ? '3d' : 'foto');
   el.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => show(b.dataset.mode)));
+  const choices = {};
+  const groups = groupsOf(p);
+  const missing = () => groups.find(g => !choices[g.name]);
+  const refresh = () => {
+    el.querySelector('#d-q') && (el.querySelector('#d-q').textContent = qty);
+    el.querySelector('#d-total') && (el.querySelector('#d-total').textContent = money(unitOf({ product_id: p.id, choices }) * qty));
+    const add = el.querySelector('#d-add span');
+    if (add) add.textContent = missing() ? `Escolha ${missing().name.toLowerCase()}` : 'Adicionar';
+  };
+  el.querySelectorAll('[data-opt]').forEach(b => b.addEventListener('click', () => {
+    const box = b.closest('[data-group]');
+    box.querySelectorAll('[data-opt]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    choices[box.dataset.group] = b.dataset.opt;
+    refresh();
+  }));
+  refresh();
   el.querySelectorAll('[data-q]').forEach(b => b.addEventListener('click', () => {
     qty = Math.max(1, Math.min(50, qty + Number(b.dataset.q)));
-    el.querySelector('#d-q').textContent = qty;
-    el.querySelector('#d-total').textContent = money(p.price_cents * qty);
+    refresh();
   }));
   el.querySelectorAll('[data-ingr]').forEach(b => b.addEventListener('click', () => {
     const off = b.getAttribute('aria-pressed') !== 'true';
     b.setAttribute('aria-pressed', off);
   }));
   el.querySelector('#d-add')?.addEventListener('click', () => {
+    const miss = missing();
+    if (miss) { el.querySelector(`[data-group="${CSS.escape(miss.name)}"]`).scrollIntoView({ behavior: 'smooth', block: 'center' }); toast(`Escolha ${miss.name.toLowerCase()}`, true); return; }
     const note = el.querySelector('#d-note').value.trim();
     const removed = [...el.querySelectorAll('[data-ingr][aria-pressed="true"]')].map(b => b.dataset.ingr);
-    for (let i = 0; i < qty; i++) change(p.id, +1, note, removed);
+    const picked = Object.fromEntries(groups.map(g => [g.name, choices[g.name]]));
+    for (let i = 0; i < qty; i++) change(p.id, +1, note, removed, picked);
     closeOverlay();
     toast(`${qty}× ${p.name} adicionado`);
   });
@@ -510,7 +546,7 @@ function showCart() {
     <div class="m-lines">${cart.map((l, i) => { const p = byId(l.product_id); return `
       <div class="m-line">
         ${p.image_url ? `<img src="${esc(p.image_url)}" alt="">` : '<div class="m-thumb"></div>'}
-        <div><strong>${esc(p.name)}</strong><small>${money(p.price_cents)}${extras(l) ? ` · ${esc(extras(l))}` : ''}</small></div>
+        <div><strong>${esc(p.name)}</strong><small>${money(unitOf(l))}${extras(l) ? ` · ${esc(extras(l))}` : ''}</small></div>
         <span class="m-qty"><button data-l="${i}" data-d="-1">−</button><span>${l.qty}</span><button data-l="${i}" data-d="1">+</button></span>
       </div>`; }).join('')}</div>
     <div class="m-total"><span>Total</span><b>${money(cartTotal())}</b></div>
@@ -549,7 +585,7 @@ async function send() {
   const btn = el.querySelector('#c-send');
   btn.disabled = true; btn.firstElementChild.textContent = 'Enviando…';
   try {
-    const items = cart.map(l => ({ product_id: l.product_id, qty: l.qty, note: l.note || '', removed: l.removed || [] }));
+    const items = cart.map(l => ({ product_id: l.product_id, qty: l.qty, note: l.note || '', removed: l.removed || [], choices: l.choices || {} }));
     const order = await api(`/api/m/${token}/orders`, { method: 'POST', body: { customer_name: name, source, items } });
     if (name) store.set(K.name, name);
     mine[order.id] = order; store.set(K.mine, mine);

@@ -4,11 +4,12 @@
 import { run, get, tx, engine } from './db.js';
 import * as S from './services.js';
 
-export const SEED_VERSION = '6';
+export const SEED_VERSION = '7';
 
 const ai = f => `/demo/ai/${f}`;
 const bn = f => `/demo/brasa-nobre/${f}`;
 const bd = f => `/demo/bistro-demo/${f}`;
+const ce = f => `/demo/central-do-espeto/${f}`;
 // Fotos reais do Pexels (créditos em public/demo/CREDITOS-PEXELS.json) e IA onde a foto do banco não servia.
 const FOTO = {
   capa: bn('capa.jpg'), carne: ai('carne.webp'), frango: bn('frango.jpg'), linguica: ai('linguica.webp'),
@@ -23,8 +24,36 @@ const MODELO = {
   pf: ai('pf.glb'), mandioca: ai('mandioca.glb'), tropeiro: bn('tropeiro.glb'), vinagrete: bn('vinagrete.glb'),
 };
 
-// Item: [nome, descrição, preço em centavos, { image_url, ingredients, badge, model_glb_url }]
+// Item: [nome, descrição, preço em centavos, { image_url, ingredients, options, badge, model_glb_url }]
 export const DEMOS = [
+  // Cliente real (Central do Espeto, Sobradinho-DF): nome, pratos, preços e contato do cardápio impresso
+  // que o Ribeiro enviou em 20/10/2026. Fotos são ilustrativas até chegarem as da casa.
+  // Atenção: enquanto estiver aqui, mudar SEED_VERSION recria o restaurante e apaga pedidos. Quando o
+  // cliente começar a usar de verdade, tirar daqui e cuidar do cardápio pelo /r/central-do-espeto/admin.
+  {
+    slug: 'central-do-espeto', name: 'Central do Espeto', staff_pin: '1234', tables: 10, theme: 'premium',
+    tagline: 'Sabor de verdade, feito com amor!',
+    address: 'QD 08, frente à Melancia, Sobradinho - DF', whatsapp: '61996115754', cover_url: FOTO.capa, logo_url: ce('logo.svg'),
+    instagram: '@centraldoespetof',
+    primary_color: '#d4a03c', accent_color: '#d4a03c', bg_color: '#0d0c0b', text_color: '#ffffff',
+    menu: {
+      'Prato feito': [
+        ['Prato feito', '1 carne + 1 arroz + 1 feijão + 1 acompanhamento.', 2000, {
+          image_url: ai('ce-pf.webp'), badge: 'Monte do seu jeito',
+          options: [
+            'Arroz: Arroz branco, Arroz com brócolis',
+            'Feijão: Feijão tropeiro, Feijão de caldo',
+            'Carne: Bife de cupim, Contra filé, Parmegiana de carne +5, Parmegiana de frango +5, Carne de panela, Filé de frango grelhado, Carne de sol',
+            'Acompanhamento: Purê, Maionese, Mix de folhas, Batata frita, Mandioca frita, Farofa de ovo, Farofa de banana, Vinagrete',
+          ].join('\n') }],
+      ],
+      'Pratos da casa': [
+        ['Central', 'Bife de cupim, arroz branco, feijão tropeiro e purê.', 2000, { image_url: ai('ce-central.webp'), badge: 'Prato da casa', ingredients: 'Bife de cupim, Arroz branco, Feijão tropeiro, Purê' }],
+        ['Sertanejo', 'Carne de sol, arroz branco, feijão de caldo e vinagrete.', 2000, { image_url: ai('ce-sertanejo.webp'), ingredients: 'Carne de sol, Arroz branco, Feijão de caldo, Vinagrete' }],
+        ['Fit', 'Frango grelhado, arroz com brócolis, mix de folhas e vinagrete.', 2000, { image_url: ai('ce-fit.webp'), ingredients: 'Frango grelhado, Arroz com brócolis, Mix de folhas, Vinagrete' }],
+      ],
+    },
+  },
   {
     slug: 'brasa-nobre', name: 'Brasa Nobre', staff_pin: '1234', tables: 12, theme: 'premium',
     tagline: 'Espetaria e cozinha de brasa. Restaurante fictício para demonstração.',
@@ -83,7 +112,7 @@ export const DEMOS = [
 ];
 
 // Demos antigos que não existem mais.
-const OLD = ['central-do-espeto', 'bistro-demo'];
+const OLD = ['bistro-demo'];
 
 export async function seedDemos({ force = false, log = () => {} } = {}) {
   return tx(async () => {

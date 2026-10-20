@@ -325,7 +325,7 @@ function renderMenu() {
 function productRow(x) {
   return `<div class="prod-row ${x.available ? '' : 'off'}" data-prod="${x.id}">
     <button class="prod-main" data-edit>
-      ${x.image_url ? `<img class="prod-thumb" src="${esc(x.image_url)}" alt="" loading="lazy">` : '<span class="prod-thumb empty">🍽</span>'}
+      ${x.image_url ? `<img class="prod-thumb" src="${esc(x.image_url)}" alt="" loading="lazy">` : '<span class="prod-thumb empty">${esc(x.name[0] || '')}</span>'}
       <span class="prod-text"><b>${esc(x.name)}</b>
         <span class="muted">${money(x.price_cents)}${x.badge ? ` · <span class="pill">${esc(x.badge)}</span>` : ''}${x.model_glb_url ? ' · <span class="pill">3D</span>' : ''}</span></span>
     </button>
@@ -362,6 +362,7 @@ function productSheet(prod, presetCat = '') {
         </select></label>
       </div>
       <label class="field"><span>Ingredientes (separados por vírgula; o cliente pode tirar)</span><input class="input" name="ingredients" maxlength="300" value="${esc(x.ingredients || '')}" placeholder="Ex.: Alcatra, Cebola, Pimentão, Farofa"></label>
+      <label class="field"><span>Escolhas do cliente (uma linha por grupo; "+5" soma R$ 5)</span><textarea class="input" name="options" rows="4" maxlength="1500" placeholder="Arroz: Arroz branco, Arroz com brócolis&#10;Carne: Bife de cupim, Parmegiana de frango +5">${esc(x.options || '')}</textarea></label>
       <label class="field"><span>Selo (opcional)</span><input class="input" name="badge" maxlength="30" list="badges" value="${esc(x.badge)}" placeholder="Ex.: mais pedido, picante, vegetariano">
         <datalist id="badges"><option value="mais pedido"><option value="novo"><option value="picante"><option value="vegetariano"><option value="vegano"><option value="sem glúten"></datalist></label>
       <label class="switch-row"><input type="checkbox" name="available" ${x.available ? 'checked' : ''}><span class="switch"></span><span><b>Disponível</b><br><span class="muted">Desligado = aparece como esgotado e some do cardápio do cliente.</span></span></label>
@@ -400,7 +401,7 @@ function productSheet(prod, presetCat = '') {
     const body = {
       name: F('name').value.trim(), description: F('description').value.trim(), price_cents,
       category_id: F('category_id').value ? Number(F('category_id').value) : '',
-      badge: F('badge').value.trim(), available: F('available').checked, ingredients: F('ingredients').value.trim(),
+      badge: F('badge').value.trim(), available: F('available').checked, ingredients: F('ingredients').value.trim(), options: F('options').value.trim(),
       image_url: F('image_url').value.trim(), model_glb_url: F('model_glb_url').value.trim(), model_usdz_url: F('model_usdz_url').value.trim(),
     };
     run($('#psave', el), async () => {

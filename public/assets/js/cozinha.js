@@ -113,6 +113,7 @@ function itemLine(i) {
   const removed = i.removed || [];
   const ingr = (i.ingredients || []).filter(x => !removed.includes(x));
   return `<li class="${i.image_url ? 'has-img' : ''}">${i.image_url ? `<img class="ithumb" src="${esc(i.image_url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<b>${i.qty}×</b><span class="iname">${esc(i.name)}</span>
+    ${i.choices?.length ? `<span class="ichoice">${i.choices.map(c => esc(c.split(': ').pop())).join(' · ')}</span>` : ''}
     ${removed.length ? `<span class="isem">SEM ${removed.map(esc).join(', ')}</span>` : ''}
     ${ingr.length ? `<span class="iingr">${ingr.map(esc).join(' · ')}</span>` : ''}
     ${i.note ? `<span class="inote">Obs.: ${esc(i.note)}</span>` : ''}</li>`;

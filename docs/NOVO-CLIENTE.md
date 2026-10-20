@@ -3,6 +3,7 @@
 1. **Criar o restaurante**: `/plataforma` (ou `npm run novo-cliente -- <slug> "<Nome>" <PIN> <mesas>`).
 2. **Identidade**: em `/r/<slug>/admin` → Configurações: nome, frase, logo, capa, cores, WhatsApp, endereço, taxa de serviço.
 3. **Cardápio**: categorias e produtos com preço e foto. Fotos quadradas, até ~300 KB (WebP ou JPG).
+   - Prato montado ("monte do seu jeito", prato feito): no campo **Escolhas do cliente**, uma linha por grupo, por exemplo `Arroz: Arroz branco, Arroz com brócolis`. O cliente escolhe uma opção de cada grupo; `+5` depois da opção soma R$ 5 (ex.: `Parmegiana de frango +5`). A cozinha, o caixa e o ticket mostram as escolhas.
 4. **Mesas**: conferir a quantidade; rótulos opcionais ("Varanda", "Balcão").
 5. **QR Codes**: `/r/<slug>/qrcodes` aberto pelo endereço público (não `localhost`) → imprimir em adesivo/acrílico.
 6. **NFC**: tags NTAG213 coladas sob o QR. Gravar pelo admin (Chrome no Android, botão "Gravar tag NFC") ou pelo app NFC Tools com o link da mesa.

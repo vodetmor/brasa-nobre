@@ -28,7 +28,7 @@ export const config = {
   // PIN da equipe nas telas de cozinha/caixa/admin: desligado por padrão (STAFF_PIN=1 liga)
   requirePin: process.env.STAFF_PIN === '1',
   // restaurante aberto em http://localhost:3000/
-  defaultSlug: process.env.DEFAULT_SLUG || 'brasa-nobre',
+  defaultSlug: process.env.DEFAULT_SLUG || 'central-do-espeto',
   // anti-trote: pedidos por mesa por janela de tempo
   orderLimit: { max: Number(process.env.ORDER_LIMIT_MAX || 10), windowMs: 60_000 },
 };
