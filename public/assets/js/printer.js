@@ -34,10 +34,11 @@ export function printViaBrowser(order, restaurant, paperMm = 58) {
   const lines = ticketLines(order, restaurant, paperMm >= 80 ? 48 : 32);
   const html = `<!doctype html><html><head><meta charset="utf-8"><style>
     @page { size: ${paperMm}mm auto; margin: 0; }
-    body { margin: 0; padding: 2mm 3mm; width: ${paperMm - 6}mm; font: 12px/1.35 "Courier New", monospace; color: #000; }
+    body { margin: 0; padding: 2mm 3mm; width: ${paperMm - 6}mm; font: ${paperMm >= 80 ? 13 : 11}px/1.35 "Courier New", monospace; color: #000; }
     p { margin: 0; white-space: pre-wrap; word-break: break-word; }
+    hr { border: 0; border-top: 1px dashed #000; margin: 4px 0; }
     .c { text-align: center; } .b { font-weight: 700; } .big { font-size: 22px; font-weight: 800; margin: 2px 0; }
-  </style></head><body>${lines.map(l =>
+  </style></head><body>${lines.map(l => /^-+$/.test(l.t) ? '<hr>' :
     `<p class="${l.center ? 'c' : ''} ${l.bold ? 'b' : ''} ${l.big ? 'big' : ''}">${escapeHtml(l.t)}</p>`).join('')}
   <p>&nbsp;</p></body></html>`;
   const iframe = document.createElement('iframe');

@@ -1,6 +1,6 @@
 # Impressão na cozinha
 
-A tela da cozinha (`/r/<slug>/cozinha`) tem o seletor **Impressão automática**. Quando ligado, cada pedido novo imprime sozinho. Há também o botão 🖨 em cada pedido e o botão **Testar impressão**.
+A tela da cozinha (`/r/<slug>/cozinha`) tem o seletor **Impressão automática**. Quando ligado, cada pedido novo imprime sozinho. Há também o botão Imprimir em cada pedido e o botão **Testar impressão**.
 
 | Modo | Impressora | Onde roda | Automático de verdade? |
 |---|---|---|---|
@@ -10,11 +10,17 @@ A tela da cozinha (`/r/<slug>/cozinha`) tem o seletor **Impressão automática**
 
 Papel: escolha **58 mm** (32 colunas) ou **80 mm** (48 colunas). Acentos são removidos no modo ESC/POS (Bluetooth/RawBT) porque cada impressora usa uma tabela de caracteres diferente.
 
-## Central do Espeto (impressora portátil Bluetooth 58 mm, "Android+iOS")
+## Central do Espeto (Elgin/Bematech i8 USB 80 mm num PC Windows)
 
-1. Descobrir o tipo: no Chrome do Android, abrir a cozinha, escolher **Bluetooth BLE** e tocar em **Conectar impressora**. Se ela aparecer na lista e o **Testar impressão** sair, é BLE: pronto.
-2. Se não aparecer, é Bluetooth clássico: instalar o **RawBT** (Play Store), parear a impressora nas configurações do Android, abrir o RawBT e selecionar a impressora; depois escolher **RawBT** na cozinha.
-3. Deixar o celular/tablet da cozinha carregando, com a tela da cozinha aberta. A tela pede um toque para ativar o som e mantém a tela acesa.
+1. Instalar o driver Elgin i8 e definir a i8 como **impressora padrão** do Windows.
+2. Criar um atalho do Chrome com:
+
+   ```
+   chrome.exe --kiosk-printing --user-data-dir=C:\cozinha-chrome --app=https://brasa-nobre.vercel.app/r/central-do-espeto/cozinha
+   ```
+
+3. Na cozinha, escolher o modo **Impressora do sistema** e papel **80 mm**.
+4. Fechar todas as janelas do Chrome antes de abrir pelo atalho (senão a flag é ignorada).
 
 ## Impressora USB/rede num PC Windows sem janela de confirmação
 
@@ -29,6 +35,6 @@ Criar um atalho do Chrome com:
 ## Limitações conhecidas
 
 - Web Bluetooth não existe no iPhone (Safari). Para iPhone na cozinha, usar impressora de rede ou só a tela.
-- Impressora Bluetooth pode desconectar; a tela avisa "desconectada" e o pedido continua na tela. O botão 🖨 reimprime.
+- Impressora Bluetooth pode desconectar; a tela avisa "desconectada" e o pedido continua na tela. O botão Imprimir reimprime.
 - Os UUIDs BLE testados no código são os mais comuns em impressoras genéricas; um modelo diferente pode precisar de um UUID novo em `public/assets/js/printer.js` (`BLE_SERVICES`).
 - Nada disto foi testado com uma impressora física ainda: testar com a do cliente antes de instalar.
