@@ -325,7 +325,7 @@ function renderMenu() {
 function productRow(x) {
   return `<div class="prod-row ${x.available ? '' : 'off'}" data-prod="${x.id}">
     <button class="prod-main" data-edit>
-      ${x.image_url ? `<img class="prod-thumb" src="${esc(x.image_url)}" alt="" loading="lazy">` : '<span class="prod-thumb empty">${esc(x.name[0] || '')}</span>'}
+      ${x.image_url ? `<img class="prod-thumb" src="${esc(x.image_url)}" alt="" loading="lazy">` : `<span class="prod-thumb empty">${esc(x.name[0] || '')}</span>`}
       <span class="prod-text"><b>${esc(x.name)}</b>
         <span class="muted">${money(x.price_cents)}${x.badge ? ` · <span class="pill">${esc(x.badge)}</span>` : ''}${x.model_glb_url ? ' · <span class="pill">3D</span>' : ''}</span></span>
     </button>
