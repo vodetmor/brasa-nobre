@@ -1,5 +1,5 @@
 // Painel do dono do restaurante: configurações, cardápio, mesas (QR/NFC) e relatório do dia.
-import { api, money, esc, h, toast, sheet, applyTheme, staffGate, staffNav, tableUrl, slugFromPath, $, $$ } from './common.js';
+import { api, money, esc, h, toast, sheet, applyTheme, staffGate, staffNav, embedded, tableUrl, slugFromPath, $, $$ } from './common.js';
 
 const slug = slugFromPath();
 let R = null;               // restaurante (linha completa, inclui staff_pin)
@@ -73,8 +73,13 @@ async function init() {
   renderTopbar();
   $('#app').hidden = false;
   $$('#tabs [data-tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+  if (embedded) {
+    const out = h('<button class="tab-out">Sair</button>');
+    out.addEventListener('click', async () => { await api(`/api/r/${slug}/logout`, { method: 'POST' }).catch(() => {}); location.reload(); });
+    $('#tabs').append(out);
+  }
   window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
-  showTab(location.hash.slice(1) || 'config');
+  showTab(location.hash.slice(1) || 'menu');
 }
 
 async function load() {
@@ -85,19 +90,21 @@ async function load() {
 
 function renderTopbar() {
   const tb = $('#topbar');
+  // dentro do /painel o nome e as telas já estão na barra de cima: aqui só repetiria
+  tb.hidden = embedded;
   tb.innerHTML = `<span class="brand">${esc(R.name)}</span>${staffNav(slug, 'admin')}<span class="spacer"></span>
     <button class="btn ghost small" id="logout">Sair</button>`;
   $('#logout', tb).addEventListener('click', async () => {
     await api(`/api/r/${slug}/logout`, { method: 'POST' }).catch(() => {});
     location.reload();
   });
-  const fit = () => document.documentElement.style.setProperty('--topbar-h', `${tb.offsetHeight}px`);
+  const fit = () => document.documentElement.style.setProperty('--topbar-h', `${embedded ? 0 : tb.offsetHeight}px`);
   fit();
   if (!renderTopbar.bound) { renderTopbar.bound = true; window.addEventListener('resize', fit); }
 }
 
 function showTab(tab) {
-  if (!['config', 'menu', 'tables', 'report'].includes(tab)) tab = 'config';
+  if (!['config', 'menu', 'tables', 'report'].includes(tab)) tab = 'menu';
   if (location.hash.slice(1) !== tab) history.replaceState(null, '', `#${tab}`);
   $$('#tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
   $(`#tabs [data-tab="${tab}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -116,24 +123,21 @@ function renderConfig() {
   p.innerHTML = `
   <form class="grid" id="cfg" autocomplete="off">
     <div class="card grid">
-      <h3>Identidade</h3>
+      <h3>Nome</h3>
       <label class="field"><span>Nome do restaurante</span><input class="input" name="name" required maxlength="80" value="${esc(R.name)}"></label>
       <label class="field"><span>Frase de apresentação</span><input class="input" name="tagline" maxlength="140" value="${esc(R.tagline)}" placeholder="Ex.: Espetinhos na brasa desde 1998"></label>
-      ${imageField('logo_url', 'Logo', R.logo_url)}
-      ${imageField('cover_url', 'Foto de capa', R.cover_url)}
-      <label class="field"><span>Visual do cardápio</span><select class="input" name="theme">
-        <option value="premium" ${R.theme !== 'claro' ? 'selected' : ''}>Premium (escuro, cards pretos)</option>
-        <option value="claro" ${R.theme === 'claro' ? 'selected' : ''}>Claro (editorial)</option>
-      </select></label>
     </div>
 
     <div class="card grid">
-      <h3>Cores</h3>
-      <p class="muted small-text">A tela muda na hora para você ver como fica. Só vale depois de salvar.</p>
-      <div class="colors">
-        ${COLOR_FIELDS.map(([f, l]) => `<label class="color-field"><input type="color" name="${f}" value="${color(R[f])}"><span>${l}</span><code>${esc(color(R[f]))}</code></label>`).join('')}
+      <h3>Pedidos</h3>
+      <label class="switch-row"><input type="checkbox" name="accepting_orders" ${R.accepting_orders ? 'checked' : ''}><span class="switch"></span>
+        <span><b>Recebendo pedidos</b><br><span class="muted">Desligue quando o restaurante estiver fechado. O cardápio continua aberto só para consulta.</span></span></label>
+      <label class="switch-row"><input type="checkbox" name="require_open_table" ${R.require_open_table ? 'checked' : ''}><span class="switch"></span>
+        <span><b>Só aceitar pedido de mesa aberta pelo caixa</b><br><span class="muted">Evita trote: o cliente só pede depois que o caixa abrir a mesa.</span></span></label>
+      <div class="two">
+        <label class="field"><span>Taxa de serviço (%)</span><input class="input" name="service_fee_pct" type="number" min="0" max="30" step="0.5" value="${esc(R.service_fee_pct)}"></label>
+        <label class="field"><span>Senha da equipe (4 a 8 números)</span><input class="input" name="staff_pin" inputmode="numeric" pattern="\\d{4,8}" maxlength="8" required value="${esc(R.staff_pin)}"></label>
       </div>
-      <div class="preview" id="preview"></div>
     </div>
 
     <div class="card grid">
@@ -146,17 +150,22 @@ function renderConfig() {
         .map(([f, l, ph]) => `<label class="field"><span>${l}</span><input class="input" name="${f}" value="${esc(R[f] || '')}" placeholder="${ph}"></label>`).join('')}
     </div>
 
-    <div class="card grid">
-      <h3>Pedidos e equipe</h3>
-      <label class="switch-row"><input type="checkbox" name="accepting_orders" ${R.accepting_orders ? 'checked' : ''}><span class="switch"></span>
-        <span><b>Recebendo pedidos</b><br><span class="muted">Desligue para deixar o cardápio só para consulta (restaurante fechado).</span></span></label>
-      <label class="switch-row"><input type="checkbox" name="require_open_table" ${R.require_open_table ? 'checked' : ''}><span class="switch"></span>
-        <span><b>Só aceitar pedidos de mesas abertas pelo caixa (anti-trote)</b><br><span class="muted">O cliente só consegue pedir depois que o caixa abrir a mesa.</span></span></label>
-      <div class="two">
-        <label class="field"><span>Taxa de serviço (%)</span><input class="input" name="service_fee_pct" type="number" min="0" max="30" step="0.5" value="${esc(R.service_fee_pct)}"></label>
-        <label class="field"><span>PIN da equipe (4 a 8 números)</span><input class="input" name="staff_pin" inputmode="numeric" pattern="\\d{4,8}" maxlength="8" required value="${esc(R.staff_pin)}"></label>
+    <details class="card look">
+      <summary><h3>Aparência</h3><span class="muted">Logo, foto de capa e cores</span></summary>
+      <div class="grid">
+        ${imageField('logo_url', 'Logo', R.logo_url)}
+        ${imageField('cover_url', 'Foto de capa', R.cover_url)}
+        <label class="field"><span>Visual do cardápio</span><select class="input" name="theme">
+          <option value="premium" ${R.theme !== 'claro' ? 'selected' : ''}>Escuro</option>
+          <option value="claro" ${R.theme === 'claro' ? 'selected' : ''}>Claro</option>
+        </select></label>
+        <p class="muted small-text">As cores mudam na tela na hora para você ver. Só valem depois de salvar.</p>
+        <div class="colors">
+          ${COLOR_FIELDS.map(([f, l]) => `<label class="color-field"><input type="color" name="${f}" value="${color(R[f])}"><span>${l}</span><code>${esc(color(R[f]))}</code></label>`).join('')}
+        </div>
+        <div class="preview" id="preview"></div>
       </div>
-    </div>
+    </details>
 
     <div class="save-bar">
       <button type="button" class="btn ghost" id="cfg-reset">Desfazer</button>
@@ -251,10 +260,12 @@ function renderMenu() {
   const orphans = sorted(products.filter(x => !catIds.has(x.category_id)));
   if (orphans.length) groups.push({ cat: null, items: orphans });
   const out = products.filter(x => !x.available).length;
+  const catsOpen = $('details.cats', p)?.open;
 
   p.innerHTML = `
-  <div class="card grid">
-    <div class="row wrap"><h3 class="grow">Categorias</h3></div>
+  <p class="muted small-text">Toque no prato para mudar nome, preço, foto e escolhas. O botão da direita marca se tem ou acabou hoje.</p>
+  <details class="card cats" ${catsOpen || !cats.length ? 'open' : ''}>
+    <summary><h3>Categorias</h3><span class="muted">${cats.length} · renomear, mudar a ordem ou criar</span></summary>
     <ul class="cat-list">
       ${cats.map((c, i) => `<li data-cat="${c.id}">
         <input class="input" value="${esc(c.name)}" aria-label="Nome da categoria" maxlength="60">
@@ -263,17 +274,17 @@ function renderMenu() {
         <button class="icon-btn danger" data-del title="Excluir" aria-label="Excluir categoria">✕</button>
       </li>`).join('') || '<li class="muted">Nenhuma categoria ainda.</li>'}
     </ul>
-    <form class="row" id="new-cat"><input class="input" name="name" placeholder="Nova categoria (ex.: Bebidas)" required maxlength="60"><button class="btn">Adicionar</button></form>
-  </div>
+    <form class="row" id="new-cat"><input class="input" name="name" placeholder="Nova categoria (ex.: Bebidas)" required maxlength="60"><button class="btn">Criar</button></form>
+  </details>
 
   <div class="row wrap section-head">
-    <h3 class="grow">Produtos <span class="muted">(${products.length}${out ? ` · ${out} esgotado${out > 1 ? 's' : ''}` : ''})</span></h3>
-    <button class="btn" data-new-product="">+ Novo produto</button>
+    <h3 class="grow">Pratos <span class="muted">(${products.length}${out ? ` · ${out} esgotado${out > 1 ? 's' : ''}` : ''})</span></h3>
+    <button class="btn" data-new-product="">Novo prato</button>
   </div>
   ${groups.map(g => `
     <div class="card prod-group">
       <div class="row group-head"><h4 class="grow">${g.cat ? esc(g.cat.name) : 'Sem categoria'}</h4>
-        <button class="btn soft small" data-new-product="${g.cat ? g.cat.id : ''}">+ Produto</button></div>
+        <button class="btn soft small" data-new-product="${g.cat ? g.cat.id : ''}">Adicionar aqui</button></div>
       ${g.items.map(productRow).join('') || '<p class="muted">Nenhum produto nesta categoria.</p>'}
     </div>`).join('') || '<p class="muted">Crie uma categoria e adicione produtos.</p>'}
   `;
@@ -351,7 +362,7 @@ function productSheet(prod, presetCat = '') {
   const x = prod || { name: '', description: '', price_cents: 0, category_id: presetCat ? Number(presetCat) : null, badge: '', available: 1, image_url: '', model_glb_url: '', model_usdz_url: '' };
   const { el, close } = sheet(`
     <form class="grid" id="pform" autocomplete="off">
-      <div class="row"><h2 class="grow">${prod ? 'Editar produto' : 'Novo produto'}</h2><button type="button" class="icon-btn" data-close aria-label="Fechar">✕</button></div>
+      <div class="row"><h2 class="grow">${prod ? 'Editar prato' : 'Novo prato'}</h2><button type="button" class="icon-btn" data-close aria-label="Fechar">✕</button></div>
       <label class="field"><span>Nome</span><input class="input" name="name" required maxlength="80" value="${esc(x.name)}"></label>
       <label class="field"><span>Descrição</span><textarea class="input" name="description" rows="3" maxlength="400">${esc(x.description)}</textarea></label>
       <div class="two">
@@ -411,14 +422,14 @@ function productSheet(prod, presetCat = '') {
         body.position = same.reduce((m, p) => Math.max(m, p.position), -1) + 1;
         products.push(await call(`/api/r/${slug}/products`, { method: 'POST', body }));
       }
-      toast('Produto salvo'); close(); renderMenu();
+      toast('Prato salvo'); close(); renderMenu();
     });
   });
   $('#pdel', el)?.addEventListener('click', e => run(e.currentTarget, async () => {
     if (!confirm(`Excluir "${prod.name}" do cardápio?\n\nSe só acabou hoje, prefira marcar como esgotado.`)) return;
     await call(`/api/r/${slug}/products/${prod.id}`, { method: 'DELETE' });
     products = products.filter(p => p.id !== prod.id);
-    toast('Produto excluído'); close(); renderMenu();
+    toast('Prato excluído'); close(); renderMenu();
   }));
 }
 
@@ -436,7 +447,7 @@ function renderTables() {
       <button class="btn">Adicionar</button>
       <a class="btn soft" href="/r/${esc(slug)}/painel#qrcodes" target="_top">Imprimir QR Codes</a>
     </form>
-    <p class="muted small-text">Cada mesa tem um link secreto usado no QR Code e na tag NFC. Novas mesas recebem o próximo número.</p>
+    <p class="muted small-text">Cada mesa tem o seu link. É ele que vai no QR Code e na tag NFC da mesa. Mesa nova recebe o próximo número.</p>
   </div>
   <div class="table-list">
     ${tables.map(t => `
@@ -445,17 +456,22 @@ function renderTables() {
           <div class="tbl-num">${t.number}</div>
           <div class="grow min0">
             <input class="input" data-label value="${esc(t.label)}" placeholder="Apelido (ex.: Varanda)" maxlength="40" aria-label="Apelido da mesa ${t.number}">
-            <div class="muted tiny mono" title="Código da mesa">código ${esc(t.token)}</div>
+            <div class="muted tiny mono" title="Link desta mesa (QR Code e NFC)">${esc(urlFor(t.token).replace(/^https?:\/\//, ''))}</div>
           </div>
         </div>
-        <label class="switch-row compact"><input type="checkbox" data-active ${t.active ? 'checked' : ''}><span class="switch"></span><span>${t.active ? 'Ativa' : 'Desativada (QR e NFC não abrem o cardápio)'}</span></label>
         <div class="row wrap tbl-actions">
-          <a class="btn soft small" href="${esc(urlFor(t.token))}" target="_blank" rel="noopener">Abrir cardápio</a>
-          <button class="btn soft small" data-nfc>Gravar tag NFC</button>
           <button class="btn soft small" data-copy>Copiar link</button>
-          <button class="btn ghost small" data-regen>Gerar novo QR</button>
-          <button class="btn ghost small danger-text" data-del>Excluir</button>
+          <button class="btn soft small" data-nfc>Gravar NFC</button>
+          <a class="btn ghost small" href="${esc(urlFor(t.token))}" target="_blank" rel="noopener">Abrir</a>
         </div>
+        <details class="tbl-more" ${t.active ? '' : 'open'}>
+          <summary>Mais opções</summary>
+          <label class="switch-row compact"><input type="checkbox" data-active ${t.active ? 'checked' : ''}><span class="switch"></span><span>${t.active ? 'Mesa ativa' : 'Mesa desativada: QR e NFC não abrem o cardápio'}</span></label>
+          <div class="row wrap tbl-actions">
+            <button class="btn ghost small" data-regen>Trocar link (QR antigo para de funcionar)</button>
+            <button class="btn ghost small danger-text" data-del>Excluir mesa</button>
+          </div>
+        </details>
       </div>`).join('') || '<p class="muted">Nenhuma mesa cadastrada.</p>'}
   </div>`;
 
@@ -484,7 +500,7 @@ function renderTables() {
     $('[data-regen]', card).addEventListener('click', e => run(e.currentTarget, async () => {
       if (!confirm(`Gerar um novo código para a mesa ${t.number}?\n\nO QR Code impresso e a tag NFC atuais desta mesa VÃO PARAR DE FUNCIONAR. Você precisará imprimir o novo QR e regravar a tag.\n\nUse isto se alguém fotografou o QR e está fazendo pedidos falsos.`)) return;
       await put({ regenerate: true });
-      toast(`Novo código gerado para a mesa ${t.number}. Reimprima o QR.`); renderTables();
+      toast(`Mesa ${t.number} com link novo. Reimprima o QR e regrave a tag.`); renderTables();
     }));
     $('[data-del]', card).addEventListener('click', e => run(e.currentTarget, async () => {
       if (!confirm(`Excluir a mesa ${t.number}?\n\nO histórico de pedidos e comandas desta mesa também será apagado. Para só parar de usar, prefira desativar.`)) return;

@@ -31,6 +31,17 @@ html, body { overflow-x: hidden; }
   padding: .55em 1em; border-radius: 999px; cursor: pointer; font-weight: 600; min-height: 40px;
 }
 .tabs button[aria-selected="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+.tabs .tab-out { margin-left: auto; border-color: transparent; background: none; }
+
+/* blocos que abrem e fecham (Aparência, Categorias, Mais opções da mesa) */
+details.card > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+details.card > summary::-webkit-details-marker { display: none; }
+details.card > summary::after { content: "Abrir"; margin-left: auto; font-size: .85rem; font-weight: 600; color: var(--primary); }
+details.card[open] > summary::after { content: "Fechar"; }
+details.card > summary .muted { font-size: .85rem; }
+details.card[open] > summary { margin-bottom: 1rem; }
+.tbl-more summary { cursor: pointer; font-size: .85rem; color: var(--muted); }
+.tbl-more[open] { display: grid; gap: .7rem; }
 
 /* aviso */
 .notice {
@@ -73,7 +84,7 @@ html, body { overflow-x: hidden; }
 .color-field input { grid-row: span 2; width: 44px; height: 44px; border: 0; padding: 0; background: none; cursor: pointer; }
 .color-field code { color: var(--muted); font-size: .78rem; }
 .preview { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg); }
-.pv-cover { height: 90px; background: linear-gradient(135deg, var(--primary), var(--accent)) center/cover; }
+.pv-cover { height: 90px; background: var(--surface-2) center/cover; }
 .pv-body { padding: .9rem; display: grid; gap: .8rem; }
 .pv-logo { width: 48px; height: 48px; border-radius: 12px; object-fit: cover; margin-top: -36px; border: 2px solid var(--bg); background: var(--bg); }
 .pv-item { display: flex; gap: .8rem; justify-content: space-between; align-items: center; padding: .7rem; border-radius: 12px; background: var(--surface); }
@@ -81,7 +92,7 @@ html, body { overflow-x: hidden; }
 
 .save-bar {
   position: sticky; bottom: 0; display: flex; gap: .6rem; justify-content: flex-end;
-  padding: .8rem 0 calc(.8rem + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--bg) 35%);
+  padding: .8rem 0 calc(.8rem + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--border);
 }
 
 /* categorias */
