@@ -86,6 +86,10 @@
     @media (min-width: 760px) { .pn-frame.menu { top: calc(var(--bar-h, 61px) + 16px); height: calc(100dvh - var(--bar-h, 61px) - 32px);
       border: 1px solid var(--border); border-radius: 22px; } }
     body.framed { overflow: hidden; }
+    .wa-n { min-width: 18px; padding: 0 6px; border-radius: 999px; background: var(--danger); color: #fff; font-size: .72rem; font-weight: 750; text-align: center; }
+    .wa-n[hidden], .wa-alert[hidden] { display: none; }
+    .wa-alert { position: fixed; z-index: 300; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: calc(100% - 32px);
+      background: var(--danger); color: #fff; font-weight: 700; text-decoration: none; padding: 12px 18px; border-radius: 14px; box-shadow: 0 14px 34px -10px rgba(0,0,0,.6); }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -149,15 +153,7 @@
       if (!TABS.some(([p]) => p === tab)) tab = 'painel';
       app.hidden = tab !== 'painel';
       document.body.classList.toggle('framed', tab !== 'painel');
-      if (tab !== 'painel' && !frames[tab]) {
-        const f = document.createElement('iframe');
-        f.className = `pn-frame ${tab}`;
-        f.title = TABS.find(([p]) => p === tab)[1];
-        f.allow = 'screen-wake-lock; xr-spatial-tracking; clipboard-write; web-share; fullscreen';
-        f.src = SRC[tab] || `/r/${slug}/${tab}`;
-        document.body.append(f);
-        frames[tab] = f;
-      }
+      if (tab !== 'painel') frameFor(tab);
       for (const [k, f] of Object.entries(frames)) f.hidden = k !== tab;
       bar.querySelectorAll('[data-tab]').forEach(a => {
         const on = a.dataset.tab === tab;
@@ -168,6 +164,34 @@
       else frames[tab].focus();
     }
     addEventListener('hashchange', showTab);
+    function frameFor(tab) {
+      if (frames[tab]) return frames[tab];
+      const f = document.createElement('iframe');
+      f.className = `pn-frame ${tab}`;
+      f.title = TABS.find(([p]) => p === tab)[1];
+      f.allow = 'screen-wake-lock; xr-spatial-tracking; clipboard-write; web-share; fullscreen';
+      f.src = SRC[tab] || `/r/${slug}/${tab}`;
+      f.hidden = true;
+      document.body.append(f);
+      return (frames[tab] = f);
+    }
+    // WhatsApp carregado desde o início (escondido): toca o aviso de atendimento humano em qualquer aba
+    frameFor('atendimento');
+    addEventListener('message', e => {
+      if (e.origin !== location.origin || e.data?.type !== 'wa-humano') return;
+      const a = bar.querySelector('[data-tab=atendimento]');
+      let b = a?.querySelector('.wa-n');
+      if (a && !b) { b = document.createElement('span'); b.className = 'wa-n'; a.append(b); }
+      if (b) { b.textContent = e.data.n; b.hidden = !e.data.n; }
+      let al = document.getElementById('wa-alert');
+      if (!al) {
+        al = document.createElement('a'); al.id = 'wa-alert'; al.href = '#atendimento'; al.className = 'wa-alert';
+        document.body.append(al);
+      }
+      al.hidden = !e.data.n || location.hash === '#atendimento';
+      al.textContent = `🔔 ${e.data.n === 1 ? `${e.data.nomes[0]} pede atendimento` : `${e.data.n} clientes pedem atendimento`} no WhatsApp. Abrir`;
+    });
+    addEventListener('hashchange', () => { const al = document.getElementById('wa-alert'); if (al && location.hash === '#atendimento') al.hidden = true; });
 
     let period = 'hoje';
     const pct = (a, b) => {

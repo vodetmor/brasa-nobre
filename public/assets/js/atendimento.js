@@ -1,6 +1,6 @@
 // Atendimento pelo WhatsApp: /r/<slug>/atendimento
 // O robô responde sozinho; a equipe acompanha, assume a conversa quando quiser e confirma os pedidos.
-import { api, esc, $, $$, toast, money, hhmm, parseDate, unlockSound, beep, staffGate, staffNav, slugFromPath } from './common.js';
+import { api, esc, $, $$, toast, money, hhmm, parseDate, staffGate, staffNav, slugFromPath, embedded } from './common.js';
 
 const slug = slugFromPath();
 const REASON = {
@@ -17,7 +17,97 @@ Pix: (61) 99611-5754 (Central do Espeto).
 Não aceitamos vale-refeição.`;
 
 let restaurant, data = { contacts: [], orders: [], info: '' };
-let tab = 'conversas', open = null, convo = null, seenOrders = null;
+let tab = 'conversas', open = null, convo = null, seenOrders = null, filter = 'todas';
+
+// ---------- avisos de atendimento humano (como no painel da MedicMais) ----------
+// barra vermelha no topo + som "ding-dong" + notificação do navegador + título piscando; "plim" para mensagem nova.
+const AL = { base: null, pend: [], unread: null, orig: '', blink: null };
+const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { return null; } };
+const soundOn = () => store('wa_som') === '1';
+let actx;
+function audio() {
+  try { actx ||= new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch { actx = null; }
+  return actx;
+}
+function note(freq, t0, dur, vol = 0.22) {
+  const c = audio(); if (!c) return;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = 'sine'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(c.destination); o.start(t0); o.stop(t0 + dur + 0.05);
+}
+function dingDong() { const c = audio(); if (!c) return; const t = c.currentTime + 0.03; note(880, t, 1.2); note(659.25, t + 0.52, 1.6); }
+function plim() { const c = audio(); if (!c) return; note(1318.5, c.currentTime + 0.02, 0.16, 0.14); }
+
+function soundButton() {
+  const b = $('#som');
+  if (!b) return;
+  b.textContent = soundOn() ? 'Som e avisos: ligados' : 'Ligar som e avisos';
+  b.setAttribute('aria-pressed', soundOn());
+}
+async function toggleSound() {
+  const on = !soundOn();
+  store('wa_som', on ? '1' : '0');
+  soundButton();
+  if (on) {
+    dingDong();
+    if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission().catch(() => {});
+    toast('Avisos ligados: você ouve quando alguém pedir atendimento ou mandar mensagem.');
+  } else toast('Som dos avisos desligado.');
+}
+
+function checkAlerts() {
+  const urgentNow = data.contacts.filter(urgent);
+  if (AL.base) {
+    const novos = urgentNow.filter(c => !AL.base.has(c.phone));
+    if (novos.length) {
+      for (const c of novos) if (!AL.pend.some(p => p.phone === c.phone)) AL.pend.push(c);
+      if (soundOn()) dingDong();
+      notify(novos);
+    }
+  }
+  AL.base = new Set(urgentNow.map(c => c.phone));
+  AL.pend = AL.pend.filter(p => AL.base.has(p.phone) && p.phone !== open);
+  // mensagem nova de cliente sem pedido de atendimento: só o plim
+  const unread = data.contacts.reduce((s, c) => s + (c.phone === open ? 0 : c.unread), 0);
+  if (AL.unread !== null && unread > AL.unread && soundOn()) plim();
+  AL.unread = unread;
+  renderAlertBar();
+  if (embedded) parent.postMessage({ type: 'wa-humano', n: urgentNow.length, nomes: urgentNow.map(label) }, location.origin);
+}
+
+function notify(list) {
+  if (!('Notification' in window) || Notification.permission !== 'granted' || (!document.hidden && document.hasFocus())) return;
+  for (const c of list) {
+    try {
+      const n = new Notification('Pediu atendimento humano', { body: `${label(c)}: ${REASON[c.human_reason] || REASON.outro}`, tag: `wa-${c.phone}` });
+      n.onclick = () => { window.focus(); tab = 'conversas'; openConvo(c.phone); n.close(); };
+    } catch { /* navegador sem suporte */ }
+  }
+}
+
+function renderAlertBar() {
+  let bar = $('#al-bar');
+  if (!bar) { bar = document.createElement('div'); bar.id = 'al-bar'; bar.className = 'al-bar'; bar.setAttribute('role', 'alert'); document.body.append(bar); }
+  bar.hidden = !AL.pend.length;
+  bar.innerHTML = AL.pend.slice(-3).map(c => `<div class="al-item"><span class="al-ic" aria-hidden="true">🔔</span>
+      <span class="al-t"><b>${esc(label(c))}</b> ${c.human_reason === 'pediu_atendente' ? 'pediu atendimento humano' : `precisa da equipe: ${esc((REASON[c.human_reason] || REASON.outro).toLowerCase())}`}</span>
+      <button type="button" class="btn small al-open" data-al-open="${esc(c.phone)}">Abrir conversa</button>
+      <button type="button" class="al-x" data-al-x="${esc(c.phone)}" aria-label="Dispensar aviso">✕</button></div>`).join('')
+    + (AL.pend.length > 3 ? `<div class="al-more">+ ${AL.pend.length - 3} aguardando</div>` : '');
+  bar.querySelectorAll('[data-al-open]').forEach(b => b.addEventListener('click', () => { tab = 'conversas'; openConvo(b.dataset.alOpen); }));
+  bar.querySelectorAll('[data-al-x]').forEach(b => b.addEventListener('click', () => { AL.pend = AL.pend.filter(p => p.phone !== b.dataset.alX); renderAlertBar(); }));
+  blinkTitle();
+}
+
+function blinkTitle() {
+  clearInterval(AL.blink); AL.blink = null;
+  AL.orig ||= document.title;
+  if (!AL.pend.length) { document.title = AL.orig; return; }
+  const msg = `(${AL.pend.length}) Pediu atendimento · ${restaurant.name}`;
+  let on = true; document.title = msg;
+  AL.blink = setInterval(() => { on = !on; document.title = on ? msg : AL.orig; }, 1000);
+}
 
 start();
 
@@ -30,11 +120,15 @@ async function start() {
       <button type="button" role="tab" data-tab="conversas">Conversas<span class="count hidden" id="c-conv"></span></button>
       <button type="button" role="tab" data-tab="pedidos">Pedidos<span class="count hidden" id="c-ped"></span></button>
       <button type="button" role="tab" data-tab="info">Informações para o robô</button>
+      <span class="spacer"></span><button type="button" class="btn soft small" id="som" aria-pressed="false">Ligar som e avisos</button>
     </div>
     <div id="banner"></div>
     <main id="view"></main>`;
   $$('.at-tabs button').forEach(b => b.addEventListener('click', () => { tab = b.dataset.tab; render(); }));
-  addEventListener('click', unlockSound, { once: true });
+  $('#som').addEventListener('click', toggleSound);
+  soundButton();
+  // o navegador só toca som depois de um clique na página
+  addEventListener('pointerdown', () => soundOn() && audio(), { once: true });
   await refresh();
   setInterval(refresh, 4000);
   setInterval(() => open && loadConvo(false), 3000);
@@ -46,8 +140,9 @@ async function refresh() {
     $('#live-dot').classList.add('on');
   } catch { $('#live-dot').classList.remove('on'); return; }
   const fresh = data.orders.filter(o => o.status === 'novo').map(o => o.id);
-  if (seenOrders && fresh.some(id => !seenOrders.has(id))) { beep(); toast('Pedido novo pelo WhatsApp'); }
+  if (seenOrders && fresh.some(id => !seenOrders.has(id))) { if (soundOn()) dingDong(); toast('Pedido novo pelo WhatsApp'); }
   seenOrders = new Set(data.orders.map(o => o.id));
+  checkAlerts();
   render(true);
 }
 
@@ -80,7 +175,10 @@ function when(s) {
 function renderChat(passive) {
   let wrap = $('.at-chat');
   if (!wrap) {
-    $('#view').innerHTML = `<div class="at-chat"><aside class="at-list" aria-label="Conversas"></aside><section class="at-convo"></section></div>`;
+    $('#view').innerHTML = `<div class="at-chat"><aside class="at-side"><div class="at-filters">
+      <button type="button" data-filter="todas">Todas</button><button type="button" data-filter="humano">Pedem atendimento<span id="f-n"></span></button></div>
+      <div class="at-list" aria-label="Conversas"></div></aside><section class="at-convo"></section></div>`;
+    $$('.at-filters button').forEach(b => b.addEventListener('click', () => { filter = b.dataset.filter; renderChat(false); }));
     wrap = $('.at-chat');
     new ResizeObserver(() => document.documentElement.style.setProperty('--top', `${wrap.getBoundingClientRect().top + scrollY}px`)).observe(document.body);
     passive = false;
@@ -88,7 +186,10 @@ function renderChat(passive) {
   wrap.classList.toggle('open', !!open);
   const list = $('.at-list');
   // pede atenção primeiro, depois a mais recente
-  const sorted = [...data.contacts].sort((a, b) => (urgent(b) - urgent(a)) || (b.updated_at > a.updated_at ? 1 : -1));
+  $$('.at-filters button').forEach(b => b.setAttribute('aria-pressed', b.dataset.filter === filter));
+  const nh = data.contacts.filter(urgent).length;
+  $('#f-n').textContent = nh ? ` ${nh}` : '';
+  const sorted = data.contacts.filter(c => filter !== 'humano' || c.needs_human).sort((a, b) => (urgent(b) - urgent(a)) || (b.updated_at > a.updated_at ? 1 : -1));
   // só redesenha a lista quando algo mudou (não rouba o clique nem o hover a cada atualização)
   const key = JSON.stringify([sorted, open]);
   if (passive && list.dataset.key === key) return;
@@ -99,7 +200,8 @@ function renderChat(passive) {
       <span class="last">${esc(c.last_message || '')}</span>
       <span class="badges">${c.needs_human ? `<span class="tag ${urgent(c) ? 'alert' : 'team'}">${esc(REASON[c.human_reason] || REASON.outro)}</span>` : ''}
         ${c.unread && c.phone !== open ? `<span class="unread">${c.unread}</span>` : ''}</span>
-    </button>`).join('') : '<p class="at-empty">Nenhuma conversa ainda. Quando um cliente mandar mensagem para o WhatsApp da casa, ela aparece aqui.</p>';
+    </button>`).join('') : filter === 'humano' ? '<p class="at-empty">Ninguém esperando a equipe agora.</p>'
+    : '<p class="at-empty">Nenhuma conversa ainda. Quando um cliente mandar mensagem para o WhatsApp da casa, ela aparece aqui.</p>';
   list.querySelectorAll('[data-phone]').forEach(b => b.addEventListener('click', () => openConvo(b.dataset.phone)));
   if (!passive || !open) renderConvo();
 }
@@ -107,6 +209,7 @@ const urgent = c => (c.needs_human && c.human_reason !== 'equipe_assumiu' ? 1 : 
 
 async function openConvo(phone) {
   open = phone; convo = null;
+  AL.pend = AL.pend.filter(p => p.phone !== phone); renderAlertBar();
   render();
   await loadConvo(true);
 }
@@ -138,7 +241,7 @@ function renderConvo(scroll = true) {
       <span class="spacer"></span>
       ${c.needs_human
         ? `<span class="tag ${urgent(c) ? 'alert' : 'team'}">${esc(REASON[c.human_reason] || REASON.outro)}</span>
-           <button type="button" class="btn soft small" id="robot-on">Devolver ao robô</button>`
+           <button type="button" class="btn ${urgent(c) ? 'ok' : 'soft'} small" id="robot-on" title="O robô volta a responder este cliente">${urgent(c) ? 'Resolvido' : 'Devolver ao robô'}</button>`
         : `<span class="tag">Robô respondendo</span><button type="button" class="btn soft small" id="robot-off">Assumir conversa</button>`}
     </div>
     <div class="at-msgs">${convo.messages.map(m => `
@@ -175,7 +278,7 @@ function renderConvo(scroll = true) {
 async function setRobot(on) {
   try {
     await api(`/api/r/${slug}/atendimento/robo`, { method: 'POST', body: { phone: open, on } });
-    toast(on ? 'O robô volta a responder esta conversa' : 'Robô pausado: a conversa é sua');
+    toast(on ? 'Resolvido. O robô volta a responder este cliente.' : 'Robô pausado: a conversa é sua.');
     await loadConvo(false); refresh();
   } catch (e) { toast(e.message, 'error'); }
 }
