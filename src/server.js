@@ -12,6 +12,7 @@ import { ensureDemo } from './demo.js';
 import { paymentProvider } from './lib/payments.js';
 import { allow } from './lib/ratelimit.js';
 import * as S from './services.js';
+import * as W from './whatsapp.js';
 
 const PUBLIC = resolve(ROOT, 'public');
 const UPLOADS = resolve(ROOT, 'uploads');
@@ -198,6 +199,24 @@ api.post('/api/r/:slug/upload', async ({ req, params, query }) => {
   return { url: `/uploads/${r.slug}/${file}`, bytes: buf.length };
 });
 
+// ---------- WhatsApp: robô (n8n, chave WA_BOT_TOKEN) e tela de atendimento da equipe ----------
+const botCtx = async (req, slug) => { W.requireBot(req); return S.restaurantBySlug(slug); };
+api.post('/api/r/:slug/wa/bot/entrada', async ({ req, params }) => W.botInbound(await botCtx(req, params.slug), await readJson(req)));
+api.post('/api/r/:slug/wa/bot/saida', async ({ req, params }) => W.botOutbound(await botCtx(req, params.slug), await readJson(req)));
+api.post('/api/r/:slug/wa/bot/pedido', async ({ req, params }) => W.botOrder(await botCtx(req, params.slug), await readJson(req)));
+api.post('/api/r/:slug/wa/bot/fila', async ({ req, params }) => W.botQueue(await botCtx(req, params.slug)));
+api.post('/api/r/:slug/wa/bot/fila/ok', async ({ req, params }) => W.botQueueDone(await botCtx(req, params.slug), await readJson(req)));
+api.post('/api/r/:slug/wa/bot/humano', async ({ req, params }) => W.botHuman(await botCtx(req, params.slug), await readJson(req)));
+
+api.get('/api/r/:slug/atendimento', async ({ req, params }) => W.inbox(await staffCtx(req, params.slug)));
+api.get('/api/r/:slug/atendimento/conversa', async ({ req, params, query }) =>
+  W.conversation(await staffCtx(req, params.slug), query.get('phone')));
+api.post('/api/r/:slug/atendimento/enviar', async ({ req, params }) => W.staffSend(await staffCtx(req, params.slug), await readJson(req)));
+api.post('/api/r/:slug/atendimento/robo', async ({ req, params }) => W.setRobot(await staffCtx(req, params.slug), await readJson(req)));
+api.patch('/api/r/:slug/atendimento/pedidos/:id', async ({ req, params }) =>
+  W.setOrderStatus(await staffCtx(req, params.slug), Number(params.id), (await readJson(req)).status));
+api.put('/api/r/:slug/atendimento/info', async ({ req, params }) => W.saveInfo(await staffCtx(req, params.slug), await readJson(req)));
+
 // ---------- agência: criar restaurantes ----------
 api.get('/api/platform/restaurants', ({ req }) => { requirePlatform(req); return S.listRestaurants(); });
 api.post('/api/platform/restaurants', async ({ req }) => {
@@ -215,6 +234,7 @@ const PAGES = [
   [/^\/r\/[^/]+\/caixa\/?$/, 'caixa.html'],
   [/^\/r\/[^/]+\/admin\/?$/, 'admin.html'],
   [/^\/r\/[^/]+\/qrcodes\/?$/, 'qrcodes.html'],
+  [/^\/r\/[^/]+\/atendimento\/?$/, 'atendimento.html'],
   [/^\/agencia\/?$/, 'plataforma.html'],
 ];
 

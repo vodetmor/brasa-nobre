@@ -24,6 +24,9 @@ const MIGRATIONS = [
   ['restaurants', 'website', "TEXT DEFAULT ''"],
   ['products', 'options', "TEXT DEFAULT ''"],
   ['order_items', 'choices', "TEXT DEFAULT ''"],
+  // informações que o robô do WhatsApp pode usar (horário, entrega, Pix...), escritas pela equipe
+  ['restaurants', 'wa_info', "TEXT DEFAULT ''"],
+  ['wa_messages', 'pending', 'INTEGER NOT NULL DEFAULT 0'],
 ];
 
 export const engine = config.databaseUrl ? 'postgres' : 'sqlite';

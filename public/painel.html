@@ -22,7 +22,8 @@
     .pn-kicker { font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
 
     .tiles { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    @media (min-width: 760px) { .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    @media (min-width: 760px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (min-width: 1000px) { .tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
     .tile { display: grid; gap: 4px; padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border);
       color: var(--text); text-decoration: none; min-height: 112px; align-content: space-between; transition: border-color .15s; }
     .tile:hover { border-color: var(--primary); }
@@ -124,6 +125,7 @@
           ${token ? `<a class="tile" href="#menu">${ICON.menu}<div><b>Cardápio</b><br><span>O que o cliente vê na mesa 1</span></div></a>` : ''}
           <a class="tile" href="#cozinha">${ICON.cozinha}<div><b>Cozinha</b><br><span>Pedidos chegando na hora</span></div></a>
           <a class="tile" href="#caixa">${ICON.caixa}<div><b>Caixa</b><br><span>Comandas e fechar conta</span></div></a>
+          <a class="tile" href="#atendimento">${NAV_ICON.atendimento}<div><b>WhatsApp</b><br><span>Conversas e pedidos de entrega</span></div></a>
           <a class="tile" href="#admin">${ICON.admin}<div><b>Cardápio e mesas</b><br><span>Pratos, preços, QR Codes</span></div></a>
         </div>
       </section>

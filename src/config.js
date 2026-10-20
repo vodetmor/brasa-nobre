@@ -29,6 +29,10 @@ export const config = {
   requirePin: process.env.STAFF_PIN === '1',
   // restaurante aberto em http://localhost:3000/
   defaultSlug: process.env.DEFAULT_SLUG || 'central-do-espeto',
+  // WhatsApp: chave que o n8n manda no cabeçalho x-bot-token (vazio = robô desligado)
+  // e endereço do n8n, usado pelo painel para enviar a resposta da equipe
+  waBotToken: process.env.WA_BOT_TOKEN || '',
+  waN8nUrl: (process.env.WA_N8N_URL || '').replace(/\/$/, ''),
   // anti-trote: pedidos por mesa por janela de tempo
   orderLimit: { max: Number(process.env.ORDER_LIMIT_MAX || 10), windowMs: 60_000 },
 };

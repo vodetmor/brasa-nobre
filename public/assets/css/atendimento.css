@@ -1,0 +1,71 @@
+/* Atendimento pelo WhatsApp: conversas (robô + equipe), pedidos de entrega/retirada e informações da casa. */
+body { min-height: 100vh; }
+.at-tabs { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.at-tabs button {
+  flex: 0 0 auto; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer; font-weight: 650; font-size: .92rem;
+}
+.at-tabs button:hover { border-color: var(--primary); }
+.at-tabs button[aria-selected=true] { background: var(--primary); border-color: var(--primary); color: #15110c; }
+.at-tabs .count { margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--danger); color: #fff; font-size: .78rem; }
+.at-banner { margin: 12px 16px 0; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--warn); color: var(--warn); font-size: .9rem; }
+
+/* conversas: lista + conversa aberta lado a lado no PC, uma de cada vez no celular */
+.at-chat { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; height: calc(100vh - var(--top, 120px)); min-height: 420px; }
+.at-list { border-right: 1px solid var(--border); overflow-y: auto; }
+.at-contact {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; width: 100%; text-align: left; padding: 12px 16px;
+  background: none; border: 0; border-bottom: 1px solid var(--border); cursor: pointer;
+}
+.at-contact:hover, .at-contact.active { background: var(--surface); }
+.at-contact b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.at-contact time { color: var(--muted); font-size: .8rem; }
+.at-contact .last { grid-column: 1; color: var(--muted); font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.at-contact .badges { grid-column: 2; display: flex; gap: 4px; justify-content: flex-end; }
+.at-contact .unread { min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--ok); color: #fff; font-size: .75rem; font-weight: 750; text-align: center; }
+.tag { display: inline-block; padding: .1em .55em; border-radius: 999px; font-size: .72rem; font-weight: 700; border: 1px solid var(--border); color: var(--muted); }
+.tag.alert { border-color: var(--danger); color: #ff8a80; }
+.tag.team { border-color: var(--accent); color: var(--accent); }
+
+.at-convo { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.at-convo-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.at-convo-head .who { min-width: 0; }
+.at-convo-head .who b { display: block; }
+.at-convo-head .who span { color: var(--muted); font-size: .85rem; }
+.at-back { display: none; }
+.at-msgs { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.msg { max-width: min(78%, 560px); padding: 8px 12px; border-radius: 14px; background: var(--surface-2); white-space: pre-wrap; word-wrap: break-word; }
+.msg.in { align-self: flex-start; border-bottom-left-radius: 4px; }
+.msg.out { align-self: flex-end; border-bottom-right-radius: 4px; background: var(--surface); border: 1px solid var(--border); }
+.msg.equipe { border-color: var(--accent); }
+.msg small { display: block; margin-top: 4px; color: var(--muted); font-size: .72rem; }
+.at-compose { display: flex; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); align-items: flex-end; }
+.at-compose textarea { resize: none; min-height: 44px; max-height: 140px; }
+.at-empty { margin: auto; padding: 24px; text-align: center; color: var(--muted); max-width: 360px; }
+
+@media (max-width: 760px) {
+  .at-chat { grid-template-columns: 1fr; }
+  .at-chat.open .at-list { display: none; }
+  .at-chat:not(.open) .at-convo { display: none; }
+  .at-back { display: inline-flex; }
+}
+
+/* pedidos */
+.at-orders { display: grid; gap: 12px; padding: 16px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); align-items: start; }
+.order { background: var(--surface); border: 1px solid var(--border); border-left: 6px solid var(--warn); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 8px; }
+.order.confirmado { border-left-color: #42a5f5; }
+.order.saiu, .order.pronto { border-left-color: var(--ok); }
+.order.entregue, .order.cancelado { border-left-color: var(--border); opacity: .7; }
+.order .top { display: flex; align-items: baseline; gap: 8px; }
+.order .num { font-size: 1.3rem; font-weight: 850; }
+.order .top time { margin-left: auto; color: var(--muted); font-size: .85rem; }
+.order ul { margin: 0; padding-left: 18px; }
+.order li small { display: block; color: var(--muted); }
+.order .total { font-weight: 800; }
+.order .meta { font-size: .9rem; color: var(--muted); }
+.order .meta b { color: var(--text); font-weight: 600; }
+.order .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* informações da casa */
+.at-info { padding: 16px; max-width: 720px; display: grid; gap: 12px; }
+.at-info textarea { min-height: 240px; resize: vertical; line-height: 1.5; }

@@ -16,6 +16,7 @@
     { "source": "/r/:slug/caixa", "destination": "/caixa.html" },
     { "source": "/r/:slug/admin", "destination": "/admin.html" },
     { "source": "/r/:slug/qrcodes", "destination": "/qrcodes.html" },
+    { "source": "/r/:slug/atendimento", "destination": "/atendimento.html" },
     { "source": "/indice", "destination": "/indice.html" },
     { "source": "/r/:slug/painel", "destination": "/painel.html" },
     { "source": "/agencia", "destination": "/plataforma.html" }

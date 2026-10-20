@@ -143,3 +143,52 @@ CREATE TABLE IF NOT EXISTS events (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_events_channel ON events(channel, id);
+
+-- Atendimento pelo WhatsApp (robô no n8n + equipe no /r/<slug>/atendimento).
+CREATE TABLE IF NOT EXISTS wa_contacts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  restaurant_id INTEGER NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+  phone TEXT NOT NULL,                          -- só dígitos, com DDI (5561...)
+  name TEXT DEFAULT '',
+  stage TEXT NOT NULL DEFAULT 'conversando',    -- conversando | pedido
+  -- 1 = robô pausado: a equipe responde por aqui
+  needs_human INTEGER NOT NULL DEFAULT 0,
+  human_reason TEXT DEFAULT '',
+  last_message TEXT DEFAULT '',
+  unread INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (restaurant_id, phone)
+);
+
+CREATE TABLE IF NOT EXISTS wa_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  restaurant_id INTEGER NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+  phone TEXT NOT NULL,
+  direction TEXT NOT NULL,                      -- in | out
+  origin TEXT NOT NULL DEFAULT 'cliente',       -- cliente | robo | equipe
+  text TEXT NOT NULL DEFAULT '',
+  media TEXT DEFAULT '',                        -- audio | imagem | video | outro
+  pending INTEGER NOT NULL DEFAULT 0,           -- mensagem da equipe na fila do n8n: 1 = esperando, -1 = falhou
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_wa_messages_phone ON wa_messages(restaurant_id, phone, id);
+
+-- Pedido de entrega/retirada feito pelo WhatsApp. Preço calculado no servidor a partir do cardápio.
+CREATE TABLE IF NOT EXISTS wa_orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  restaurant_id INTEGER NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+  number INTEGER NOT NULL,                      -- número do pedido no dia
+  phone TEXT NOT NULL,
+  customer_name TEXT NOT NULL DEFAULT '',
+  items TEXT NOT NULL DEFAULT '[]',             -- JSON: [{ name, qty, unit_price_cents, choices, note }]
+  total_cents INTEGER NOT NULL,                 -- só os itens; taxa de entrega a equipe combina
+  mode TEXT NOT NULL DEFAULT 'retirada',        -- entrega | retirada
+  address TEXT DEFAULT '',
+  payment TEXT DEFAULT '',                      -- dinheiro | pix | cartao
+  note TEXT DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'novo',          -- novo | confirmado | saiu | pronto | entregue | cancelado
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_wa_orders_rest ON wa_orders(restaurant_id, status);

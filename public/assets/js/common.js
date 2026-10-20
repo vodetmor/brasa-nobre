@@ -164,9 +164,10 @@ export const NAV_ICON = {
   cozinha: '<svg viewBox="0 0 24 24"><path d="M6 13.5a6 6 0 1 1 12 0V18H6z"/><path d="M4 21h16M12 4V2.5"/></svg>',
   caixa: '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h3"/></svg>',
   admin: '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
+  atendimento: '<svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.5L3 21l2-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>',
   qrcodes: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v7h-7"/></svg>',
 };
-export const STAFF_TABS = [['painel', 'Painel'], ['cozinha', 'Cozinha'], ['caixa', 'Caixa'], ['admin', 'Cardápio e mesas'], ['qrcodes', 'QR Codes']];
+export const STAFF_TABS = [['painel', 'Painel'], ['cozinha', 'Cozinha'], ['caixa', 'Caixa'], ['atendimento', 'WhatsApp'], ['admin', 'Cardápio e mesas'], ['qrcodes', 'QR Codes']];
 // Dentro do /painel (aba em iframe) a navegação é a do painel: a tela não repete os botões.
 export const embedded = window.top !== window.self;
 export function staffNav(slug, active) {
