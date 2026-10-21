@@ -408,7 +408,7 @@ const FUNNEL = [
   ['Cliente manda mensagem', 'Texto, áudio (vira texto) ou foto (vira descrição). Grupos e status ficam de fora.'],
   ['Espera o cliente terminar', '9 segundos para juntar mensagens seguidas numa resposta só. Mensagem repetida é ignorada.'],
   ['Pode responder?', 'Só se o robô estiver ligado, a equipe não tiver assumido a conversa e ele não tiver passado de 8 respostas em 3 minutos.'],
-  ['IA monta a resposta', 'Usa a personalidade e o roteiro abaixo, as regras fixas, o cardápio, as informações da casa, as últimas 30 mensagens e a ficha do cliente (pedidos anteriores).'],
+  ['IA monta a resposta', 'Usa a personalidade e o roteiro abaixo, as regras fixas, o cardápio, as informações da casa, as últimas 12 mensagens e a ficha do cliente (pedidos anteriores).'],
   ['Manda o cardápio', 'Quando pedem o cardápio, envia as duas fotos do cardápio da casa.'],
   ['Conduz o pedido', 'Pedido, entrega/retirada/local, endereço, pagamento e nome. Mostra o resumo e espera o "sim".'],
   ['Registra o pedido', 'O sistema calcula o preço pelo cardápio (a IA não inventa valor). Aparece na aba Pedidos.'],
@@ -445,7 +445,7 @@ async function renderRobot() {
           <small class="muted">${esc(hint)}</small></label>`).join('')}
         <label class="field"><span>Modelo da IA</span>
           <select class="input" name="modelo">${robot.models.map(m => `<option value="${m.id}" ${m.id === b.modelo ? 'selected' : ''}>${esc(m.nome)} · ${esc(m.custo)}</option>`).join('')}</select>
-          <small class="muted">O mais esperto conversa melhor e erra menos, mas gasta uns 3 vezes mais crédito da z.ai.</small></label>
+          <small class="muted">O mais esperto conversa um pouco melhor, mas gasta uns 3 vezes mais crédito da z.ai. Com muito movimento, fique no econômico.</small></label>
         <div class="row wrap"><button class="btn">Salvar</button><button type="button" class="btn ghost" id="bot-reset">Voltar ao padrão</button></div>
       </form>
       <form class="card-sec" id="info-form">

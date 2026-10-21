@@ -59,8 +59,8 @@ export const BOT_DEFAULTS = {
 };
 // modelos da z.ai que dá para escolher no painel (preço aproximado por conversa de pedido)
 export const MODELS = [
-  { id: 'glm-4.5-air', nome: 'Econômico e rápido', custo: 'cerca de R$ 0,03 por conversa' },
-  { id: 'glm-4.6', nome: 'Mais esperto e natural', custo: 'cerca de R$ 0,10 por conversa' },
+  { id: 'glm-4.5-air', nome: 'Econômico e rápido (recomendado)', custo: 'cerca de R$ 0,01 por resposta' },
+  { id: 'glm-4.6', nome: 'Mais esperto, 3x mais caro', custo: 'cerca de R$ 0,03 por resposta' },
 ];
 const BOT_FIELDS = Object.keys(BOT_DEFAULTS);
 const OLD_ROTEIRO = ['Na primeira resposta da conversa: saudação curta + o cardápio resumido (uma linha por prato ou grupo, com preço) + "Qual vai ser o seu pedido?". Se a pessoa já chegou pedindo algo, responda a isso em vez de mandar o cardápio inteiro.',
@@ -134,7 +134,7 @@ async function contextFor(r, contact, history, orders, past = null) {
     '',
     history.some(m => m.direction === 'out') ? 'ATENÇÃO: esta conversa já começou. NÃO cumprimente nem se apresente de novo; responda direto ao que o cliente mandou.' : '',
     'ÚLTIMAS MENSAGENS (fonte da verdade; inclui o que a equipe escreveu):',
-    history.length ? [...history].reverse().map(m => `${who[m.origin] || m.origin}: ${m.text.slice(0, 400)}`).join('\n') : '(nenhuma)',
+    history.length ? [...history].reverse().map(m => `${who[m.origin] || m.origin}: ${m.text.slice(0, 240)}`).join('\n') : '(nenhuma)',
   ].join('\n');
 }
 
@@ -187,6 +187,12 @@ export async function botInbound(r, body) {
   });
 }
 
+// Antes de gastar IA com foto/vídeo: o robô vai responder este cliente? (robô ligado e equipe não assumiu)
+export async function botState(r, body) {
+  const c = await get('SELECT needs_human FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, cleanPhone(body.telefone));
+  return { pausado: !r.wa_robot_on || !!c?.needs_human };
+}
+
 // A vez de responder: só a mensagem mais nova do cliente responde, com tudo o que ele mandou desde a última resposta.
 export async function botTurn(r, body) {
   const phone = cleanPhone(body.telefone);
@@ -206,7 +212,7 @@ export async function botTurn(r, body) {
   const fresh = await all(`SELECT text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'in' AND id > ?
     ORDER BY id`, r.id, phone, Number(lastOut?.id) || 0);
   const history = await all(`SELECT direction, origin, text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND id <= ?
-    ORDER BY id DESC LIMIT 30`, r.id, phone, Number(lastOut?.id) || 0);
+    ORDER BY id DESC LIMIT 12`, r.id, phone, Number(lastOut?.id) || 0);
   const pastRows = await all(`SELECT items, created_at FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status <> 'cancelado' ORDER BY id DESC LIMIT 20`, r.id, phone);
   const past = pastRows.length ? { total: pastRows.length, ultimo: JSON.parse(pastRows[0].items || '[]').map(i => `${i.qty}x ${i.name}${i.choices ? ` (${i.choices.split('; ').map(c => c.slice(c.indexOf(': ') + 2)).join(', ')})` : ''}`).join(', ') } : null;
   const orders = await all(`SELECT * FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status IN ${OPEN_ORDER}
