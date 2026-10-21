@@ -72,9 +72,20 @@ if (engine === 'sqlite') {
     connectionString: config.databaseUrl,
     ssl: /localhost|127\.0\.0\.1/.test(config.databaseUrl) ? false : { rejectUnauthorized: false },
     max: 3,
+    idleTimeoutMillis: 30_000,
+    keepAlive: true,
   });
+  // O Neon derruba conexões paradas (ECONNRESET). Sem este handler, o erro da conexão ociosa derruba o servidor.
+  pool.on('error', e => console.error('Postgres: conexão perdida, o pool abre outra:', e.message));
   const txClient = new AsyncLocalStorage();
-  const q = (sql, p) => (txClient.getStore() || pool).query(toPg(sql), p);
+  const transient = e => /ECONNRESET|ETIMEDOUT|EPIPE|Connection terminated|connection.*(closed|timeout)/i.test(`${e.code} ${e.message}`);
+  // leitura fora de transação: repete uma vez quando a conexão caiu no meio (escrita não repete, para não duplicar)
+  const q = async (sql, p) => {
+    const c = txClient.getStore();
+    if (c) return c.query(toPg(sql), p);
+    try { return await pool.query(toPg(sql), p); }
+    catch (e) { if (!transient(e) || !/^\s*SELECT/i.test(sql)) throw e; await new Promise(r => setTimeout(r, 300)); return pool.query(toPg(sql), p); }
+  };
   const ready = (async () => {
     const c = await pool.connect();
     try {
