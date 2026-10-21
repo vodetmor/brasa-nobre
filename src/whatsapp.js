@@ -212,7 +212,7 @@ export async function botTurn(r, body) {
   const fresh = await all(`SELECT text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'in' AND id > ?
     ORDER BY id`, r.id, phone, Number(lastOut?.id) || 0);
   const history = await all(`SELECT direction, origin, text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND id <= ?
-    ORDER BY id DESC LIMIT 12`, r.id, phone, Number(lastOut?.id) || 0);
+    ORDER BY id DESC LIMIT 20`, r.id, phone, Number(lastOut?.id) || 0);
   const pastRows = await all(`SELECT items, created_at FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status <> 'cancelado' ORDER BY id DESC LIMIT 20`, r.id, phone);
   const past = pastRows.length ? { total: pastRows.length, ultimo: JSON.parse(pastRows[0].items || '[]').map(i => `${i.qty}x ${i.name}${i.choices ? ` (${i.choices.split('; ').map(c => c.slice(c.indexOf(': ') + 2)).join(', ')})` : ''}`).join(', ') } : null;
   const orders = await all(`SELECT * FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status IN ${OPEN_ORDER}
