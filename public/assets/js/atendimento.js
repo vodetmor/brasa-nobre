@@ -408,7 +408,7 @@ const FUNNEL = [
   ['Cliente manda mensagem', 'Texto, áudio (vira texto) ou foto (vira descrição). Grupos e status ficam de fora.'],
   ['Espera o cliente terminar', '9 segundos para juntar mensagens seguidas numa resposta só. Mensagem repetida é ignorada.'],
   ['Pode responder?', 'Só se o robô estiver ligado, a equipe não tiver assumido a conversa e ele não tiver passado de 8 respostas em 3 minutos.'],
-  ['IA monta a resposta', 'Usa a personalidade e o roteiro abaixo, as regras fixas, o cardápio, as informações da casa, as últimas 12 mensagens e a ficha do cliente (pedidos anteriores).'],
+  ['IA monta a resposta', 'Usa a personalidade e o roteiro abaixo, as regras fixas, o cardápio, as informações da casa, as últimas 20 mensagens e a ficha do cliente (pedidos anteriores).'],
   ['Manda o cardápio', 'Quando pedem o cardápio, envia as duas fotos do cardápio da casa.'],
   ['Conduz o pedido', 'Pedido, entrega/retirada/local, endereço, pagamento e nome. Mostra o resumo e espera o "sim".'],
   ['Registra o pedido', 'O sistema calcula o preço pelo cardápio (a IA não inventa valor). Aparece na aba Pedidos.'],
