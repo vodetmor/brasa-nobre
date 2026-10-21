@@ -221,6 +221,15 @@ api.patch('/api/r/:slug/atendimento/pedidos/:id', async ({ req, params }) =>
 api.get('/api/r/:slug/atendimento/robo-config', async ({ req, params }) => W.robotConfig(await staffCtx(req, params.slug)));
 api.post('/api/r/:slug/atendimento/robo-ligar', async ({ req, params }) => W.setRobotOn(await staffCtx(req, params.slug), await readJson(req)));
 api.put('/api/r/:slug/atendimento/robo-config', async ({ req, params }) => W.saveBot(await staffCtx(req, params.slug), await readJson(req)));
+api.get('/api/r/:slug/atendimento/midia/:id', async ({ req, res, params }) => {
+  const f = await W.mediaFile(await staffCtx(req, params.slug), Number(params.id));
+  res.writeHead(200, { 'Content-Type': f.type, 'Content-Length': f.body.length, 'Cache-Control': 'private, max-age=3600',
+    'Content-Disposition': `inline; filename="${encodeURIComponent(f.name)}"` });
+  res.end(f.body);
+  return STREAM;
+});
+api.get('/api/r/:slug/atendimento/reclamacoes', async ({ req, params }) => W.complaints(await staffCtx(req, params.slug)));
+api.post('/api/r/:slug/atendimento/reclamacoes', async ({ req, params }) => W.staffComplaint(await staffCtx(req, params.slug), await readJson(req)));
 api.put('/api/r/:slug/atendimento/info', async ({ req, params }) => W.saveInfo(await staffCtx(req, params.slug), await readJson(req)));
 
 // ---------- agência: criar restaurantes ----------

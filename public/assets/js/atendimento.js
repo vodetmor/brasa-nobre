@@ -122,6 +122,7 @@ async function start() {
     <div class="at-tabs" role="tablist">
       <button type="button" role="tab" data-tab="conversas">Conversas<span class="count hidden" id="c-conv"></span></button>
       <button type="button" role="tab" data-tab="pedidos">Pedidos<span class="count hidden" id="c-ped"></span></button>
+      <button type="button" role="tab" data-tab="reclamacoes">Reclamações</button>
       <button type="button" role="tab" data-tab="robo">Robô</button>
       <span class="spacer"></span><button type="button" class="btn soft small" id="som" aria-pressed="false">Ligar som e avisos</button>
     </div>
@@ -162,6 +163,7 @@ function render(passive = false) {
   if (passive && tab === 'robo') return;
   if (tab === 'conversas') renderChat(passive);
   else if (tab === 'pedidos') renderOrders();
+  else if (tab === 'reclamacoes') { if (!passive) renderComplaints(); }
   else renderRobot();
 }
 
@@ -248,9 +250,10 @@ function renderConvo(scroll = true) {
         ? `<span class="tag ${urgent(c) ? 'alert' : 'team'}">${esc(REASON[c.human_reason] || REASON.outro)}</span>
            <button type="button" class="btn ${urgent(c) ? 'ok' : 'soft'} small" id="robot-on" title="O robô volta a responder este cliente">${urgent(c) ? 'Resolvido' : 'Devolver ao robô'}</button>`
         : `<span class="tag">Robô respondendo</span><button type="button" class="btn soft small" id="robot-off">Assumir conversa</button>`}
+      <button type="button" class="btn ghost small" id="mark-complaint" title="Conta nos avisos de reclamação">Marcar reclamação</button>
     </div>
     <div class="at-msgs">${convo.messages.map(m => `
-      <div class="msg ${m.direction} ${m.origin}">${esc(m.text)}<small>${m.origin === 'cliente' ? '' : m.origin === 'robo' ? 'Robô · ' : 'Equipe · '}${hhmm(m.created_at)}${m.pending === 1 ? ' · enviando…' : m.pending === -1 ? ' · não enviada' : ''}</small></div>`).join('')
+      <div class="msg ${m.direction} ${m.origin}">${mediaView(m)}${esc(m.text)}<small>${m.origin === 'cliente' ? '' : m.origin === 'robo' ? 'Robô · ' : 'Equipe · '}${hhmm(m.created_at)}${m.pending === 1 ? ' · enviando…' : m.pending === -1 ? ' · não enviada' : ''}</small></div>`).join('')
       || '<p class="at-empty">Sem mensagens.</p>'}</div>
     <form class="at-compose" id="compose">
       <textarea class="input" id="reply" rows="1" placeholder="${data.can_send ? 'Escreva para o cliente (o robô pausa nesta conversa)' : 'Envio pelo painel desligado'}" ${data.can_send ? '' : 'disabled'}></textarea>
@@ -264,6 +267,7 @@ function renderConvo(scroll = true) {
   $('#back').addEventListener('click', () => { open = null; convo = null; render(); });
   $('#robot-on')?.addEventListener('click', () => setRobot(true));
   $('#robot-off')?.addEventListener('click', () => setRobot(false));
+  $('#mark-complaint').addEventListener('click', markComplaint);
   $('#compose').addEventListener('submit', async e => {
     e.preventDefault();
     const text = ta.value.trim();
@@ -278,6 +282,46 @@ function renderConvo(scroll = true) {
     } catch (err) { toast(err.message, 'error'); }
     finally { btn.disabled = false; btn.textContent = 'Enviar'; }
   });
+}
+
+// foto, figurinha e vídeo aparecem na conversa; documento e áudio viram um link
+function mediaView(m) {
+  if (!m.has_file) return '';
+  const url = `/api/r/${slug}/atendimento/midia/${m.id}`;
+  if (m.media === 'imagem') return `<a href="${url}" target="_blank" rel="noopener"><img class="msg-img" src="${url}" alt="Foto enviada pelo cliente" loading="lazy"></a>`;
+  if (m.media === 'video') return `<video class="msg-img" src="${url}" controls preload="metadata"></video>`;
+  if (m.media === 'audio') return `<audio src="${url}" controls preload="none"></audio>`;
+  return `<a class="msg-file" href="${url}" target="_blank" rel="noopener">📎 ${esc(m.media_name || 'Abrir arquivo')}</a>`;
+}
+
+// ---------- reclamações: só aviso para o dono saber o que melhorar ----------
+let complaintTopics = [];
+async function renderComplaints() {
+  $('#view').innerHTML = '<p class="at-empty">Carregando…</p>';
+  let d;
+  try { d = await api(`/api/r/${slug}/atendimento/reclamacoes`); } catch (e) { $('#view').innerHTML = `<p class="at-empty">${esc(e.message)}</p>`; return; }
+  complaintTopics = d.topics;
+  const max = Math.max(1, ...d.groups.map(g => g.count));
+  $('#view').innerHTML = `<div class="at-complaints">
+    <p class="muted">Últimos 30 dias. O robô conta uma reclamação quando passa a conversa para a equipe por esse motivo; você também pode marcar pela conversa.</p>
+    ${d.groups.length ? d.groups.map((g, i) => `
+      <article class="cp ${i === 0 ? 'top' : ''}">
+        <div class="cp-head"><b>${esc(g.topic)}</b><span class="cp-n">${g.count} ${g.count === 1 ? 'reclamação' : 'reclamações'}</span></div>
+        <div class="cp-bar"><i style="width:${Math.round(g.count / max * 100)}%"></i></div>
+        ${g.examples.map(x => `<button type="button" class="cp-ex" data-open="${esc(x.phone)}"><span>“${esc(x.detail || '(sem texto)')}”</span>
+          <small>${esc(x.name || formatPhone(x.phone))} · ${when(x.created_at)}</small></button>`).join('')}
+      </article>`).join('') : '<p class="at-empty">Nenhuma reclamação nos últimos 30 dias. 👍</p>'}
+  </div>`;
+  $$('.cp-ex').forEach(b => b.addEventListener('click', () => { tab = 'conversas'; openConvo(b.dataset.open); }));
+}
+
+async function markComplaint() {
+  if (!complaintTopics.length) complaintTopics = (await api(`/api/r/${slug}/atendimento/reclamacoes`).catch(() => ({ topics: [] }))).topics;
+  const list = complaintTopics.map((t, i) => `${i + 1}. ${t}`).join('\n');
+  const n = Number(prompt(`Qual o assunto da reclamação?\n${list}`, ''));
+  if (!n || !complaintTopics[n - 1]) return;
+  try { await api(`/api/r/${slug}/atendimento/reclamacoes`, { method: 'POST', body: { phone: open, topic: complaintTopics[n - 1] } }); toast('Reclamação registrada nos avisos.'); }
+  catch (e) { toast(e.message, 'error'); }
 }
 
 async function setRobot(on) {

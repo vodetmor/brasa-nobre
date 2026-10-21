@@ -72,7 +72,7 @@ const FIXED_RULES = `REGRAS FIXAS (valem acima de tudo)
 6. registrar_pedido responde OK ou ERRO. Se ERRO, explique de forma simples o que falta e pergunte. Se OK, informe o número do pedido e diga que a equipe confirma por aqui em instantes. Nunca diga que o pedido foi feito sem o OK da ferramenta.
 7. Use pedir_humano NA HORA, sem tentar convencer, quando o cliente: pedir uma pessoa, atendente, gerente ou dono; reclamar; quiser alterar ou cancelar um pedido já registrado; pedir encomenda grande, evento ou algo fora do cardápio; ou quando você não souber resolver. Motivos: pediu_atendente, reclamacao, alterar_cancelar, fora_do_cardapio, duvida ou outro. Nesse caso responda só uma frase curta avisando que a equipe vai continuar a conversa por aqui.
 8. Se perguntarem do pedido, use PEDIDOS EM ANDAMENTO. Não prometa tempo de entrega que não esteja nas informações.
-9. Áudio e foto: "[Áudio do cliente, transcrito]" -> responda como quem ouviu o áudio, sem falar em transcrição. "[Foto enviada pelo cliente...]" -> responda ao que aparece. Se não abriu, peça para escrever.
+9. Áudio, foto, figurinha, vídeo e documento: "[Áudio do cliente, transcrito]" -> responda como quem ouviu, sem falar em transcrição. "[Foto ...]" ou "[Vídeo ...]" -> responda ao que aparece (se mostrar problema com a comida ou a entrega, é reclamação: pedir_humano). "[Figurinha ...]" -> reaja curto e siga a conversa. "[Documento enviado pelo cliente: ...]" -> se parecer comprovante de pagamento, agradeça e diga que a equipe confere; senão, peça para ele dizer do que se trata. Se não abriu, peça para escrever.
 10. Se perguntarem se é robô, não minta: é o atendimento automático da casa, e uma pessoa da equipe assume quando ele quiser (se quiser, use pedir_humano).
 11. Encerramento: se o assunto já foi resolvido e o cliente manda só "ok", "obrigado", "👍", responda UMA vez, bem curto. Se mandar outro agradecimento depois, responda exatamente [SEM_RESPOSTA] e nada mais.
 12. Assunto que não tem a ver com o restaurante: volte com leveza para o atendimento.`;
@@ -150,6 +150,9 @@ export async function botInbound(r, body) {
   const media = ['audio', 'imagem', 'video', 'outro'].includes(body.midia) ? body.midia : '';
   const pushName = clip(body.nome_whatsapp, 60);
   const waId = clip(body.msg_id, 120);
+  // arquivo guardado pelo WAHA no PC; o painel abre por /atendimento/midia/:id
+  const mediaFile = /^[A-Za-z0-9._-]{1,120}$/.test(String(body.midia_arquivo || '')) ? String(body.midia_arquivo) : '';
+  const mediaName = clip(body.midia_nome, 120);
   if (waId && await get('SELECT id FROM wa_messages WHERE restaurant_id = ? AND wa_id = ?', r.id, waId)) return { duplicada: true, pausado: true };
 
   return tx(async () => {
@@ -157,8 +160,8 @@ export async function botInbound(r, body) {
       ON CONFLICT (restaurant_id, phone) DO NOTHING`, r.id, phone, pushName);
     await run(`UPDATE wa_contacts SET last_message = ?, unread = unread + 1, updated_at = datetime('now')
       WHERE restaurant_id = ? AND phone = ?`, text.slice(0, 200), r.id, phone);
-    const { lastInsertRowid } = await run('INSERT INTO wa_messages (restaurant_id, phone, direction, origin, text, media, wa_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      r.id, phone, 'in', 'cliente', text, media, waId);
+    const { lastInsertRowid } = await run(`INSERT INTO wa_messages (restaurant_id, phone, direction, origin, text, media, wa_id, media_file, media_name)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, r.id, phone, 'in', 'cliente', text, media, waId, mediaFile, mediaName);
     const contact = await get('SELECT needs_human FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, phone);
     return { id: Number(lastInsertRowid), pausado: !r.wa_robot_on || !!contact.needs_human };
   });
@@ -220,9 +223,21 @@ async function logOut(r, phone, text, origin, pending) {
     text.slice(0, 200), r.id, phone);
 }
 
+export const COMPLAINT_TOPICS = ['Qualidade da comida', 'Comida fria', 'Atraso na entrega', 'Pedido errado ou faltando item',
+  'Entregador', 'Atendimento', 'Preço', 'Embalagem', 'Outro'];
+const topicOf = t => COMPLAINT_TOPICS.find(x => norm(x) === norm(t)) || COMPLAINT_TOPICS.find(x => norm(t) && norm(x).includes(norm(t))) || 'Outro';
+
+async function addComplaint(r, phone, topic) {
+  const last = await get(`SELECT text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'in' ORDER BY id DESC LIMIT 1`, r.id, phone);
+  const c = await get('SELECT name FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, phone);
+  await run('INSERT INTO wa_complaints (restaurant_id, phone, name, topic, detail) VALUES (?, ?, ?, ?, ?)',
+    r.id, phone, c?.name || '', topicOf(topic), clip(last?.text, 400));
+}
+
 export async function botHuman(r, body) {
   const phone = cleanPhone(body.telefone);
   const reason = clip(body.motivo, 60) || 'outro';
+  if (reason === 'reclamacao') await addComplaint(r, phone, body.assunto);
   const { changes } = await run(`UPDATE wa_contacts SET needs_human = 1, human_reason = ?, updated_at = datetime('now')
     WHERE restaurant_id = ? AND phone = ?`, reason, r.id, phone);
   return { resultado: changes ? 'OK: a equipe foi avisada e vai continuar a conversa por aqui. Diga isso ao cliente em uma frase.' : 'ERRO: contato não encontrado' };
@@ -316,7 +331,7 @@ export async function conversation(r, phone) {
   const contact = await get('SELECT * FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, phone);
   if (!contact) throw new HttpError(404, 'Conversa não encontrada');
   await run('UPDATE wa_contacts SET unread = 0 WHERE id = ?', contact.id);
-  const messages = (await all(`SELECT id, direction, origin, text, media, pending, created_at FROM wa_messages
+  const messages = (await all(`SELECT id, direction, origin, text, media, media_name, (media_file <> '') AS has_file, pending, created_at FROM wa_messages
     WHERE restaurant_id = ? AND phone = ? ORDER BY id DESC LIMIT 200`, r.id, phone)).reverse();
   return { contact: { ...contact, unread: 0 }, messages };
 }
@@ -448,6 +463,41 @@ export async function saveBot(r, body) {
   return { ok: true };
 }
 
+// Foto, vídeo ou documento do cliente, buscado no PC pelo n8n (rota /webhook/espeto/midia).
+const MIME = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', mp4: 'video/mp4', pdf: 'application/pdf', oga: 'audio/ogg', ogg: 'audio/ogg', mp3: 'audio/mpeg' };
+export async function mediaFile(r, id) {
+  const m = await get('SELECT media_file, media_name FROM wa_messages WHERE id = ? AND restaurant_id = ?', id, r.id);
+  if (!m?.media_file) throw new HttpError(404, 'Arquivo não encontrado');
+  const base = await n8nUrl();
+  if (!base) throw new HttpError(503, 'O PC do atendente não está ligado ao painel');
+  let res;
+  try { res = await fetch(`${base}/webhook/espeto/midia?f=${encodeURIComponent(m.media_file)}`, { headers: { 'x-bot-token': config.waBotToken }, signal: AbortSignal.timeout(20000) }); }
+  catch { throw new HttpError(502, 'O PC do atendente não respondeu'); }
+  if (!res.ok) throw new HttpError(404, 'O arquivo não está mais no PC');
+  const ext = m.media_file.split('.').pop().toLowerCase();
+  return { body: Buffer.from(await res.arrayBuffer()), type: MIME[ext] || res.headers.get('content-type') || 'application/octet-stream', name: m.media_name || m.media_file };
+}
+
+// Reclamações agrupadas por assunto (últimos 30 dias), as mais frequentes primeiro
+export async function complaints(r) {
+  const rows = await all(`SELECT * FROM wa_complaints WHERE restaurant_id = ? AND created_at >= datetime('now', '-30 days') ORDER BY id DESC`, r.id);
+  const groups = new Map();
+  for (const c of rows) {
+    const g = groups.get(c.topic) || { topic: c.topic, count: 0, last_at: c.created_at, examples: [] };
+    g.count++;
+    if (g.examples.length < 3) g.examples.push({ name: c.name, phone: c.phone, detail: c.detail, created_at: c.created_at });
+    groups.set(c.topic, g);
+  }
+  return { total: rows.length, groups: [...groups.values()].sort((a, b) => b.count - a.count), topics: COMPLAINT_TOPICS };
+}
+
+export async function staffComplaint(r, body) {
+  const phone = cleanPhone(body.phone);
+  if (!phone) throw new HttpError(400, 'Escolha a conversa');
+  await addComplaint(r, phone, body.topic);
+  return { ok: true };
+}
+
 export async function saveInfo(r, body) {
   await run('UPDATE restaurants SET wa_info = ? WHERE id = ?', clip(body.info, 3000), r.id);
   return { ok: true };
@@ -462,6 +512,7 @@ export async function snapshotWhatsApp(slugs) {
     if (!r) continue;
     snap[slug] = {
       settings: r,
+      complaints: await all('SELECT * FROM wa_complaints WHERE restaurant_id = ? ORDER BY id', r.id),
       contacts: await all('SELECT * FROM wa_contacts WHERE restaurant_id = ? ORDER BY id', r.id),
       messages: await all('SELECT * FROM wa_messages WHERE restaurant_id = ? ORDER BY id', r.id),
       orders: await all('SELECT * FROM wa_orders WHERE restaurant_id = ? ORDER BY id', r.id),
@@ -482,6 +533,7 @@ export async function restoreWhatsApp(snap, slug, restaurantId) {
     }
   };
   await copy('wa_contacts', w.contacts, ['phone', 'name', 'stage', 'needs_human', 'human_reason', 'last_message', 'unread', 'created_at', 'updated_at']);
+  await copy('wa_complaints', w.complaints || [], ['phone', 'name', 'topic', 'detail', 'created_at']);
   await copy('wa_messages', w.messages, ['phone', 'direction', 'origin', 'text', 'media', 'pending', 'wa_id', 'created_at']);
   // o pedido da cozinha some na recriação: kitchen_order_id não é copiado
   await copy('wa_orders', w.orders, ['number', 'phone', 'customer_name', 'items', 'total_cents', 'mode', 'address', 'payment', 'note', 'status', 'created_at', 'updated_at']);

@@ -32,6 +32,8 @@ const MIGRATIONS = [
   ['restaurants', 'wa_robot_on', 'INTEGER NOT NULL DEFAULT 0'],
   ['restaurants', 'wa_bot', "TEXT DEFAULT ''"],
   ['wa_orders', 'kitchen_order_id', 'INTEGER'],
+  ['wa_messages', 'media_file', "TEXT DEFAULT ''"],
+  ['wa_messages', 'media_name', "TEXT DEFAULT ''"],
 ];
 
 export const engine = config.databaseUrl ? 'postgres' : 'sqlite';

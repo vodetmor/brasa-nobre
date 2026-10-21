@@ -121,3 +121,21 @@ body { min-height: 100vh; }
 body.only-robot .topbar, body.only-robot .at-tabs { display: none; }
 body.only-robot .at-robot { grid-template-columns: 1fr; max-width: none; }
 body.only-robot .at-robot > :first-child { grid-row: auto; }
+
+/* mídia na conversa */
+.msg-img { display: block; max-width: min(280px, 100%); max-height: 320px; border-radius: 10px; margin-bottom: 6px; background: var(--bg); }
+.msg audio { display: block; max-width: 260px; margin-bottom: 6px; }
+.msg-file { display: inline-block; margin-bottom: 6px; font-weight: 650; }
+
+/* reclamações */
+.at-complaints { padding: 16px; display: grid; gap: 12px; max-width: 820px; }
+.cp { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: grid; gap: 8px; }
+.cp.top { border-color: var(--danger); }
+.cp-head { display: flex; align-items: baseline; gap: 10px; }
+.cp-n { margin-left: auto; color: var(--muted); font-size: .88rem; font-weight: 650; }
+.cp-bar { height: 6px; border-radius: 6px; background: var(--surface-2); overflow: hidden; }
+.cp-bar i { display: block; height: 100%; background: var(--danger); border-radius: 6px; }
+.cp-ex { text-align: left; background: none; border: 0; border-top: 1px solid var(--border); padding: 8px 0 0; cursor: pointer; display: grid; gap: 2px; }
+.cp-ex span { font-size: .92rem; }
+.cp-ex small { color: var(--muted); }
+.cp-ex:hover span { text-decoration: underline; }

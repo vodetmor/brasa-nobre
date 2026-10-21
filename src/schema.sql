@@ -171,6 +171,8 @@ CREATE TABLE IF NOT EXISTS wa_messages (
   media TEXT DEFAULT '',                        -- audio | imagem | video | outro
   pending INTEGER NOT NULL DEFAULT 0,           -- mensagem da equipe na fila do n8n: 1 = esperando, -1 = falhou
   wa_id TEXT DEFAULT '',                        -- id da mensagem no WhatsApp (descarta entrega repetida)
+  media_file TEXT DEFAULT '',                   -- arquivo guardado pelo WAHA no PC (foto, vídeo, documento)
+  media_name TEXT DEFAULT '',                   -- nome do documento enviado
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_wa_messages_phone ON wa_messages(restaurant_id, phone, id);
@@ -194,3 +196,15 @@ CREATE TABLE IF NOT EXISTS wa_orders (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_wa_orders_rest ON wa_orders(restaurant_id, status);
+
+-- Reclamações dos clientes (o robô classifica ao passar para a equipe; a equipe também marca). Só aviso para o dono.
+CREATE TABLE IF NOT EXISTS wa_complaints (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  restaurant_id INTEGER NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+  phone TEXT NOT NULL,
+  name TEXT DEFAULT '',
+  topic TEXT NOT NULL DEFAULT 'Outro',          -- assunto curto: Comida fria, Atraso na entrega...
+  detail TEXT DEFAULT '',                       -- o que o cliente escreveu
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_wa_complaints_rest ON wa_complaints(restaurant_id, created_at);
