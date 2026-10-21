@@ -8,6 +8,8 @@ const SIZES = {
   carne: 0.30, frango: 0.30, linguica: 0.30, coracao: 0.30, misto: 0.30, queijo: 0.30,
   mandioca: 0.20, tropeiro: 0.20, vinagrete: 0.20,
   avocado: 0.12,
+  // Central do Espeto (modelos feitos das fotos da casa): prato da carne e tigela de guarnição
+  'ce-cupim': 0.30, 'ce-contra-file': 0.30, 'ce-arroz': 0.15, 'ce-arroz-brocolis': 0.15,
 };
 const NODE = 'escala-real';
 

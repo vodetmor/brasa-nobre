@@ -19,10 +19,5 @@ export const REMOTE = {
   'jantinha.glb': 'hf_20261017_020647_e03920be-91bd-4b00-9723-65d60bc72249.glb',
   'pf.glb': 'hf_20261017_020650_ea4d7b0f-ccdb-43ce-b385-add3b5346d93.glb',
   'mandioca.glb': 'hf_20261017_020653_c161a11a-137c-46ad-a429-50484831c5ad.glb',
-  // Central do Espeto: fotos ilustrativas dos pratos até chegarem as da casa (lista = tenta a versão leve antes)
-  'ce-pf.webp': ['hf_20261020_145912_09564e18-9562-4d95-8eb8-528ca0d790d6_min.webp', 'hf_20261020_145912_09564e18-9562-4d95-8eb8-528ca0d790d6.png'],
-  'ce-central.webp': ['hf_20261020_145913_25557fdd-922f-4dcb-b805-14bbfe5b4992_min.webp', 'hf_20261020_145913_25557fdd-922f-4dcb-b805-14bbfe5b4992.png'],
-  'ce-sertanejo.webp': ['hf_20261020_145913_fead531d-4269-4fd4-9dc3-025d802dd3ba_min.webp', 'hf_20261020_145913_fead531d-4269-4fd4-9dc3-025d802dd3ba.png'],
-  'ce-fit.webp': ['hf_20261020_145912_7458866f-d595-4fb3-a5f1-b03d3059d922_min.webp', 'hf_20261020_145912_7458866f-d595-4fb3-a5f1-b03d3059d922.png'],
 };
 export const remoteUrls = file => [REMOTE[file]].flat().map(f => CDN + f);

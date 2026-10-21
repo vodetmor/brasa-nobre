@@ -4,7 +4,7 @@
 import { run, get, all, tx, engine } from './db.js';
 import * as S from './services.js';
 
-export const SEED_VERSION = '11';
+export const SEED_VERSION = '12';
 
 const ai = f => `/demo/ai/${f}`;
 const bn = f => `/demo/brasa-nobre/${f}`;
@@ -27,7 +27,7 @@ const MODELO = {
 // Item: [nome, descrição, preço em centavos, { image_url, ingredients, options, badge, model_glb_url }]
 export const DEMOS = [
   // Cliente real (Central do Espeto, Sobradinho-DF): nome, pratos, preços e contato do cardápio impresso
-  // que o Ribeiro enviou em 20/10/2026. Prato feito com foto do Instagram da casa; o resto é ilustrativo até chegarem as da casa.
+  // que o Ribeiro enviou em 20/10/2026. Só fotos e modelos 3D da casa (prato sem foto real fica sem foto).
   // Atenção: enquanto estiver aqui, mudar SEED_VERSION recria o restaurante e apaga pedidos. Quando o
   // cliente começar a usar de verdade, tirar daqui e cuidar do cardápio pelo /r/central-do-espeto/admin.
   {
@@ -48,52 +48,52 @@ export const DEMOS = [
           ].join('\n') }],
       ],
       'Pratos da casa · seg a sex, almoço': [
-        ['Central', 'Bife de cupim, arroz branco, feijão tropeiro e purê.', 2000, { image_url: ai('ce-central.webp'), badge: 'Prato da casa', ingredients: 'Bife de cupim, Arroz branco, Feijão tropeiro, Purê' }],
-        ['Sertanejo', 'Carne de sol, arroz branco, feijão de caldo e vinagrete.', 2000, { image_url: ai('ce-sertanejo.webp'), ingredients: 'Carne de sol, Arroz branco, Feijão de caldo, Vinagrete' }],
-        ['Fit', 'Frango grelhado, arroz com brócolis, mix de folhas e vinagrete.', 2000, { image_url: ai('ce-fit.webp'), ingredients: 'Frango grelhado, Arroz com brócolis, Mix de folhas, Vinagrete' }],
+        ['Central', 'Bife de cupim, arroz branco, feijão tropeiro e purê.', 2000, { badge: 'Prato da casa', ingredients: 'Bife de cupim, Arroz branco, Feijão tropeiro, Purê' }],
+        ['Sertanejo', 'Carne de sol, arroz branco, feijão de caldo e vinagrete.', 2000, { ingredients: 'Carne de sol, Arroz branco, Feijão de caldo, Vinagrete' }],
+        ['Fit', 'Frango grelhado, arroz com brócolis, mix de folhas e vinagrete.', 2000, { ingredients: 'Frango grelhado, Arroz com brócolis, Mix de folhas, Vinagrete' }],
       ],
       'Espetos': [
-        ['Alcatra', '', 1200, { image_url: FOTO.carne, model_glb_url: MODELO.carne }],
-        ['Contra filé', '', 1200],
+        ['Alcatra', '', 1200],
+        ['Contra filé', '', 1200, { image_url: ce('ce-contra-file.webp'), model_glb_url: ce('ce-contra-file.glb') }],
         ['Kafta', '', 1200],
-        ['Peito de frango', '', 1200, { image_url: FOTO.frango, model_glb_url: MODELO.frango }],
+        ['Peito de frango', '', 1200],
         ['Frango com bacon', '', 1200],
         ['Meio da asa', '', 1200],
-        ['Coração', '', 1200, { image_url: FOTO.coracao, model_glb_url: MODELO.coracao }],
+        ['Coração', '', 1200],
         ['Lombo suíno', '', 1200],
         ['Camarão', '', 1200],
-        ['Queijo coalho', '', 1200, { image_url: FOTO.queijo, model_glb_url: MODELO.queijo }],
+        ['Queijo coalho', '', 1200],
         ['Queijo provolone', '', 1200],
         ['Pão de alho', '', 1200],
-        ['Linguiça', '', 1200, { image_url: FOTO.linguica, model_glb_url: MODELO.linguica }],
+        ['Linguiça', '', 1200],
       ],
       'Jantinha': [
-        ['Jantinha completa', 'Arroz branco, feijão tropeiro, vinagrete, mandioca e um espeto à escolha.', 2000, { image_url: FOTO.jantinha, model_glb_url: MODELO.jantinha, badge: 'Completa', ingredients: 'Arroz branco, Feijão tropeiro, Vinagrete, Mandioca', options: 'Espeto: Alcatra, Contra filé, Kafta, Peito de frango, Frango com bacon, Meio da asa, Coração, Lombo suíno, Camarão, Queijo coalho, Queijo provolone, Pão de alho, Linguiça' }],
+        ['Jantinha completa', 'Arroz branco, feijão tropeiro, vinagrete, mandioca e um espeto à escolha.', 2000, { badge: 'Completa', ingredients: 'Arroz branco, Feijão tropeiro, Vinagrete, Mandioca', options: 'Espeto: Alcatra, Contra filé, Kafta, Peito de frango, Frango com bacon, Meio da asa, Coração, Lombo suíno, Camarão, Queijo coalho, Queijo provolone, Pão de alho, Linguiça' }],
         ['Jantinha sem espeto', 'Arroz branco, feijão tropeiro, vinagrete e mandioca.', 1300, { ingredients: 'Arroz branco, Feijão tropeiro, Vinagrete, Mandioca' }],
       ],
       'Guarnições': [
         ['Batata frita', 'Porção extra.', 800],
-        ['Mandioca frita', 'Porção extra.', 800, { image_url: FOTO.mandioca }],
-        ['Arroz branco', 'Porção extra.', 500],
-        ['Arroz com brócolis', 'Porção extra.', 700],
+        ['Mandioca frita', 'Porção extra.', 800],
+        ['Arroz branco', 'Porção extra.', 500, { image_url: ce('ce-arroz.webp'), model_glb_url: ce('ce-arroz.glb') }],
+        ['Arroz com brócolis', 'Porção extra.', 700, { image_url: ce('ce-arroz-brocolis.webp'), model_glb_url: ce('ce-arroz-brocolis.glb') }],
         ['Purê de batata', 'Porção extra.', 700],
-        ['Feijão tropeiro', 'Porção extra.', 900, { image_url: FOTO.tropeiro, model_glb_url: MODELO.tropeiro }],
+        ['Feijão tropeiro', 'Porção extra.', 900],
         ['Maionese de batata', 'Porção extra.', 700],
         ['Ovo frito ou mexido', 'Porção extra.', 400, { options: 'Ovo: Frito, Mexido' }],
         ['Banana frita na manteiga', 'Porção extra.', 700],
       ],
       'Bebidas': [
-        ['Água sem gás', '', 350, { image_url: FOTO.agua }],
-        ['Água com gás', '', 450, { image_url: FOTO.agua }],
-        ['Refrigerante lata', '', 600, { image_url: FOTO.refri }],
+        ['Água sem gás', '', 350],
+        ['Água com gás', '', 450],
+        ['Refrigerante lata', '', 600],
         ['Guaraná 1 L', '', 900],
         ['Guaraná 1,5 L', '', 1000],
         ['Coca-Cola 2 L', '', 1300],
-        ['Suco natural 300 ml', '', 800, { image_url: FOTO.suco }],
+        ['Suco natural 300 ml', '', 800],
         ['Energético', '', 1100],
-        ['Spaten 360 ml', '', 700, { image_url: FOTO.cerveja }],
-        ['Heineken long neck', '', 1000, { image_url: FOTO.cerveja }],
-        ['Antarctica ou Skol', '', 500, { image_url: FOTO.cerveja, options: 'Cerveja: Antarctica, Skol' }],
+        ['Spaten 360 ml', '', 700],
+        ['Heineken long neck', '', 1000],
+        ['Antarctica ou Skol', '', 500, { options: 'Cerveja: Antarctica, Skol' }],
       ],
     },
   },

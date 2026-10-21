@@ -27,7 +27,7 @@ for (const file of Object.keys(REMOTE)) {
   if (err) { fail++; console.error(`x ${file}: ${err.message}`); }
 }
 
-for (const sub of ['public/demo/ai', 'public/demo/brasa-nobre', 'public/models']) {
+for (const sub of ['public/demo/ai', 'public/demo/brasa-nobre', 'public/demo/central-do-espeto', 'public/models']) {
   const d = resolve(ROOT, sub);
   if (!existsSync(d)) continue;
   for (const file of readdirSync(d).filter(f => f.endsWith('.glb'))) {
