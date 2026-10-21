@@ -204,6 +204,7 @@ const botCtx = async (req, slug) => { W.requireBot(req); return S.restaurantBySl
 api.post('/api/r/:slug/wa/bot/entrada', async ({ req, params }) => W.botInbound(await botCtx(req, params.slug), await readJson(req)));
 api.post('/api/r/:slug/wa/bot/vez', async ({ req, params }) => W.botTurn(await botCtx(req, params.slug), await readJson(req)));
 api.post('/api/r/:slug/wa/bot/proprio', async ({ req, params }) => W.botOwn(await botCtx(req, params.slug), await readJson(req)));
+api.post('/api/r/:slug/wa/bot/n8n-url', async ({ req, params }) => { await botCtx(req, params.slug); return W.botSetN8nUrl(await readJson(req)); });
 api.post('/api/r/:slug/wa/bot/saida', async ({ req, params }) => W.botOutbound(await botCtx(req, params.slug), await readJson(req)));
 api.post('/api/r/:slug/wa/bot/pedido', async ({ req, params }) => W.botOrder(await botCtx(req, params.slug), await readJson(req)));
 api.post('/api/r/:slug/wa/bot/fila', async ({ req, params }) => W.botQueue(await botCtx(req, params.slug)));
