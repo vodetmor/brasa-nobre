@@ -1,5 +1,6 @@
 /* Painel administrativo do restaurante (admin.html). Usa os tokens de base.css. */
 html, body { overflow-x: hidden; }
+.topbar[hidden] { display: none; }
 .topbar nav { display: flex; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
 .topbar nav::-webkit-scrollbar { display: none; }
 .topbar nav a { white-space: nowrap; }
