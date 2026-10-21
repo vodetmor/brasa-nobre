@@ -408,7 +408,8 @@ const FUNNEL = [
   ['Cliente manda mensagem', 'Texto, áudio (vira texto) ou foto (vira descrição). Grupos e status ficam de fora.'],
   ['Espera o cliente terminar', '9 segundos para juntar mensagens seguidas numa resposta só. Mensagem repetida é ignorada.'],
   ['Pode responder?', 'Só se o robô estiver ligado, a equipe não tiver assumido a conversa e ele não tiver passado de 8 respostas em 3 minutos.'],
-  ['IA monta a resposta', 'Usa a personalidade e o roteiro abaixo, as regras fixas, o cardápio, as informações da casa e as últimas 14 mensagens.'],
+  ['IA monta a resposta', 'Usa a personalidade e o roteiro abaixo, as regras fixas, o cardápio, as informações da casa, as últimas 30 mensagens e a ficha do cliente (pedidos anteriores).'],
+  ['Manda o cardápio', 'Quando pedem o cardápio, envia as duas fotos do cardápio da casa.'],
   ['Conduz o pedido', 'Pedido, entrega/retirada/local, endereço, pagamento e nome. Mostra o resumo e espera o "sim".'],
   ['Registra o pedido', 'O sistema calcula o preço pelo cardápio (a IA não inventa valor). Aparece na aba Pedidos.'],
   ['Equipe confirma', 'O cliente recebe o aviso no WhatsApp e o pedido vai para a Cozinha, que toca e imprime.'],
@@ -419,6 +420,7 @@ const BOT_FORM = [
   ['jeito', 'Jeito de falar', 'textarea', 'Uma regra por linha.'],
   ['roteiro', 'Roteiro do pedido', 'textarea', 'A ordem das perguntas. Uma etapa por linha.'],
   ['extras', 'Regras extras da casa', 'textarea', 'Ex.: Não fazemos troca de acompanhamento no prato da casa.'],
+  ['avisar', 'Celular que toca a cada pedido', 'input', 'Com DDD. O WhatsApp da casa manda um aviso para este número quando chega pedido ou alguém pede a equipe. Use outro número, não o da casa.'],
 ];
 let robot = null;
 
@@ -439,8 +441,11 @@ async function renderRobot() {
         <h2>Personalidade e roteiro</h2>
         <p class="muted">O que você mudar aqui vale a partir da próxima mensagem. As regras fixas (não inventar preço, passar para a equipe) continuam valendo.</p>
         ${BOT_FORM.map(([k, l, type, hint]) => `<label class="field"><span>${l}</span>
-          ${type === 'input' ? `<input class="input" name="${k}" maxlength="40" value="${esc(b[k])}">` : `<textarea class="input" name="${k}" rows="${k === 'roteiro' ? 8 : 4}">${esc(b[k])}</textarea>`}
+          ${type === 'input' ? `<input class="input" name="${k}" maxlength="40" ${k === 'avisar' ? 'inputmode="tel" placeholder="(61) 9 0000-0000"' : ''} value="${esc(b[k])}">` : `<textarea class="input" name="${k}" rows="${k === 'roteiro' ? 8 : 4}">${esc(b[k])}</textarea>`}
           <small class="muted">${esc(hint)}</small></label>`).join('')}
+        <label class="field"><span>Modelo da IA</span>
+          <select class="input" name="modelo">${robot.models.map(m => `<option value="${m.id}" ${m.id === b.modelo ? 'selected' : ''}>${esc(m.nome)} · ${esc(m.custo)}</option>`).join('')}</select>
+          <small class="muted">O mais esperto conversa melhor e erra menos, mas gasta uns 3 vezes mais crédito da z.ai.</small></label>
         <div class="row wrap"><button class="btn">Salvar</button><button type="button" class="btn ghost" id="bot-reset">Voltar ao padrão</button></div>
       </form>
       <form class="card-sec" id="info-form">
@@ -458,7 +463,7 @@ async function renderRobot() {
   });
   $('#bot-reset').addEventListener('click', () => {
     if (!confirm('Voltar a personalidade e o roteiro ao padrão?')) return;
-    for (const [k] of BOT_FORM) e2(k).value = robot.defaults[k];
+    for (const [k] of BOT_FORM) if (k !== 'avisar') e2(k).value = robot.defaults[k];
     toast('Padrão carregado. Clique em Salvar para aplicar.');
   });
   const e2 = k => $(`#bot-form [name=${k}]`);

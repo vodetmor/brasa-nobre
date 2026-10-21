@@ -38,12 +38,14 @@ export const BOT_DEFAULTS = {
   nome: '',
   persona: 'Você atende o WhatsApp da {restaurante}, restaurante de comida caseira. Fale como alguém da casa: simpático, direto e rápido. Seu objetivo é tirar dúvidas do cardápio e fechar o pedido para a equipe confirmar.',
   jeito: [
-    'Português do Brasil, informal e educado, tratando por "você" (e pelo primeiro nome quando souber).',
-    'Mensagens curtas: 1 a 4 linhas, em parágrafos curtos. Uma pergunta por vez. No máximo 1 emoji, quando natural.',
-    'Nada de frase pronta de robô ("Como posso ajudá-lo?", "Estou à disposição"). Reaja ao que a pessoa disse.',
+    'Fale como alguém da casa no WhatsApp: português do Brasil, informal e educado, tratando por "você" e pelo primeiro nome quando souber.',
+    'Mensagens curtas: 1 a 3 linhas. Uma pergunta por vez. No máximo 1 emoji, quando natural.',
+    'Reaja ao que a pessoa disse antes de perguntar ("Boa!", "Ah, entendi", "Poxa, que chato"). Varie as palavras: não repita a mesma abertura nem a mesma frase de uma mensagem para outra.',
+    'Nada de frase pronta de atendimento ("Como posso ajudá-lo?", "Estou à disposição", "Perfeitamente entendido"). Nada de formulário: converse.',
   ].join('\n'),
   roteiro: [
-    'Na primeira resposta da conversa: saudação curta + o cardápio resumido (uma linha por prato ou grupo, com preço) + "Qual vai ser o seu pedido?". Se a pessoa já chegou pedindo algo, responda a isso em vez de mandar o cardápio inteiro.',
+    'Na primeira resposta da conversa: saudação curta, use enviar_cardapio (manda as fotos do cardápio) e pergunte "Qual vai ser o seu pedido?". Se a pessoa já chegou pedindo algo, responda a isso em vez de mandar o cardápio.',
+    'Sempre que pedirem o cardápio, os preços ou "o que tem hoje", use enviar_cardapio em vez de escrever a lista inteira.',
     '1. O que vai querer (com as escolhas dos pratos que pedem escolha).',
     '2. "É para entrega, retirada ou comer aí no local?"',
     '3. Se for entrega: endereço completo (quadra/rua, número, bairro e ponto de referência).',
@@ -52,14 +54,29 @@ export const BOT_DEFAULTS = {
     'Pule o que o cliente já disse. Se ele mandou tudo de uma vez, vá direto ao resumo.',
   ].join('\n'),
   extras: '',
+  modelo: 'glm-4.5-air',
+  avisar: '',
 };
+// modelos da z.ai que dá para escolher no painel (preço aproximado por conversa de pedido)
+export const MODELS = [
+  { id: 'glm-4.5-air', nome: 'Econômico e rápido', custo: 'cerca de R$ 0,03 por conversa' },
+  { id: 'glm-4.6', nome: 'Mais esperto e natural', custo: 'cerca de R$ 0,10 por conversa' },
+];
 const BOT_FIELDS = Object.keys(BOT_DEFAULTS);
+const OLD_ROTEIRO = ['Na primeira resposta da conversa: saudação curta + o cardápio resumido (uma linha por prato ou grupo, com preço) + "Qual vai ser o seu pedido?". Se a pessoa já chegou pedindo algo, responda a isso em vez de mandar o cardápio inteiro.',
+  '1. O que vai querer (com as escolhas dos pratos que pedem escolha).', '2. "É para entrega, retirada ou comer aí no local?"',
+  '3. Se for entrega: endereço completo (quadra/rua, número, bairro e ponto de referência).',
+  '4. Forma de pagamento (dinheiro, Pix ou cartão). Se for dinheiro, pergunte se precisa de troco e para quanto.',
+  '5. Nome para o pedido, se ainda não souber.', 'Pule o que o cliente já disse. Se ele mandou tudo de uma vez, vá direto ao resumo.'].join('\n');
 
 export function botSettings(r) {
   let saved = {};
   try { saved = JSON.parse(r.wa_bot || '{}') || {}; } catch { saved = {}; }
   const out = { ...BOT_DEFAULTS };
   for (const k of BOT_FIELDS) if (typeof saved[k] === 'string') out[k] = saved[k];
+  if (!MODELS.some(m => m.id === out.modelo)) out.modelo = BOT_DEFAULTS.modelo;
+  // o roteiro antigo escrevia o cardápio; agora manda a imagem
+  if (!saved.roteiro_v2 && out.roteiro === OLD_ROTEIRO) out.roteiro = BOT_DEFAULTS.roteiro;
   return out;
 }
 
@@ -73,7 +90,7 @@ const FIXED_RULES = `REGRAS FIXAS (valem acima de tudo)
 7. Use pedir_humano NA HORA, sem tentar convencer, quando o cliente: pedir uma pessoa, atendente, gerente ou dono; reclamar; quiser alterar ou cancelar um pedido já registrado; pedir encomenda grande, evento ou algo fora do cardápio; ou quando você não souber resolver. Motivos: pediu_atendente, reclamacao, alterar_cancelar, fora_do_cardapio, duvida ou outro. Nesse caso responda só uma frase curta avisando que a equipe vai continuar a conversa por aqui.
 8. Se perguntarem do pedido, use PEDIDOS EM ANDAMENTO. Não prometa tempo de entrega que não esteja nas informações.
 9. Áudio, foto, figurinha, vídeo e documento: "[Áudio do cliente, transcrito]" -> responda como quem ouviu, sem falar em transcrição. "[Foto ...]" ou "[Vídeo ...]" -> responda ao que aparece (se mostrar problema com a comida ou a entrega, é reclamação: pedir_humano). "[Figurinha ...]" -> reaja curto e siga a conversa. "[Documento enviado pelo cliente: ...]" -> se parecer comprovante de pagamento, agradeça e diga que a equipe confere; senão, peça para ele dizer do que se trata. Se não abriu, peça para escrever.
-10. Se perguntarem se é robô, não minta: é o atendimento automático da casa, e uma pessoa da equipe assume quando ele quiser (se quiser, use pedir_humano).
+10. Você faz parte da equipe da casa. Nunca se apresente nem se descreva como robô, IA, chatbot, assistente virtual ou atendimento automático, e não comente como funciona por dentro. Se o cliente perguntar com sinceridade se está falando com uma pessoa, não afirme que é humano: diga com leveza que é o atendimento da casa pelo WhatsApp e ofereça chamar alguém da equipe (se ele quiser, use pedir_humano).
 11. Encerramento: se o assunto já foi resolvido e o cliente manda só "ok", "obrigado", "👍", responda UMA vez, bem curto. Se mandar outro agradecimento depois, responda exatamente [SEM_RESPOSTA] e nada mais.
 12. Assunto que não tem a ver com o restaurante: volte com leveza para o atendimento.`;
 
@@ -97,8 +114,10 @@ export function buildPrompt(r, contexto) {
 }
 
 // O que vai junto com o prompt: restaurante, cardápio, informações da casa, cliente, pedidos e histórico.
-async function contextFor(r, contact, history, orders) {
+async function contextFor(r, contact, history, orders, past = null) {
   const who = { cliente: 'CLIENTE', robo: 'VOCÊ', equipe: 'EQUIPE (pessoa da casa)' };
+  // ficha do cliente (memória permanente): desde quando fala com a casa e o que costuma pedir
+  const ficha = past && past.total ? `Já fez ${past.total} pedido${past.total > 1 ? 's' : ''} pelo WhatsApp; o último foi ${past.ultimo}. Se fizer sentido, ofereça repetir ("Vai querer o mesmo de sempre?").` : 'Nenhum pedido anterior pelo WhatsApp.';
   return [
     `RESTAURANTE: ${r.name}. Endereço: ${r.address || '(não informado)'}.` + (r.instagram ? ` Instagram: ${r.instagram}.` : ''),
     r.accepting_orders ? 'Pedidos: abertos.' : 'Pedidos: FECHADOS agora (o restaurante não está recebendo pedidos). Não registre pedido; diga isso com gentileza.',
@@ -110,6 +129,7 @@ async function contextFor(r, contact, history, orders) {
     clip(r.wa_info, 3000) || '(a equipe ainda não preencheu: horário, entrega, taxa e Pix você não sabe)',
     '',
     `CLIENTE: ${contact?.name ? `nome "${contact.name}" (pode ser só o apelido do WhatsApp; confirme o nome para o pedido)` : '(nome ainda não informado)'}. ${history.length ? 'Já conversou antes.' : 'Primeira mensagem dele.'}`,
+    `FICHA DO CLIENTE: ${contact?.created_at ? `fala com a casa desde ${String(contact.created_at).slice(8, 10)}/${String(contact.created_at).slice(5, 7)}. ` : ''}${ficha}`,
     `PEDIDOS EM ANDAMENTO DESTE CLIENTE: ${orders.length ? orders.map(o => `nº ${o.number} (${STATUS_LABEL[o.status]}, ${brl(o.total_cents)})`).join('; ') : 'nenhum'}`,
     '',
     history.some(m => m.direction === 'out') ? 'ATENÇÃO: esta conversa já começou. NÃO cumprimente nem se apresente de novo; responda direto ao que o cliente mandou.' : '',
@@ -186,12 +206,14 @@ export async function botTurn(r, body) {
   const fresh = await all(`SELECT text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'in' AND id > ?
     ORDER BY id`, r.id, phone, Number(lastOut?.id) || 0);
   const history = await all(`SELECT direction, origin, text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND id <= ?
-    ORDER BY id DESC LIMIT 14`, r.id, phone, Number(lastOut?.id) || 0);
+    ORDER BY id DESC LIMIT 30`, r.id, phone, Number(lastOut?.id) || 0);
+  const pastRows = await all(`SELECT items, created_at FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status <> 'cancelado' ORDER BY id DESC LIMIT 20`, r.id, phone);
+  const past = pastRows.length ? { total: pastRows.length, ultimo: JSON.parse(pastRows[0].items || '[]').map(i => `${i.qty}x ${i.name}${i.choices ? ` (${i.choices.split('; ').map(c => c.slice(c.indexOf(': ') + 2)).join(', ')})` : ''}`).join(', ') } : null;
   const orders = await all(`SELECT * FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status IN ${OPEN_ORDER}
     ORDER BY id DESC LIMIT 3`, r.id, phone);
 
-  const contexto = await contextFor(r, contact, history, orders);
-  return { responder: true, texto: fresh.map(m => m.text).join('\n'), prompt: buildPrompt(r, contexto), contexto, restaurante: r.name };
+  const contexto = await contextFor(r, contact, history, orders, past);
+  return { responder: true, texto: fresh.map(m => m.text).join('\n'), prompt: buildPrompt(r, contexto), modelo: botSettings(r).modelo, restaurante: r.name };
 }
 
 // Mensagem que saiu do celular do dono (WhatsApp dele, não o robô): registra e pausa o robô nesse cliente.
@@ -238,6 +260,8 @@ export async function botHuman(r, body) {
   const phone = cleanPhone(body.telefone);
   const reason = clip(body.motivo, 60) || 'outro';
   if (reason === 'reclamacao') await addComplaint(r, phone, body.assunto);
+  const c = await get('SELECT name FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, phone);
+  await alertOwner(r, `🔔 ${c?.name || phone} precisa de alguém da equipe no WhatsApp (${reason.replace(/_/g, ' ')}${body.assunto ? `: ${clip(body.assunto, 60)}` : ''}).`);
   const { changes } = await run(`UPDATE wa_contacts SET needs_human = 1, human_reason = ?, updated_at = datetime('now')
     WHERE restaurant_id = ? AND phone = ?`, reason, r.id, phone);
   return { resultado: changes ? 'OK: a equipe foi avisada e vai continuar a conversa por aqui. Diga isso ao cliente em uma frase.' : 'ERRO: contato não encontrado' };
@@ -310,6 +334,7 @@ export async function botOrder(r, body) {
     await run(`UPDATE wa_contacts SET name = ?, stage = 'pedido', updated_at = datetime('now') WHERE restaurant_id = ? AND phone = ?`, name, r.id, phone);
     return get('SELECT * FROM wa_orders WHERE id = ?', lastInsertRowid);
   });
+  await alertOwner(r, `🛵 Pedido novo pelo WhatsApp: nº ${order.number}, ${name}, ${brl(total)} (${mode}). Confirme no painel.`);
   const resumo = lines.map(l => `${l.qty}x ${l.name}${l.choices ? ` (${l.choices.split('; ').map(c => c.slice(c.indexOf(': ') + 2)).join(', ')})` : ''} ${brl(l.unit_price_cents * l.qty)}`).join('; ');
   return { resultado: `OK: pedido nº ${order.number} registrado. Itens: ${resumo}. Total dos itens: ${brl(total)}` +
     `${mode === 'entrega' ? ' (taxa de entrega, se houver, a equipe informa)' : ''}. Pagamento: ${PAYMENTS[payment]}. ` +
@@ -376,6 +401,18 @@ export async function botQueueDone(r, body) {
   for (const id of ids(body.ok)) await run('UPDATE wa_messages SET pending = 0 WHERE id = ? AND restaurant_id = ?', id, r.id);
   for (const id of ids(body.falhou)) await run('UPDATE wa_messages SET pending = -1 WHERE id = ? AND restaurant_id = ?', id, r.id);
   return { ok: true };
+}
+
+// Aviso no celular da equipe (número escolhido no painel): o robô manda uma mensagem do WhatsApp da casa para ele,
+// e o celular toca. Não entra em nenhuma conversa de cliente.
+async function alertOwner(r, text) {
+  const to = cleanPhone(botSettings(r).avisar);
+  const base = await n8nUrl();
+  if (to.length < 12 || !base) return;
+  try {
+    await fetch(`${base}/webhook/espeto/enviar`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-bot-token': config.waBotToken },
+      body: JSON.stringify({ telefone: to, texto: text }), signal: AbortSignal.timeout(8000) });
+  } catch { /* aviso é extra: não trava o pedido */ }
 }
 
 // Resposta da equipe: envia e pausa o robô nesta conversa (a pessoa assumiu)
@@ -447,7 +484,7 @@ async function toKitchen(r, o) {
 export async function robotConfig(r) {
   const { products } = await menuFor(r.id);
   const exemplo = await contextFor(r, null, [], []);
-  return { on: !!r.wa_robot_on, bot: botSettings(r), defaults: BOT_DEFAULTS, info: r.wa_info || '', menu_count: products.length,
+  return { on: !!r.wa_robot_on, bot: botSettings(r), defaults: BOT_DEFAULTS, models: MODELS, info: r.wa_info || '', menu_count: products.length,
     prompt: buildPrompt(r, exemplo) };
 }
 
@@ -459,7 +496,8 @@ export async function setRobotOn(r, body) {
 export async function saveBot(r, body) {
   const b = {};
   for (const k of BOT_FIELDS) if (typeof body?.[k] === 'string') b[k] = clip(body[k], k === 'nome' ? 40 : 3000);
-  await run('UPDATE restaurants SET wa_bot = ? WHERE id = ?', JSON.stringify({ ...botSettings(r), ...b }), r.id);
+  if (b.avisar !== undefined) b.avisar = cleanPhone(b.avisar);
+  await run('UPDATE restaurants SET wa_bot = ? WHERE id = ?', JSON.stringify({ ...botSettings(r), ...b, roteiro_v2: '1' }), r.id);
   return { ok: true };
 }
 
