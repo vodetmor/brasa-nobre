@@ -2,10 +2,11 @@
 // WA_BOT_TOKEN; a equipe usa a tela /r/<slug>/atendimento (conversas, pedidos, assumir a conversa).
 // O cardápio e os preços saem sempre do banco: a IA só repassa o que o cliente escolheu.
 import { timingSafeEqual } from 'node:crypto';
-import { all, get, run, tx } from './db.js';
+import { all, get, run, tx, newToken } from './db.js';
 import { config } from './config.js';
 import { HttpError } from './lib/http.js';
-import { menuFor, parseOptions } from './services.js';
+import { menuFor, parseOptions, orderFull } from './services.js';
+import { publish, staffChannel } from './lib/realtime.js';
 
 const ORDER_STATUSES = ['novo', 'confirmado', 'saiu', 'pronto', 'entregue', 'cancelado'];
 const OPEN_ORDER = "('novo', 'confirmado', 'saiu', 'pronto')";
@@ -16,7 +17,7 @@ const STATUS_LABEL = { novo: 'recebido, aguardando a equipe confirmar', confirma
 const STATUS_MSG = {
   confirmado: (o, r) => `Pedido nº ${o.number} confirmado! Já estamos preparando aqui na ${r.name}.`,
   saiu: o => `Seu pedido nº ${o.number} saiu para entrega. Já já chega aí!`,
-  pronto: (o, r) => `Seu pedido nº ${o.number} está pronto. Pode vir retirar na ${r.name}.`,
+  pronto: (o, r) => o.mode === 'local' ? `Seu pedido nº ${o.number} está pronto!` : `Seu pedido nº ${o.number} está pronto. Pode vir retirar na ${r.name}.`,
 };
 
 const brl = c => (c / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -28,6 +29,93 @@ export function requireBot(req) {
   const want = Buffer.from(config.waBotToken);
   const got = Buffer.from(String(req.headers['x-bot-token'] || ''));
   if (!want.length || want.length !== got.length || !timingSafeEqual(want, got)) throw new HttpError(401, 'Chave do robô inválida');
+}
+
+// ---------- personalidade do robô (editável no painel) e prompt ----------
+// O que a equipe muda: nome, quem ela é, jeito de falar, roteiro do pedido e regras extras.
+// As REGRAS FIXAS (não inventar preço, passar para a equipe, usar as ferramentas) ficam no código.
+export const BOT_DEFAULTS = {
+  nome: '',
+  persona: 'Você atende o WhatsApp da {restaurante}, restaurante de comida caseira. Fale como alguém da casa: simpático, direto e rápido. Seu objetivo é tirar dúvidas do cardápio e fechar o pedido para a equipe confirmar.',
+  jeito: [
+    'Português do Brasil, informal e educado, tratando por "você" (e pelo primeiro nome quando souber).',
+    'Mensagens curtas: 1 a 4 linhas, em parágrafos curtos. Uma pergunta por vez. No máximo 1 emoji, quando natural.',
+    'Nada de frase pronta de robô ("Como posso ajudá-lo?", "Estou à disposição"). Reaja ao que a pessoa disse.',
+  ].join('\n'),
+  roteiro: [
+    'Na primeira resposta da conversa: saudação curta + o cardápio resumido (uma linha por prato ou grupo, com preço) + "Qual vai ser o seu pedido?". Se a pessoa já chegou pedindo algo, responda a isso em vez de mandar o cardápio inteiro.',
+    '1. O que vai querer (com as escolhas dos pratos que pedem escolha).',
+    '2. "É para entrega, retirada ou comer aí no local?"',
+    '3. Se for entrega: endereço completo (quadra/rua, número, bairro e ponto de referência).',
+    '4. Forma de pagamento (dinheiro, Pix ou cartão). Se for dinheiro, pergunte se precisa de troco e para quanto.',
+    '5. Nome para o pedido, se ainda não souber.',
+    'Pule o que o cliente já disse. Se ele mandou tudo de uma vez, vá direto ao resumo.',
+  ].join('\n'),
+  extras: '',
+};
+const BOT_FIELDS = Object.keys(BOT_DEFAULTS);
+
+export function botSettings(r) {
+  let saved = {};
+  try { saved = JSON.parse(r.wa_bot || '{}') || {}; } catch { saved = {}; }
+  const out = { ...BOT_DEFAULTS };
+  for (const k of BOT_FIELDS) if (typeof saved[k] === 'string') out[k] = saved[k];
+  return out;
+}
+
+const FIXED_RULES = `REGRAS FIXAS (valem acima de tudo)
+1. Só existe o que está no CARDÁPIO e nas INFORMAÇÕES DA CASA lá embaixo. NUNCA invente prato, preço, promoção, desconto, combo, bebida, horário, taxa ou tempo de entrega, bairro atendido ou chave Pix. Se perguntarem algo que não está lá, diga com naturalidade que vai confirmar com a equipe; se a pessoa precisar dessa resposta para decidir, use pedir_humano (motivo duvida).
+2. Preço é exatamente o do cardápio. Opção com (+R$ X) soma esse valor ao prato. Não calcule taxa de entrega.
+3. Pratos com "escolher 1 ..." no cardápio: o cliente escolhe uma opção de cada grupo, só entre as listadas. Pergunte o que faltar de um jeito leve, podendo juntar duas escolhas numa pergunta.
+4. Sem markdown: nada de asterisco, título ou lista com traço. Para listar (cardápio, resumo), use uma linha por item, sem linha em branco no meio.
+5. ANTES de registrar, mande o resumo numa mensagem (itens com escolhas, total dos itens, entrega/retirada/local, endereço, pagamento) e pergunte se está tudo certo. Só depois do "sim" use registrar_pedido. Se for entrega, diga que a taxa (se houver) a equipe confirma, a não ser que as INFORMAÇÕES DA CASA tragam o valor.
+6. registrar_pedido responde OK ou ERRO. Se ERRO, explique de forma simples o que falta e pergunte. Se OK, informe o número do pedido e diga que a equipe confirma por aqui em instantes. Nunca diga que o pedido foi feito sem o OK da ferramenta.
+7. Use pedir_humano NA HORA, sem tentar convencer, quando o cliente: pedir uma pessoa, atendente, gerente ou dono; reclamar; quiser alterar ou cancelar um pedido já registrado; pedir encomenda grande, evento ou algo fora do cardápio; ou quando você não souber resolver. Motivos: pediu_atendente, reclamacao, alterar_cancelar, fora_do_cardapio, duvida ou outro. Nesse caso responda só uma frase curta avisando que a equipe vai continuar a conversa por aqui.
+8. Se perguntarem do pedido, use PEDIDOS EM ANDAMENTO. Não prometa tempo de entrega que não esteja nas informações.
+9. Áudio e foto: "[Áudio do cliente, transcrito]" -> responda como quem ouviu o áudio, sem falar em transcrição. "[Foto enviada pelo cliente...]" -> responda ao que aparece. Se não abriu, peça para escrever.
+10. Se perguntarem se é robô, não minta: é o atendimento automático da casa, e uma pessoa da equipe assume quando ele quiser (se quiser, use pedir_humano).
+11. Encerramento: se o assunto já foi resolvido e o cliente manda só "ok", "obrigado", "👍", responda UMA vez, bem curto. Se mandar outro agradecimento depois, responda exatamente [SEM_RESPOSTA] e nada mais.
+12. Assunto que não tem a ver com o restaurante: volte com leveza para o atendimento.`;
+
+function nowText() {
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: config.timezone, weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit' }).format(new Date());
+}
+
+export function buildPrompt(r, contexto) {
+  const b = botSettings(r);
+  const persona = b.persona.replaceAll('{restaurante}', r.name);
+  return [
+    persona + (b.nome.trim() ? ` Seu nome é ${b.nome.trim()}; apresente-se por esse nome só na primeira resposta.` : ''),
+    '', 'COMO FALAR', b.jeito,
+    '', FIXED_RULES,
+    '', 'ROTEIRO DO PEDIDO (uma pergunta por vez, nesta ordem)', b.roteiro,
+    ...(b.extras.trim() ? ['', 'REGRAS EXTRAS DA CASA', b.extras] : []),
+    '', `AGORA: ${nowText()} (horário de Brasília).`,
+    '', contexto,
+  ].join('\n');
+}
+
+// O que vai junto com o prompt: restaurante, cardápio, informações da casa, cliente, pedidos e histórico.
+async function contextFor(r, contact, history, orders) {
+  const who = { cliente: 'CLIENTE', robo: 'VOCÊ', equipe: 'EQUIPE (pessoa da casa)' };
+  return [
+    `RESTAURANTE: ${r.name}. Endereço: ${r.address || '(não informado)'}.` + (r.instagram ? ` Instagram: ${r.instagram}.` : ''),
+    r.accepting_orders ? 'Pedidos: abertos.' : 'Pedidos: FECHADOS agora (o restaurante não está recebendo pedidos). Não registre pedido; diga isso com gentileza.',
+    '',
+    'CARDÁPIO (a única fonte de pratos e preços):',
+    await menuText(r.id),
+    '',
+    'INFORMAÇÕES DA CASA (escritas pela equipe; o que não estiver aqui você não sabe):',
+    clip(r.wa_info, 3000) || '(a equipe ainda não preencheu: horário, entrega, taxa e Pix você não sabe)',
+    '',
+    `CLIENTE: ${contact?.name ? `nome "${contact.name}" (pode ser só o apelido do WhatsApp; confirme o nome para o pedido)` : '(nome ainda não informado)'}. ${history.length ? 'Já conversou antes.' : 'Primeira mensagem dele.'}`,
+    `PEDIDOS EM ANDAMENTO DESTE CLIENTE: ${orders.length ? orders.map(o => `nº ${o.number} (${STATUS_LABEL[o.status]}, ${brl(o.total_cents)})`).join('; ') : 'nenhum'}`,
+    '',
+    history.some(m => m.direction === 'out') ? 'ATENÇÃO: esta conversa já começou. NÃO cumprimente nem se apresente de novo; responda direto ao que o cliente mandou.' : '',
+    'ÚLTIMAS MENSAGENS (fonte da verdade; inclui o que a equipe escreveu):',
+    history.length ? [...history].reverse().map(m => `${who[m.origin] || m.origin}: ${m.text.slice(0, 400)}`).join('\n') : '(nenhuma)',
+  ].join('\n');
 }
 
 // ---------- texto do cardápio para a IA ----------
@@ -50,48 +138,72 @@ export async function menuText(restaurantId) {
 }
 
 // ---------- robô: mensagem chegou ----------
+// Travas contra rajada de mensagens (o cliente escreve picado, o WhatsApp às vezes entrega a mesma mensagem 2 vezes):
+// 1) entrada grava e ignora id do WhatsApp repetido; 2) o n8n espera alguns segundos e pergunta a vez: só a
+// mensagem mais nova do cliente responde, juntando as anteriores; 3) limite de respostas do robô por cliente.
+const ROBOT_LIMIT = { max: 8, minutes: 3 };
+
 export async function botInbound(r, body) {
   const phone = cleanPhone(body.telefone);
   if (!phone) throw new HttpError(400, 'telefone obrigatório');
   const text = clip(body.texto, 4000);
   const media = ['audio', 'imagem', 'video', 'outro'].includes(body.midia) ? body.midia : '';
   const pushName = clip(body.nome_whatsapp, 60);
+  const waId = clip(body.msg_id, 120);
+  if (waId && await get('SELECT id FROM wa_messages WHERE restaurant_id = ? AND wa_id = ?', r.id, waId)) return { duplicada: true, pausado: true };
 
-  const history = await all(`SELECT direction, origin, text, created_at FROM wa_messages WHERE restaurant_id = ? AND phone = ?
-    ORDER BY id DESC LIMIT 14`, r.id, phone);
-  const contact = await tx(async () => {
+  return tx(async () => {
     await run(`INSERT INTO wa_contacts (restaurant_id, phone, name) VALUES (?, ?, ?)
       ON CONFLICT (restaurant_id, phone) DO NOTHING`, r.id, phone, pushName);
     await run(`UPDATE wa_contacts SET last_message = ?, unread = unread + 1, updated_at = datetime('now')
       WHERE restaurant_id = ? AND phone = ?`, text.slice(0, 200), r.id, phone);
-    await run('INSERT INTO wa_messages (restaurant_id, phone, direction, origin, text, media) VALUES (?, ?, ?, ?, ?, ?)',
-      r.id, phone, 'in', 'cliente', text, media);
-    return get('SELECT * FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, phone);
+    const { lastInsertRowid } = await run('INSERT INTO wa_messages (restaurant_id, phone, direction, origin, text, media, wa_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      r.id, phone, 'in', 'cliente', text, media, waId);
+    const contact = await get('SELECT needs_human FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, phone);
+    return { id: Number(lastInsertRowid), pausado: !r.wa_robot_on || !!contact.needs_human };
   });
+}
+
+// A vez de responder: só a mensagem mais nova do cliente responde, com tudo o que ele mandou desde a última resposta.
+export async function botTurn(r, body) {
+  const phone = cleanPhone(body.telefone);
+  const id = Number(body.id) || 0;
+  const contact = await get('SELECT * FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, phone);
+  if (!r.wa_robot_on) return { responder: false, motivo: 'robo_pausado' };
+  if (!contact || contact.needs_human) return { responder: false, motivo: 'equipe' };
+  const last = await get(`SELECT MAX(id) AS id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'in'`, r.id, phone);
+  if (Number(last?.id) !== id) return { responder: false, motivo: 'mensagem_mais_nova' };
+  const { n } = await get(`SELECT COUNT(*) AS n FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND origin = 'robo'
+    AND created_at >= datetime('now', '-${ROBOT_LIMIT.minutes} minutes')`, r.id, phone);
+  if (n >= ROBOT_LIMIT.max) {
+    await run(`UPDATE wa_contacts SET needs_human = 1, human_reason = 'limite_mensagens', updated_at = datetime('now') WHERE id = ?`, contact.id);
+    return { responder: false, motivo: 'limite' };
+  }
+  const lastOut = await get(`SELECT MAX(id) AS id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'out'`, r.id, phone);
+  const fresh = await all(`SELECT text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'in' AND id > ?
+    ORDER BY id`, r.id, phone, Number(lastOut?.id) || 0);
+  const history = await all(`SELECT direction, origin, text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND id <= ?
+    ORDER BY id DESC LIMIT 14`, r.id, phone, Number(lastOut?.id) || 0);
   const orders = await all(`SELECT * FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status IN ${OPEN_ORDER}
     ORDER BY id DESC LIMIT 3`, r.id, phone);
 
-  const who = { cliente: 'CLIENTE', robo: 'VOCÊ', equipe: 'EQUIPE (pessoa da casa)' };
-  const contexto = [
-    `RESTAURANTE: ${r.name}. Endereço: ${r.address || '(não informado)'}.` +
-      (r.instagram ? ` Instagram: ${r.instagram}.` : ''),
-    r.accepting_orders ? 'Pedidos: abertos.' : 'Pedidos: FECHADOS agora (o restaurante não está recebendo pedidos). Não registre pedido; diga isso com gentileza.',
-    '',
-    'CARDÁPIO (a única fonte de pratos e preços):',
-    await menuText(r.id),
-    '',
-    'INFORMAÇÕES DA CASA (escritas pela equipe; o que não estiver aqui você não sabe):',
-    clip(r.wa_info, 3000) || '(a equipe ainda não preencheu: horário, entrega, taxa e Pix você não sabe)',
-    '',
-    `CLIENTE: ${contact.name ? `nome "${contact.name}" (pode ser só o apelido do WhatsApp; confirme o nome para o pedido)` : "(nome ainda não informado)"}. ${history.length ? 'Já conversou antes.' : 'Primeira mensagem dele.'}`,
-    `PEDIDOS EM ANDAMENTO DESTE CLIENTE: ${orders.length ? orders.map(o => `nº ${o.number} (${STATUS_LABEL[o.status]}, ${brl(o.total_cents)})`).join('; ') : 'nenhum'}`,
-    '',
-    history.some(m => m.direction === 'out') ? 'ATENÇÃO: esta conversa já começou. NÃO cumprimente nem se apresente de novo; responda direto à última mensagem.' : '',
-    'ÚLTIMAS MENSAGENS (fonte da verdade; inclui o que a equipe escreveu):',
-    history.length ? history.reverse().map(m => `${who[m.origin] || m.origin}: ${m.text.slice(0, 400)}`).join('\n') : '(nenhuma)',
-  ].join('\n');
+  const contexto = await contextFor(r, contact, history, orders);
+  return { responder: true, texto: fresh.map(m => m.text).join('\n'), prompt: buildPrompt(r, contexto), contexto, restaurante: r.name };
+}
 
-  return { pausado: !!contact.needs_human, contexto, restaurante: r.name };
+// Mensagem que saiu do celular do dono (WhatsApp dele, não o robô): registra e pausa o robô nesse cliente.
+export async function botOwn(r, body) {
+  const phone = cleanPhone(body.telefone);
+  const text = clip(body.texto, 4000);
+  if (!phone || !text) return { ok: false };
+  const sent = await get(`SELECT id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'out' AND text = ?
+    AND created_at >= datetime('now', '-3 minutes')`, r.id, phone, text);
+  if (sent) return { ok: true, robo: true }; // foi o próprio robô ou o painel
+  const contact = await get('SELECT id FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, phone);
+  if (!contact) await run('INSERT INTO wa_contacts (restaurant_id, phone) VALUES (?, ?) ON CONFLICT (restaurant_id, phone) DO NOTHING', r.id, phone);
+  await logOut(r, phone, text, 'equipe', 0);
+  await run(`UPDATE wa_contacts SET needs_human = 1, human_reason = 'dono_respondeu' WHERE restaurant_id = ? AND phone = ?`, r.id, phone);
+  return { ok: true, robo: false };
 }
 
 export async function botOutbound(r, body) {
@@ -127,7 +239,8 @@ export async function botOrder(r, body) {
   if (!Array.isArray(items) || !items.length) return { resultado: 'ERRO: nenhum item. Mande itens como lista JSON: [{"produto":"...","quantidade":1,"escolhas":{"Grupo":"opção"}}].' };
   const name = clip(body.nome, 60);
   if (!name) return { resultado: 'ERRO: falta o nome do cliente. Pergunte o nome antes de registrar.' };
-  const mode = norm(body.tipo).startsWith('entreg') ? 'entrega' : 'retirada';
+  const tipo = norm(body.tipo);
+  const mode = tipo.startsWith('entreg') ? 'entrega' : /local|comer|mesa|aqui/.test(tipo) ? 'local' : 'retirada';
   const address = clip(body.endereco, 300);
   if (mode === 'entrega' && address.length < 8) return { resultado: 'ERRO: pedido de entrega sem endereço completo (rua, número, bairro e referência). Pergunte ao cliente.' };
   const payment = Object.keys(PAYMENTS).find(k => norm(body.pagamento).includes(k === 'cartao' ? 'cart' : k)) || '';
@@ -137,11 +250,16 @@ export async function botOrder(r, body) {
   const problems = [];
   const lines = [];
   for (const it of items.slice(0, 30)) {
-    const want = norm(it.produto || it.nome);
-    const exact = products.filter(p => norm(p.name) === want);
-    const near = exact.length ? exact : products.filter(p => want.length >= 3 && (want.includes(norm(p.name)) || norm(p.name).includes(want)));
+    // compara sem espaços ("Coca-Cola 2L" = "Coca-Cola 2 L")
+    const tight = x => norm(x).replace(/ /g, '');
+    const want = tight(it.produto || it.nome);
+    const exact = products.filter(p => tight(p.name) === want);
+    const near = exact.length ? exact : products.filter(p => want.length >= 3 && (want.includes(tight(p.name)) || tight(p.name).includes(want)));
     if (near.length !== 1) {
-      problems.push(near.length ? `"${it.produto}" pode ser ${near.map(p => p.name).join(' ou ')}; confirme qual.` : `"${it.produto}" não está no cardápio.`);
+      const words = norm(it.produto || it.nome).split(' ').filter(w => w.length >= 3);
+      const like = products.filter(p => words.some(w => norm(p.name).includes(w))).slice(0, 4).map(p => p.name);
+      problems.push(near.length ? `"${it.produto}" pode ser ${near.map(p => p.name).join(' ou ')}; confirme qual.`
+        : `"${it.produto}" não está no cardápio${like.length ? `; os mais parecidos são: ${like.join(', ')} (use o nome exato)` : ''}.`);
       continue;
     }
     const p = near[0];
@@ -190,7 +308,7 @@ export async function inbox(r) {
   const orders = (await all(`SELECT * FROM wa_orders WHERE restaurant_id = ? AND (status IN ${OPEN_ORDER}
     OR date(created_at, 'localtime') = date('now', 'localtime')) ORDER BY id DESC LIMIT 60`, r.id))
     .map(o => ({ ...o, items: JSON.parse(o.items || '[]') }));
-  return { contacts, orders, info: r.wa_info || '', robot: !!config.waBotToken, can_send: !!config.waBotToken };
+  return { contacts, orders, info: r.wa_info || '', robot: !!config.waBotToken, robot_on: !!r.wa_robot_on, can_send: !!config.waBotToken };
 }
 
 export async function conversation(r, phone) {
@@ -206,19 +324,19 @@ export async function conversation(r, phone) {
 // Mensagem da equipe para o cliente. Com WA_N8N_URL (app no mesmo PC do n8n) envia na hora; sem ela (Vercel,
 // que não alcança o PC) entra na fila (pending = 1) e o n8n busca a cada poucos segundos em /wa/bot/fila.
 async function deliver(r, phone, text) {
-  if (!config.waN8nUrl) {
-    await logOut(r, phone, text, 'equipe', 1);
-    return;
-  }
+  await logOut(r, phone, text, 'equipe', config.waN8nUrl ? 0 : 1);
+  if (!config.waN8nUrl) return;
   let res;
   try {
     res = await fetch(`${config.waN8nUrl}/webhook/espeto/enviar`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-bot-token': config.waBotToken },
       body: JSON.stringify({ telefone: phone, texto: text }), signal: AbortSignal.timeout(12000),
     });
-  } catch { throw new HttpError(502, 'O WhatsApp não respondeu. Confira se o PC do atendente está ligado.'); }
-  if (!res.ok) throw new HttpError(502, `O WhatsApp recusou o envio (erro ${res.status})`);
-  await logOut(r, phone, text, 'equipe', 0);
+  } catch { res = null; }
+  if (!res?.ok) {
+    await run(`UPDATE wa_messages SET pending = -1 WHERE id = (SELECT MAX(id) FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'out')`, r.id, phone);
+    throw new HttpError(502, res ? `O WhatsApp recusou o envio (erro ${res.status})` : 'O WhatsApp não respondeu. Confira se o PC do atendente está ligado.');
+  }
 }
 
 // fila das mensagens da equipe (pending: 1 = esperando o n8n, 0 = enviada, -1 = o WhatsApp recusou)
@@ -256,6 +374,9 @@ export async function setOrderStatus(r, id, status) {
   if (!o) throw new HttpError(404, 'Pedido não encontrado');
   await run(`UPDATE wa_orders SET status = ?, updated_at = datetime('now') WHERE id = ?`, status, id);
   let warning = '';
+  if (status === 'confirmado' && !o.kitchen_order_id) {
+    try { await toKitchen(r, o); } catch (e) { warning = `Confirmado, mas não foi para a cozinha: ${e.message}`; }
+  }
   const msg = STATUS_MSG[status]?.(o, r);
   if (msg) {
     try { await deliver(r, o.phone, msg); }
@@ -264,7 +385,91 @@ export async function setOrderStatus(r, id, status) {
   return { ok: true, warning };
 }
 
+// Pedido confirmado do WhatsApp entra na cozinha (aparece na tela, toca e imprime) numa "mesa" virtual nº 0,
+// escondida do caixa e dos QR Codes. A comanda já fecha com a forma de pagamento: a venda entra no relatório do dia.
+const MODE_LABEL = { entrega: 'ENTREGA', retirada: 'RETIRADA', local: 'COMER NO LOCAL' };
+async function toKitchen(r, o) {
+  const items = JSON.parse(o.items || '[]');
+  const kid = await tx(async () => {
+    let t = await get('SELECT * FROM tables WHERE restaurant_id = ? AND number = 0', r.id);
+    if (!t) {
+      await run("INSERT INTO tables (restaurant_id, number, label, token, active) VALUES (?, 0, 'WhatsApp', ?, 0)", r.id, newToken());
+      t = await get('SELECT * FROM tables WHERE restaurant_id = ? AND number = 0', r.id);
+    }
+    const { lastInsertRowid: sid } = await run('INSERT INTO table_sessions (restaurant_id, table_id) VALUES (?, ?)', r.id, t.id);
+    const { n } = await get(`SELECT COUNT(*) AS n FROM orders WHERE restaurant_id = ?
+      AND date(created_at, 'localtime') = date('now', 'localtime')`, r.id);
+    const note = [`WhatsApp nº ${o.number} · ${MODE_LABEL[o.mode] || o.mode}`, o.address, PAYMENTS[o.payment], o.note].filter(Boolean).join(' · ');
+    const { lastInsertRowid } = await run(`INSERT INTO orders (restaurant_id, table_id, session_id, number, customer_name, note, total_cents, source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'whatsapp')`, r.id, t.id, sid, n + 1, o.customer_name || 'WhatsApp', note.slice(0, 200), o.total_cents);
+    for (const i of items) {
+      const p = await get('SELECT id FROM products WHERE restaurant_id = ? AND name = ?', r.id, i.name);
+      await run('INSERT INTO order_items (order_id, product_id, name, unit_price_cents, qty, note, removed, choices) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        lastInsertRowid, p?.id ?? null, i.name, i.unit_price_cents, i.qty, i.note || '', '', i.choices || '');
+    }
+    await run(`UPDATE table_sessions SET status = 'closed', closed_at = datetime('now'), payment_method = ?, subtotal_cents = ?, service_cents = 0, total_cents = ?
+      WHERE id = ?`, o.payment || 'outro', o.total_cents, o.total_cents, sid);
+    await run('UPDATE wa_orders SET kitchen_order_id = ? WHERE id = ?', lastInsertRowid, o.id);
+    return Number(lastInsertRowid);
+  });
+  await publish(staffChannel(r.id), 'order', await orderFull(kid));
+}
+
+// ---------- equipe: robô ligado/pausado e personalidade ----------
+export async function robotConfig(r) {
+  const { products } = await menuFor(r.id);
+  const exemplo = await contextFor(r, null, [], []);
+  return { on: !!r.wa_robot_on, bot: botSettings(r), defaults: BOT_DEFAULTS, info: r.wa_info || '', menu_count: products.length,
+    prompt: buildPrompt(r, exemplo) };
+}
+
+export async function setRobotOn(r, body) {
+  await run('UPDATE restaurants SET wa_robot_on = ? WHERE id = ?', body.on ? 1 : 0, r.id);
+  return { on: !!body.on };
+}
+
+export async function saveBot(r, body) {
+  const b = {};
+  for (const k of BOT_FIELDS) if (typeof body?.[k] === 'string') b[k] = clip(body[k], k === 'nome' ? 40 : 3000);
+  await run('UPDATE restaurants SET wa_bot = ? WHERE id = ?', JSON.stringify({ ...botSettings(r), ...b }), r.id);
+  return { ok: true };
+}
+
 export async function saveInfo(r, body) {
   await run('UPDATE restaurants SET wa_info = ? WHERE id = ?', clip(body.info, 3000), r.id);
   return { ok: true };
+}
+
+// ---------- recriação dos demos (src/demo.js) ----------
+// O seed apaga e recria o restaurante; sem isto, o ON DELETE CASCADE levaria as conversas, os pedidos e o robô.
+export async function snapshotWhatsApp(slugs) {
+  const snap = {};
+  for (const slug of slugs) {
+    const r = await get('SELECT id, wa_info, wa_bot, wa_robot_on FROM restaurants WHERE slug = ?', slug);
+    if (!r) continue;
+    snap[slug] = {
+      settings: r,
+      contacts: await all('SELECT * FROM wa_contacts WHERE restaurant_id = ? ORDER BY id', r.id),
+      messages: await all('SELECT * FROM wa_messages WHERE restaurant_id = ? ORDER BY id', r.id),
+      orders: await all('SELECT * FROM wa_orders WHERE restaurant_id = ? ORDER BY id', r.id),
+    };
+  }
+  return snap;
+}
+
+export async function restoreWhatsApp(snap, slug, restaurantId) {
+  const w = snap[slug];
+  if (!w) return;
+  await run('UPDATE restaurants SET wa_info = ?, wa_bot = ?, wa_robot_on = ? WHERE id = ?',
+    w.settings.wa_info || '', w.settings.wa_bot || '', w.settings.wa_robot_on ? 1 : 0, restaurantId);
+  const copy = async (table, rows, cols) => {
+    for (const row of rows) {
+      await run(`INSERT INTO ${table} (restaurant_id, ${cols.join(', ')}) VALUES (?, ${cols.map(() => '?').join(', ')})`,
+        restaurantId, ...cols.map(c => row[c] ?? null));
+    }
+  };
+  await copy('wa_contacts', w.contacts, ['phone', 'name', 'stage', 'needs_human', 'human_reason', 'last_message', 'unread', 'created_at', 'updated_at']);
+  await copy('wa_messages', w.messages, ['phone', 'direction', 'origin', 'text', 'media', 'pending', 'wa_id', 'created_at']);
+  // o pedido da cozinha some na recriação: kitchen_order_id não é copiado
+  await copy('wa_orders', w.orders, ['number', 'phone', 'customer_name', 'items', 'total_cents', 'mode', 'address', 'payment', 'note', 'status', 'created_at', 'updated_at']);
 }

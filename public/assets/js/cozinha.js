@@ -96,7 +96,7 @@ function render() {
 function ticket(o, col) {
   const age = minutesAgo(o.created_at);
   return `<article class="ticket ${o.status} ${fresh.has(o.id) ? 'new' : ''}" data-id="${o.id}">
-    <div class="top"><span class="mesa">Mesa ${o.table_number}</span><span class="num">#${o.number}</span>
+    <div class="top"><span class="mesa">${o.table_number ? `Mesa ${o.table_number}` : esc(o.table_label || "WhatsApp")}</span><span class="num">#${o.number}</span>
       <span class="age ${age >= 25 ? 'late' : age >= 12 ? 'mid' : ''}" title="Chegou às ${hhmm(o.created_at)}">${age} min</span></div>
     <div class="who">${esc(o.customer_name)}${o.source === 'garcom' ? ' · lançado pela equipe' : ''}</div>
     <ul>${o.items.map(itemLine).join('')}</ul>

@@ -12,7 +12,7 @@ export function ticketLines(order, restaurant, cols = 32) {
   const line = '-'.repeat(cols);
   const out = [];
   out.push({ t: restaurant.name, center: true });
-  out.push({ t: `MESA ${order.table_number}`, big: true, center: true });
+  out.push({ t: order.table_number ? `MESA ${order.table_number}` : String(order.table_label || "WhatsApp").toUpperCase(), big: true, center: true });
   out.push({ t: `Pedido #${order.number}  ${hhmm(order.created_at)}`, center: true });
   out.push({ t: `Cliente: ${order.customer_name}`, bold: true });
   out.push({ t: line });

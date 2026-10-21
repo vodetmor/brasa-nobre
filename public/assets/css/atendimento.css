@@ -71,9 +71,6 @@ body { min-height: 100vh; }
 .order .meta b { color: var(--text); font-weight: 600; }
 .order .actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
-/* informações da casa */
-.at-info { padding: 16px; max-width: 720px; display: grid; gap: 12px; }
-.at-info textarea { min-height: 240px; resize: vertical; line-height: 1.5; }
 
 /* aviso de atendimento humano */
 .at-tabs .spacer { flex: 1; }
@@ -89,3 +86,38 @@ body { min-height: 100vh; }
 .al-more { text-align: center; font-size: .85rem; color: #fff; background: rgba(0, 0, 0, .55); border-radius: 999px; padding: 4px 10px; align-self: center; }
 @keyframes al-in { from { opacity: 0; transform: translateY(-8px); } }
 @keyframes al-ring { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
+
+/* robô ligado/pausado */
+.robot-bar { display: flex; align-items: center; gap: 12px; margin: 12px 16px 0; padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); }
+.robot-bar:empty { display: none; }
+.robot-bar .rb-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); }
+.robot-bar.on .rb-dot { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 25%, transparent); }
+.robot-bar.off { border-color: var(--warn); }
+.robot-bar.off .rb-dot { background: var(--warn); }
+.robot-bar .rb-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.robot-bar .rb-text span { color: var(--muted); font-size: .88rem; }
+.robot-bar .btn { flex: none; }
+@media (max-width: 480px) { .robot-bar { flex-wrap: wrap; } .robot-bar .btn { width: 100%; } }
+
+/* aba Robô */
+.at-robot { padding: 16px; display: grid; gap: 16px; max-width: 980px; grid-template-columns: 1fr; }
+@media (min-width: 1000px) { .at-robot { grid-template-columns: 1fr 1fr; } .at-robot > :first-child { grid-row: span 2; } }
+.card-sec { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: grid; gap: 12px; align-content: start; }
+.card-sec h2 { font-size: 1.05rem; margin: 0; }
+.card-sec textarea { resize: vertical; line-height: 1.5; }
+.card-sec small { font-size: .78rem; }
+.funnel { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.funnel li { display: grid; grid-template-columns: 32px 1fr; gap: 10px; position: relative; padding-bottom: 14px; }
+.funnel li:not(:last-child)::before { content: ''; position: absolute; left: 15px; top: 30px; bottom: 0; width: 2px; background: var(--border); }
+.funnel .fn-n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: .85rem;
+  background: var(--surface-2); border: 1px solid var(--border); }
+.funnel b { display: block; margin-top: 4px; }
+.funnel p { margin: 2px 0 0; color: var(--muted); font-size: .88rem; }
+.fn-side { margin: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent); font-size: .88rem; }
+.fn-prompt summary { cursor: pointer; font-weight: 650; color: var(--accent); }
+.fn-prompt pre { white-space: pre-wrap; font-size: .78rem; line-height: 1.45; max-height: 420px; overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin: 10px 0 0; }
+
+/* embutido na área "Robô do WhatsApp" do painel */
+body.only-robot .topbar, body.only-robot .at-tabs { display: none; }
+body.only-robot .at-robot { grid-template-columns: 1fr; max-width: none; }
+body.only-robot .at-robot > :first-child { grid-row: auto; }

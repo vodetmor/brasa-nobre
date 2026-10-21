@@ -95,6 +95,7 @@
     .pn-frame.menu { max-width: 430px; margin: 0 auto; }
     .robo { max-width: 720px; margin: 0 auto; padding: 24px 16px calc(var(--tab-h) + 32px); display: grid; gap: 14px; }
     .robo h1 { font: 600 1.5rem "Fraunces", serif; margin: 0; }
+    .robo-frame { width: 100%; height: calc(100dvh - var(--top-h, 60px) - var(--tab-h, 0px) - 170px); min-height: 560px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); }
     @media (min-width: 1024px) {
       body { padding-left: var(--side); }
       .side { display: flex; flex-direction: column; position: fixed; z-index: 50; inset: 0 auto 0 0; width: var(--side); padding: 20px 12px; overflow: auto;
@@ -183,7 +184,7 @@
     new ResizeObserver(fit).observe(document.body);
     robo.innerHTML = `<h1>Robô do WhatsApp</h1>
       <p class="muted">Aqui ficam os controles do robô que responde no WhatsApp: pausar e voltar a responder, o funil de atendimento e o texto que a IA usa.</p>
-      <div class="box" id="robo-slot"><p class="empty">Os controles do robô estão sendo preparados. As conversas continuam na tela WhatsApp.</p></div>`;
+      <iframe class="robo-frame" id="robo-slot" title="Controles do robô" src="/r/${slug}/atendimento?so=robo"></iframe>`;
 
     const frames = {};
     function showTab() {

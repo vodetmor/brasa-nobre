@@ -170,6 +170,7 @@ CREATE TABLE IF NOT EXISTS wa_messages (
   text TEXT NOT NULL DEFAULT '',
   media TEXT DEFAULT '',                        -- audio | imagem | video | outro
   pending INTEGER NOT NULL DEFAULT 0,           -- mensagem da equipe na fila do n8n: 1 = esperando, -1 = falhou
+  wa_id TEXT DEFAULT '',                        -- id da mensagem no WhatsApp (descarta entrega repetida)
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_wa_messages_phone ON wa_messages(restaurant_id, phone, id);
@@ -183,11 +184,12 @@ CREATE TABLE IF NOT EXISTS wa_orders (
   customer_name TEXT NOT NULL DEFAULT '',
   items TEXT NOT NULL DEFAULT '[]',             -- JSON: [{ name, qty, unit_price_cents, choices, note }]
   total_cents INTEGER NOT NULL,                 -- só os itens; taxa de entrega a equipe combina
-  mode TEXT NOT NULL DEFAULT 'retirada',        -- entrega | retirada
+  mode TEXT NOT NULL DEFAULT 'retirada',        -- entrega | retirada | local
   address TEXT DEFAULT '',
   payment TEXT DEFAULT '',                      -- dinheiro | pix | cartao
   note TEXT DEFAULT '',
   status TEXT NOT NULL DEFAULT 'novo',          -- novo | confirmado | saiu | pronto | entregue | cancelado
+  kitchen_order_id INTEGER,                     -- pedido criado na cozinha quando a equipe confirma
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

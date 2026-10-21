@@ -3,6 +3,7 @@
 // Quando SEED_VERSION muda, os demos são recriados.
 import { run, get, all, tx, engine } from './db.js';
 import * as S from './services.js';
+import * as W from './whatsapp.js';
 
 export const SEED_VERSION = '12';
 
@@ -165,10 +166,13 @@ export async function seedDemos({ force = false, log = () => {} } = {}) {
     // links das mesas (QR/NFC já gravados) continuam valendo depois de recriar: guarda o token de cada mesa
     const keep = {};
     for (const t of await all('SELECT r.slug, t.number, t.token FROM tables t JOIN restaurants r ON r.id = t.restaurant_id')) keep[`${t.slug}:${t.number}`] = t.token;
+    // conversas, pedidos e configuração do robô do WhatsApp sobrevivem à recriação (src/whatsapp.js)
+    const wa = await W.snapshotWhatsApp(DEMOS.map(d => d.slug));
     for (const slug of [...OLD, ...DEMOS.map(d => d.slug)]) await run('DELETE FROM restaurants WHERE slug = ?', slug);
     for (const d of DEMOS) {
       const { menu, ...info } = d;
       const r = await S.createRestaurant(info);
+      await W.restoreWhatsApp(wa, d.slug, r.id);
       for (const t of await all('SELECT id, number FROM tables WHERE restaurant_id = ?', r.id)) {
         const old = keep[`${d.slug}:${t.number}`];
         if (old) await run('UPDATE tables SET token = ? WHERE id = ?', old, t.id);

@@ -202,6 +202,8 @@ api.post('/api/r/:slug/upload', async ({ req, params, query }) => {
 // ---------- WhatsApp: robô (n8n, chave WA_BOT_TOKEN) e tela de atendimento da equipe ----------
 const botCtx = async (req, slug) => { W.requireBot(req); return S.restaurantBySlug(slug); };
 api.post('/api/r/:slug/wa/bot/entrada', async ({ req, params }) => W.botInbound(await botCtx(req, params.slug), await readJson(req)));
+api.post('/api/r/:slug/wa/bot/vez', async ({ req, params }) => W.botTurn(await botCtx(req, params.slug), await readJson(req)));
+api.post('/api/r/:slug/wa/bot/proprio', async ({ req, params }) => W.botOwn(await botCtx(req, params.slug), await readJson(req)));
 api.post('/api/r/:slug/wa/bot/saida', async ({ req, params }) => W.botOutbound(await botCtx(req, params.slug), await readJson(req)));
 api.post('/api/r/:slug/wa/bot/pedido', async ({ req, params }) => W.botOrder(await botCtx(req, params.slug), await readJson(req)));
 api.post('/api/r/:slug/wa/bot/fila', async ({ req, params }) => W.botQueue(await botCtx(req, params.slug)));
@@ -215,6 +217,9 @@ api.post('/api/r/:slug/atendimento/enviar', async ({ req, params }) => W.staffSe
 api.post('/api/r/:slug/atendimento/robo', async ({ req, params }) => W.setRobot(await staffCtx(req, params.slug), await readJson(req)));
 api.patch('/api/r/:slug/atendimento/pedidos/:id', async ({ req, params }) =>
   W.setOrderStatus(await staffCtx(req, params.slug), Number(params.id), (await readJson(req)).status));
+api.get('/api/r/:slug/atendimento/robo-config', async ({ req, params }) => W.robotConfig(await staffCtx(req, params.slug)));
+api.post('/api/r/:slug/atendimento/robo-ligar', async ({ req, params }) => W.setRobotOn(await staffCtx(req, params.slug), await readJson(req)));
+api.put('/api/r/:slug/atendimento/robo-config', async ({ req, params }) => W.saveBot(await staffCtx(req, params.slug), await readJson(req)));
 api.put('/api/r/:slug/atendimento/info', async ({ req, params }) => W.saveInfo(await staffCtx(req, params.slug), await readJson(req)));
 
 // ---------- agência: criar restaurantes ----------

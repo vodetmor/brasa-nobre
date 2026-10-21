@@ -73,7 +73,8 @@ export async function tableByToken(token) {
 }
 
 export async function listTables(restaurantId) {
-  return await all('SELECT * FROM tables WHERE restaurant_id = ? ORDER BY number', restaurantId);
+  // nº 0 é a mesa virtual dos pedidos do WhatsApp (src/whatsapp.js): não aparece no caixa, cadastro nem QR
+  return await all('SELECT * FROM tables WHERE restaurant_id = ? AND number > 0 ORDER BY number', restaurantId);
 }
 
 export async function addTables(restaurantId, count) {

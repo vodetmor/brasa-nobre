@@ -5,7 +5,8 @@ import { api, esc, $, $$, toast, money, hhmm, parseDate, staffGate, staffNav, sl
 const slug = slugFromPath();
 const REASON = {
   pediu_atendente: 'Pediu uma pessoa', reclamacao: 'Reclamação', alterar_cancelar: 'Alterar ou cancelar',
-  fora_do_cardapio: 'Fora do cardápio', duvida: 'Dúvida', equipe_assumiu: 'Equipe respondendo', outro: 'Precisa da equipe',
+  fora_do_cardapio: 'Fora do cardápio', duvida: 'Dúvida', equipe_assumiu: 'Equipe respondendo', dono_respondeu: 'Dono respondeu pelo celular',
+  limite_mensagens: 'Robô pausado (muitas mensagens)', outro: 'Precisa da equipe',
 };
 const STATUS = { novo: 'Novo', confirmado: 'Em preparo', saiu: 'Saiu para entrega', pronto: 'Pronto para retirar', entregue: 'Entregue', cancelado: 'Cancelado' };
 const PAY = { dinheiro: 'Dinheiro', pix: 'Pix', cartao: 'Cartão' };
@@ -17,7 +18,9 @@ Pix: (61) 99611-5754 (Central do Espeto).
 Não aceitamos vale-refeição.`;
 
 let restaurant, data = { contacts: [], orders: [], info: '' };
-let tab = 'conversas', open = null, convo = null, seenOrders = null, filter = 'todas';
+// ?so=robo: só os controles do robô (embutido na área "Robô do WhatsApp" do painel), sem conversas nem avisos
+const onlyRobot = new URLSearchParams(location.search).get('so') === 'robo';
+let tab = onlyRobot ? 'robo' : 'conversas', open = null, convo = null, seenOrders = null, filter = 'todas';
 
 // ---------- avisos de atendimento humano (como no painel da MedicMais) ----------
 // barra vermelha no topo + som "ding-dong" + notificação do navegador + título piscando; "plim" para mensagem nova.
@@ -119,12 +122,14 @@ async function start() {
     <div class="at-tabs" role="tablist">
       <button type="button" role="tab" data-tab="conversas">Conversas<span class="count hidden" id="c-conv"></span></button>
       <button type="button" role="tab" data-tab="pedidos">Pedidos<span class="count hidden" id="c-ped"></span></button>
-      <button type="button" role="tab" data-tab="info">Informações para o robô</button>
+      <button type="button" role="tab" data-tab="robo">Robô</button>
       <span class="spacer"></span><button type="button" class="btn soft small" id="som" aria-pressed="false">Ligar som e avisos</button>
     </div>
     <div id="banner"></div>
+    <section class="robot-bar" id="robot-bar" aria-live="polite"></section>
     <main id="view"></main>`;
   $$('.at-tabs button').forEach(b => b.addEventListener('click', () => { tab = b.dataset.tab; render(); }));
+  if (onlyRobot) { document.body.classList.add('only-robot'); render(); }
   $('#som').addEventListener('click', toggleSound);
   soundButton();
   // o navegador só toca som depois de um clique na página
@@ -142,22 +147,22 @@ async function refresh() {
   const fresh = data.orders.filter(o => o.status === 'novo').map(o => o.id);
   if (seenOrders && fresh.some(id => !seenOrders.has(id))) { if (soundOn()) dingDong(); toast('Pedido novo pelo WhatsApp'); }
   seenOrders = new Set(data.orders.map(o => o.id));
-  checkAlerts();
+  if (!onlyRobot) checkAlerts();
   render(true);
 }
 
 function render(passive = false) {
   $$('.at-tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab));
-  const need = data.contacts.filter(c => c.needs_human && c.human_reason !== 'equipe_assumiu').length;
+  const need = data.contacts.filter(urgent).length;
   const novos = data.orders.filter(o => o.status === 'novo').length;
   setCount('#c-conv', need); setCount('#c-ped', novos);
-  $('#banner').innerHTML = !data.robot ? '<p class="at-banner">O robô ainda não está ligado neste restaurante. As conversas aparecem aqui quando o WhatsApp for conectado.</p>'
-    : !data.can_send ? '<p class="at-banner">Envio pelo painel desligado: a equipe vê as conversas, mas responde pelo celular.</p>' : '';
+  $('#banner').innerHTML = !data.robot ? '<p class="at-banner">O WhatsApp ainda não foi conectado neste restaurante. As conversas aparecem aqui quando conectar.</p>' : '';
+  renderRobotBar();
   // não redesenha o que a pessoa está digitando
-  if (passive && tab === 'info') return;
+  if (passive && tab === 'robo') return;
   if (tab === 'conversas') renderChat(passive);
   else if (tab === 'pedidos') renderOrders();
-  else renderInfo();
+  else renderRobot();
 }
 
 const setCount = (sel, n) => { const el = $(sel); el.textContent = n; el.classList.toggle('hidden', !n); };
@@ -205,7 +210,7 @@ function renderChat(passive) {
   list.querySelectorAll('[data-phone]').forEach(b => b.addEventListener('click', () => openConvo(b.dataset.phone)));
   if (!passive || !open) renderConvo();
 }
-const urgent = c => (c.needs_human && c.human_reason !== 'equipe_assumiu' ? 1 : 0);
+const urgent = c => (c.needs_human && !['equipe_assumiu', 'dono_respondeu'].includes(c.human_reason) ? 1 : 0);
 
 async function openConvo(phone) {
   open = phone; convo = null;
@@ -286,9 +291,9 @@ async function setRobot(on) {
 // ---------- pedidos ----------
 const NEXT = {
   novo: o => [['confirmado', 'Confirmar pedido', 'ok'], ['cancelado', 'Cancelar', 'ghost']],
-  confirmado: o => [o.mode === 'entrega' ? ['saiu', 'Saiu para entrega', ''] : ['pronto', 'Pronto para retirar', ''], ['cancelado', 'Cancelar', 'ghost']],
+  confirmado: o => [o.mode === 'entrega' ? ['saiu', 'Saiu para entrega', ''] : ['pronto', o.mode === 'local' ? 'Pronto' : 'Pronto para retirar', ''], ['cancelado', 'Cancelar', 'ghost']],
   saiu: () => [['entregue', 'Entregue', 'soft']],
-  pronto: () => [['entregue', 'Retirado', 'soft']],
+  pronto: o => [['entregue', o.mode === 'local' ? 'Servido' : 'Retirado', 'soft']],
 };
 
 let ordersKey = '';
@@ -304,7 +309,7 @@ function renderOrders() {
       <ul>${o.items.map(i => `<li>${i.qty}x ${esc(i.name)} · ${money(i.unit_price_cents * i.qty)}
         ${i.choices ? `<small>${esc(i.choices)}</small>` : ''}${i.note ? `<small>Obs.: ${esc(i.note)}</small>` : ''}</li>`).join('')}</ul>
       <div class="total">Total dos itens: ${money(o.total_cents)}</div>
-      <div class="meta"><b>${o.mode === 'entrega' ? 'Entrega' : 'Retirada no local'}</b>${o.address ? `: ${esc(o.address)}` : ''}<br>
+      <div class="meta"><b>${{ entrega: 'Entrega', retirada: 'Retirada no balcão', local: 'Comer no local' }[o.mode] || o.mode}</b>${o.address ? `: ${esc(o.address)}` : ''}<br>
         Pagamento: <b>${PAY[o.payment] || '-'}</b>${o.note ? `<br>Obs.: ${esc(o.note)}` : ''}</div>
       <div class="actions">${(NEXT[o.status]?.(o) || []).map(([s, l, cls]) =>
         `<button type="button" class="btn small ${cls}" data-id="${o.id}" data-status="${s}">${l}</button>`).join('')}
@@ -325,13 +330,94 @@ function renderOrders() {
 const STATUS_MSG_HINT = { confirmado: 'Confirmado. O cliente recebeu o aviso no WhatsApp.', saiu: 'O cliente foi avisado que o pedido saiu.', pronto: 'O cliente foi avisado que pode retirar.' };
 
 // ---------- informações para o robô ----------
-function renderInfo() {
+// ---------- robô: ligar/pausar ----------
+function renderRobotBar() {
+  const bar = $('#robot-bar');
+  if (!bar || !data.robot) { if (bar) bar.innerHTML = ''; return; }
+  const on = data.robot_on;
+  const key = String(on);
+  if (bar.dataset.key === key) return;
+  bar.dataset.key = key;
+  bar.className = `robot-bar ${on ? 'on' : 'off'}`;
+  bar.innerHTML = `
+    <span class="rb-dot" aria-hidden="true"></span>
+    <div class="rb-text"><b>${on ? 'Robô ligado' : 'Robô pausado'}</b>
+      <span>${on ? 'Responde sozinho os clientes no WhatsApp. Quando alguém pede uma pessoa, ele avisa aqui.' : 'Ninguém recebe resposta automática. A equipe responde por aqui ou pelo celular.'}</span></div>
+    <button type="button" class="btn ${on ? 'soft' : 'ok'}" id="rb-toggle" role="switch" aria-checked="${on}">${on ? 'Pausar robô' : 'Ligar robô'}</button>`;
+  $('#rb-toggle').addEventListener('click', toggleRobot);
+}
+
+async function toggleRobot() {
+  const on = !data.robot_on;
+  if (!on && !confirm('Pausar o robô? Os clientes deixam de receber resposta automática até você ligar de novo.')) return;
+  const b = $('#rb-toggle'); b.disabled = true;
+  try {
+    await api(`/api/r/${slug}/atendimento/robo-ligar`, { method: 'POST', body: { on } });
+    data.robot_on = on;
+    renderRobotBar();
+    toast(on ? 'Robô ligado: ele volta a responder os clientes.' : 'Robô pausado.');
+  } catch (e) { toast(e.message, 'error'); b.disabled = false; }
+}
+
+// ---------- aba Robô: como funciona + personalidade + informações da casa ----------
+const FUNNEL = [
+  ['Cliente manda mensagem', 'Texto, áudio (vira texto) ou foto (vira descrição). Grupos e status ficam de fora.'],
+  ['Espera o cliente terminar', '9 segundos para juntar mensagens seguidas numa resposta só. Mensagem repetida é ignorada.'],
+  ['Pode responder?', 'Só se o robô estiver ligado, a equipe não tiver assumido a conversa e ele não tiver passado de 8 respostas em 3 minutos.'],
+  ['IA monta a resposta', 'Usa a personalidade e o roteiro abaixo, as regras fixas, o cardápio, as informações da casa e as últimas 14 mensagens.'],
+  ['Conduz o pedido', 'Pedido, entrega/retirada/local, endereço, pagamento e nome. Mostra o resumo e espera o "sim".'],
+  ['Registra o pedido', 'O sistema calcula o preço pelo cardápio (a IA não inventa valor). Aparece na aba Pedidos.'],
+  ['Equipe confirma', 'O cliente recebe o aviso no WhatsApp e o pedido vai para a Cozinha, que toca e imprime.'],
+];
+const BOT_FORM = [
+  ['nome', 'Nome da atendente', 'input', 'Vazio = "atendimento da casa". Ex.: Maria'],
+  ['persona', 'Quem ela é', 'textarea', 'Use {restaurante} para o nome da casa.'],
+  ['jeito', 'Jeito de falar', 'textarea', 'Uma regra por linha.'],
+  ['roteiro', 'Roteiro do pedido', 'textarea', 'A ordem das perguntas. Uma etapa por linha.'],
+  ['extras', 'Regras extras da casa', 'textarea', 'Ex.: Não fazemos troca de acompanhamento no prato da casa.'],
+];
+let robot = null;
+
+async function renderRobot() {
+  $('#view').innerHTML = '<p class="at-empty">Carregando…</p>';
+  try { robot = await api(`/api/r/${slug}/atendimento/robo-config`); }
+  catch (e) { $('#view').innerHTML = `<p class="at-empty">${esc(e.message)}</p>`; return; }
+  const b = robot.bot;
   $('#view').innerHTML = `
-    <form class="at-info" id="info-form">
-      <p class="muted">O robô só fala o que está no cardápio e aqui. O que não estiver escrito (horário, entrega, taxa, Pix), ele diz que a equipe confirma.</p>
-      <textarea class="input" id="info" placeholder="${esc(INFO_HINT)}">${esc(data.info)}</textarea>
-      <div class="row"><button class="btn">Salvar</button><span class="muted" id="info-state"></span></div>
-    </form>`;
+    <div class="at-robot">
+      <section class="card-sec">
+        <h2>Como o robô funciona</h2>
+        <ol class="funnel">${FUNNEL.map(([t, d], i) => `<li><span class="fn-n">${i + 1}</span><div><b>${esc(t)}</b><p>${esc(d)}</p></div></li>`).join('')}</ol>
+        <p class="fn-side"><b>Passa para a equipe</b> quando o cliente pede uma pessoa, reclama, quer alterar ou cancelar, pede algo fora do cardápio ou o robô não sabe responder. A conversa fica vermelha na aba Conversas e o painel toca.</p>
+        <details class="fn-prompt"><summary>Ver exatamente o que a IA recebe</summary><pre>${esc(robot.prompt)}</pre></details>
+      </section>
+      <form class="card-sec" id="bot-form">
+        <h2>Personalidade e roteiro</h2>
+        <p class="muted">O que você mudar aqui vale a partir da próxima mensagem. As regras fixas (não inventar preço, passar para a equipe) continuam valendo.</p>
+        ${BOT_FORM.map(([k, l, type, hint]) => `<label class="field"><span>${l}</span>
+          ${type === 'input' ? `<input class="input" name="${k}" maxlength="40" value="${esc(b[k])}">` : `<textarea class="input" name="${k}" rows="${k === 'roteiro' ? 8 : 4}">${esc(b[k])}</textarea>`}
+          <small class="muted">${esc(hint)}</small></label>`).join('')}
+        <div class="row wrap"><button class="btn">Salvar</button><button type="button" class="btn ghost" id="bot-reset">Voltar ao padrão</button></div>
+      </form>
+      <form class="card-sec" id="info-form">
+        <h2>Informações da casa</h2>
+        <p class="muted">O robô só fala o que está no cardápio e aqui. O que não estiver escrito (horário, entrega, taxa, Pix), ele diz que a equipe confirma.</p>
+        <textarea class="input" id="info" rows="7" placeholder="${esc(INFO_HINT)}">${esc(robot.info)}</textarea>
+        <div class="row"><button class="btn">Salvar</button></div>
+      </form>
+    </div>`;
+  $('#bot-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const body = Object.fromEntries(new FormData(e.target));
+    try { await api(`/api/r/${slug}/atendimento/robo-config`, { method: 'PUT', body }); toast('Salvo. O robô já usa na próxima mensagem.'); renderRobot(); }
+    catch (err) { toast(err.message, 'error'); }
+  });
+  $('#bot-reset').addEventListener('click', () => {
+    if (!confirm('Voltar a personalidade e o roteiro ao padrão?')) return;
+    for (const [k] of BOT_FORM) e2(k).value = robot.defaults[k];
+    toast('Padrão carregado. Clique em Salvar para aplicar.');
+  });
+  const e2 = k => $(`#bot-form [name=${k}]`);
   $('#info-form').addEventListener('submit', async e => {
     e.preventDefault();
     try {
