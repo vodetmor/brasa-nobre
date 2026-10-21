@@ -53,6 +53,9 @@ export const DEMOS = [
         ['Sertanejo', 'Carne de sol, arroz branco, feijão de caldo e vinagrete.', 2000, { ingredients: 'Carne de sol, Arroz branco, Feijão de caldo, Vinagrete' }],
         ['Fit', 'Frango grelhado, arroz com brócolis, mix de folhas e vinagrete.', 2000, { ingredients: 'Frango grelhado, Arroz com brócolis, Mix de folhas, Vinagrete' }],
       ],
+      'Feijoada · sábado': [
+        ['Feijoada completa', '', 2500, { image_url: ce('ce-feijoada-2.webp') }],
+      ],
       'Espetos': [
         ['Alcatra', '', 1200],
         ['Contra filé', '', 1200, { image_url: ce('ce-contra-file.webp'), model_glb_url: ce('ce-contra-file.glb') }],
