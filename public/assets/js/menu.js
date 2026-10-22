@@ -2,6 +2,8 @@
 // Fluxo: vê o prato → "Adicionar" → "Ver pedido" → nome → "Enviar para a cozinha". Pronto.
 import { api, money, hhmm, esc, $, $$, live } from './common.js';
 
+const ILLUS = 'Fotos meramente ilustrativas.';
+
 const token = location.pathname.split('/')[2];
 const source = new URLSearchParams(location.search).get('src') === 'nfc' ? 'nfc' : 'qr';
 const K = { cart: `cart:${token}`, name: 'customer_name', mine: `my_orders:${token}` };
@@ -98,6 +100,7 @@ function render() {
     <footer class="m-foot">
       <div class="m-sig">Bom apetite.</div>
       ${r.address ? `${esc(r.address)}<br>` : ''}O pagamento é feito no caixa, ao final.
+      <p class="m-illus">${ILLUS}</p>
     </footer>
     <div class="m-bar"><button id="open-cart"></button></div>`;
 
@@ -240,7 +243,7 @@ function renderPremium() {
         <div class="t"><small>Precisa de algo?</small><strong>O garçom vem até a sua mesa</strong></div>
         <button data-go="garcom">Chamar</button>
       </div>
-      <footer class="m-foot">O pagamento é feito no caixa, ao final.</footer>
+      <footer class="m-foot">O pagamento é feito no caixa, ao final.<p class="m-illus">${ILLUS}</p></footer>
     </main>
     <nav class="p-nav"><div class="p-nav-inner">
       <button class="p-tab" data-go="buscar">${ICON.search}Buscar</button>
@@ -470,6 +473,7 @@ function showDish(id) {
     <div class="m-dish"><div class="m-dmedia">
     <div class="m-dphoto" id="d-media"></div>
     ${has3d ? `<div class="m-switch"><button data-mode="3d" class="on">Ver em 3D</button>${p.image_url ? '<button data-mode="foto">Foto</button>' : ''}</div>` : ''}
+    ${p.image_url ? `<p class="m-illus">${ILLUS}</p>` : ''}
     </div><div class="m-dside">
     <div class="m-dtext">
       ${p.badge ? `<div class="m-tag" style="font-size:.66rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--brand)">${esc(p.badge)}</div>` : ''}

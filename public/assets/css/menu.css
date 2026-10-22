@@ -70,6 +70,8 @@ body.m-body { background: var(--paper-bg, #f3ede3); }
 .m-qty span { min-width: 26px; text-align: center; font-weight: 700; }
 
 .m-foot { padding: 40px 20px 0; text-align: center; color: var(--ink-2); font-size: .82rem; }
+.m-illus { margin: 8px 0 0; font-size: .7rem; line-height: 1.3; color: var(--ink-2); opacity: .75; text-align: center; }
+.m-dmedia .m-illus { margin: 0; padding: 6px 12px 8px; }
 .m-foot .m-sig { font-family: var(--serif); font-style: italic; font-size: 1.15rem; color: var(--ink); margin-bottom: 6px; }
 
 /* ---------- barra do pedido ---------- */
