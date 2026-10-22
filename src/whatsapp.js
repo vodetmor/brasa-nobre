@@ -229,7 +229,9 @@ export async function botTurn(r, body) {
     ORDER BY id DESC LIMIT 3`, r.id, phone);
 
   const contexto = await contextFor(r, contact, history, orders, past);
-  return { responder: true, texto: fresh.map(m => m.text).join('\n'), prompt: buildPrompt(r, contexto), modelo: botSettings(r).modelo, restaurante: r.name };
+  // ja_conversou: o n8n corta saudação ("Oi! Tudo bem?") se o robô já falou com este cliente nas últimas 12 h
+  const recent = await get(`SELECT id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'out' AND created_at >= datetime('now', '-12 hours') LIMIT 1`, r.id, phone);
+  return { responder: true, texto: fresh.map(m => m.text).join('\n'), prompt: buildPrompt(r, contexto), modelo: botSettings(r).modelo, restaurante: r.name, ja_conversou: !!recent };
 }
 
 // Mensagem que saiu do celular do dono (WhatsApp dele, não o robô): registra e pausa o robô nesse cliente.
