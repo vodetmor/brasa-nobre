@@ -11,7 +11,7 @@ import { publish, staffChannel } from './lib/realtime.js';
 const ORDER_STATUSES = ['novo', 'confirmado', 'saiu', 'pronto', 'entregue', 'cancelado'];
 const OPEN_ORDER = "('novo', 'confirmado', 'saiu', 'pronto')";
 const PAYMENTS = { dinheiro: 'Dinheiro', pix: 'Pix', cartao: 'Cartão' };
-const STATUS_LABEL = { novo: 'recebido, aguardando a equipe confirmar', confirmado: 'confirmado, em preparo', saiu: 'saiu para entrega',
+const STATUS_LABEL = { novo: 'recebido, aguardando a equipe', confirmado: 'confirmado, em preparo', saiu: 'saiu para entrega',
   pronto: 'pronto para retirar', entregue: 'entregue', cancelado: 'cancelado' };
 // Aviso automático para o cliente quando a equipe muda o status do pedido no painel
 const STATUS_MSG = {
@@ -86,7 +86,7 @@ const FIXED_RULES = `REGRAS FIXAS (valem acima de tudo)
 3. Pratos com "escolher 1 ..." no cardápio: o cliente escolhe uma opção de cada grupo, só entre as listadas. Pergunte o que faltar de um jeito leve, podendo juntar duas escolhas numa pergunta.
 4. Sem markdown: nada de asterisco, título ou lista com traço. Para listar (cardápio, resumo), use uma linha por item, sem linha em branco no meio.
 5. ANTES de registrar, mande o resumo numa mensagem (itens com escolhas, total dos itens, entrega/retirada/local, endereço, pagamento) e pergunte se está tudo certo. Só depois do "sim" use registrar_pedido. Se for entrega, diga que a taxa (se houver) a equipe confirma, a não ser que as INFORMAÇÕES DA CASA tragam o valor.
-6. registrar_pedido responde OK ou ERRO. Se ERRO, explique de forma simples o que falta e pergunte. Se OK, informe o número do pedido e diga que a equipe confirma por aqui em instantes. Nunca diga que o pedido foi feito sem o OK da ferramenta.
+6. registrar_pedido responde OK ou ERRO. Se ERRO, explique de forma simples o que falta e pergunte. Se OK, faça o que a ferramenta disser (normalmente: o pedido já está confirmado e em preparo). Nunca diga que o pedido foi feito sem o OK da ferramenta.
 7. Use pedir_humano NA HORA, sem tentar convencer, quando o cliente: pedir uma pessoa, atendente, gerente ou dono; reclamar; quiser alterar ou cancelar um pedido já registrado; pedir encomenda grande, evento ou algo fora do cardápio; ou quando você não souber resolver. Motivos: pediu_atendente, reclamacao, alterar_cancelar, fora_do_cardapio, duvida ou outro. Nesse caso responda só uma frase curta avisando que a equipe vai continuar a conversa por aqui.
 8. Se perguntarem do pedido, use PEDIDOS EM ANDAMENTO. Não prometa tempo de entrega que não esteja nas informações.
 9. Áudio, foto, figurinha, vídeo e documento: "[Áudio do cliente, transcrito]" -> responda como quem ouviu, sem falar em transcrição. "[Foto ...]" ou "[Vídeo ...]" -> responda ao que aparece (se mostrar problema com a comida ou a entrega, é reclamação: pedir_humano). "[Figurinha ...]" -> reaja curto e siga a conversa. "[Documento enviado pelo cliente: ...]" -> se parecer comprovante de pagamento, agradeça e diga que a equipe confere; senão, peça para ele dizer do que se trata. Se não abriu, peça para escrever.
@@ -350,11 +350,19 @@ export async function botOrder(r, body) {
     await run(`UPDATE wa_contacts SET name = ?, stage = 'pedido', updated_at = datetime('now') WHERE restaurant_id = ? AND phone = ?`, name, r.id, phone);
     return get('SELECT * FROM wa_orders WHERE id = ?', lastInsertRowid);
   });
-  await alertOwner(r, `🛵 Pedido novo pelo WhatsApp: nº ${order.number}, ${name}, ${brl(total)} (${mode}). Confirme no painel.`);
+  // aprovação automática: o pedido confirmado pelo cliente já vai para a cozinha (tela, som e impressora)
+  let naCozinha = false;
+  try {
+    await run(`UPDATE wa_orders SET status = 'confirmado', updated_at = datetime('now') WHERE id = ?`, order.id);
+    await toKitchen(r, order);
+    naCozinha = true;
+  } catch (e) { console.error('WhatsApp: pedido não foi para a cozinha', e.message); }
+  await alertOwner(r, `🛵 Pedido novo pelo WhatsApp: nº ${order.number}, ${name}, ${brl(total)} (${mode}). ${naCozinha ? 'Já foi para a cozinha.' : 'Confira no painel: não entrou na cozinha.'}`);
   const resumo = lines.map(l => `${l.qty}x ${l.name}${l.choices ? ` (${l.choices.split('; ').map(c => c.slice(c.indexOf(': ') + 2)).join(', ')})` : ''} ${brl(l.unit_price_cents * l.qty)}`).join('; ');
   return { resultado: `OK: pedido nº ${order.number} registrado. Itens: ${resumo}. Total dos itens: ${brl(total)}` +
     `${mode === 'entrega' ? ' (sem a taxa de entrega: se ela estiver nas INFORMAÇÕES DA CASA para o bairro, some ao falar o total; senão, diga que a equipe confirma)' : ''}. Pagamento: ${PAYMENTS[payment]}. ` +
-    'Agora diga ao cliente o número do pedido, o resumo e o total, e que a equipe confirma por aqui em instantes.' };
+    (naCozinha ? 'O pedido JÁ ESTÁ CONFIRMADO e foi para a cozinha. Diga ao cliente o número do pedido, o resumo e o total, e que já está sendo preparado (avisamos por aqui quando sair para entrega ou ficar pronto).'
+      : 'Diga ao cliente o número do pedido, o resumo e o total, e que a equipe confirma por aqui em instantes.') };
 }
 
 // ---------- equipe: tela de atendimento ----------
