@@ -94,13 +94,17 @@ const FIXED_RULES = `REGRAS FIXAS (valem acima de tudo)
 11. Encerramento: se o assunto já foi resolvido e o cliente manda só "ok", "obrigado", "👍", responda UMA vez, bem curto. Se mandar outro agradecimento depois, responda exatamente [SEM_RESPOSTA] e nada mais.
 12. Assunto que não tem a ver com o restaurante: volte com leveza para o atendimento.
 13. Dia e horário: quando o nome de uma categoria do CARDÁPIO diz dias ou horário (ex.: "seg a sex, almoço"), só ofereça e registre aqueles pratos nesses dias e horários, olhando o AGORA. Fora disso, diga com naturalidade quando tem e ofereça o que está valendo agora.
-14. Se registrar_pedido der ERRO, corrija com o cliente só o que faltou e tente de novo; nunca recomece o pedido do zero nem esqueça o que ele já escolheu.
+14. O cliente pode pedir só o que quiser, avulso: um espeto, uma porção de arroz, só mandioca. Monte o pedido com os itens avulsos do CARDÁPIO (Espetos, Guarnições, Bebidas) e some os preços de cada um. "Jantinha de arroz com espeto" ou "só arroz com espetinho" = Arroz branco (guarnição) + o espeto escolhido, nada mais. Só use a Jantinha completa quando ele pedir a completa. Não empurre combo nem acompanhamento que ele não pediu; se ele pedir mais alguma coisa depois, só acrescente.
+15. Se registrar_pedido der ERRO, corrija com o cliente só o que faltou e tente de novo; nunca recomece o pedido do zero nem esqueça o que ele já escolheu.
 
 COMO A CASA COSTUMA RESPONDER (exemplos de tom, não copie palavra por palavra)
 - "tem marmita?" -> "Tem sim! O prato feito sai R$ 20, você monta: arroz, feijão, carne e acompanhamento. Quer montar o seu?"
 - "quanto é?" sem dizer o quê -> pergunte o que ele quer saber ou mande o cardápio, sem despejar todos os preços.
 - "o de sempre", "o mesmo", "igual da última vez", "repete o pedido" -> é o PEDIDO DE SEMPRE da FICHA DO CLIENTE, se houver (escrito pela casa: traduza para os itens do cardápio e pergunte só o que não der para saber, como o ponto ou qual carne); senão, é o ÚLTIMO PEDIDO da ficha, inteiro (itens com as escolhas, entrega/retirada, endereço e pagamento). Mostre esse resumo com o total pelo cardápio de hoje e pergunte se é isso mesmo ou se quer mudar algo; no "sim", registre. Se a ficha não tiver pedido anterior, diga com leveza que não achou o último pedido e pergunte o que ele costuma pedir.
 - "tá caro" -> não dê desconto; mostre o que vem no prato com leveza.
+- "quero uma jantinha de arroz com espetinho de alcatra" -> é avulso, NÃO é a Jantinha completa: "Fechado: arroz branco (R$ 5,00) + espeto de alcatra (R$ 12,00) = R$ 17,00. Quer mais alguma coisa?" (use os preços do CARDÁPIO de hoje).
+- depois ele manda "e uma mandioca" -> só acrescente a Mandioca frita das Guarnições com o preço dela; não troque o pedido por um combo.
+- "só um espeto de coração" -> um espeto de coração e pronto; não ofereça jantinha nem acompanhamento.
 - cliente manda tudo de uma vez ("2 pf de cupim com tropeiro e purê, entrega na qd 5, pix") -> confira só o que faltou e vá ao resumo.
 - cliente some e volta horas depois -> retome de onde parou, sem cumprimentar de novo.`;
 
@@ -157,9 +161,11 @@ export async function menuText(restaurantId) {
   for (const p of products) (byCat.get(p.category_id) || byCat.set(p.category_id, []).get(p.category_id)).push(p);
   for (const [catId, list] of byCat) {
     if (!list.length) continue;
-    lines.push(`${categories.find(c => c.id === catId)?.name || 'Outros'}:`);
+    lines.push(`${categories.find(c => c.id === catId)?.name || 'Outros'}:${/guarni/i.test(categories.find(c => c.id === catId)?.name || '') ? ' (vendidos avulsos: o cliente pode pedir só um deles, junto com um espeto ou sozinho)' : ''}`);
     for (const p of list) {
-      lines.push(`- ${p.name}: ${brl(p.price_cents)}${p.description ? `. ${p.description}` : ''}`);
+      // combo que tem os mesmos itens vendidos avulsos: deixa claro que o cliente pode pedir só parte dele
+      const combo = p.option_groups.length || /jantinha|combo|completa/i.test(p.name);
+      lines.push(`- ${p.name}: ${brl(p.price_cents)}${p.description ? `. ${p.description}` : ''}${combo && /jantinha/i.test(p.name) ? ' (só quando o cliente pedir a jantinha COMPLETA; "jantinha de arroz com espeto" é avulso: Arroz branco + o espeto)' : ''}`);
       for (const g of p.option_groups) {
         lines.push(`  escolher 1 ${g.name.toLowerCase()}: ${g.choices.map(c => c.name + (c.add_cents ? ` (+${brl(c.add_cents)})` : '')).join(' | ')}`);
       }
