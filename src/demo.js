@@ -44,7 +44,7 @@ export const DEMOS = [
           options: [
             'Arroz: Arroz branco, Arroz com brócolis',
             'Feijão: Feijão tropeiro, Feijão de caldo',
-            'Carne: Bife de cupim, Contra filé, Parmegiana de carne +5, Parmegiana de frango +5, Carne de panela, Filé de frango grelhado, Carne de sol',
+            'Carne: Bife de cupim, Contra filé, Parmegiana de carne +5, Parmegiana de frango +5, Carne de panela, Filé de frango grelhado, Frango com bacon, Carne de sol',
             'Acompanhamento: Purê, Maionese, Mix de folhas, Batata frita, Mandioca frita, Farofa de ovo, Farofa de banana, Vinagrete',
           ].join('\n') }],
       ],
