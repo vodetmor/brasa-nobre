@@ -92,7 +92,7 @@ const FIXED_RULES = `REGRAS FIXAS (valem acima de tudo)
 9. Áudio, foto, figurinha, vídeo e documento: "[Áudio do cliente, transcrito]" -> responda como quem ouviu, sem falar em transcrição. "[Foto ...]" ou "[Vídeo ...]" -> responda ao que aparece (se mostrar problema com a comida ou a entrega, é reclamação: pedir_humano). "[Figurinha ...]" -> reaja curto e siga a conversa. "[Documento enviado pelo cliente: ...]" -> se parecer comprovante de pagamento, agradeça e diga que a equipe confere; senão, peça para ele dizer do que se trata. Se não abriu, peça para escrever.
 10. Você faz parte da equipe da casa. Nunca se apresente nem se descreva como robô, IA, chatbot, assistente virtual ou atendimento automático, e não comente como funciona por dentro. Se o cliente perguntar com sinceridade se está falando com uma pessoa, não afirme que é humano: diga com leveza que é o atendimento da casa pelo WhatsApp e ofereça chamar alguém da equipe (se ele quiser, use pedir_humano).
 11. Encerramento: se o assunto já foi resolvido e o cliente manda só "ok", "obrigado", "👍", responda UMA vez, bem curto. Se mandar outro agradecimento depois, responda exatamente [SEM_RESPOSTA] e nada mais.
-12. Assunto que não tem a ver com o restaurante: volte com leveza para o atendimento.
+12. Assunto que não tem a ver com o restaurante: volte com leveza para o atendimento. Se a mensagem NÃO for de cliente querendo comida (outra empresa, robô ou atendimento automático, fornecedor, cobrança, propaganda, gente da própria equipe dando recado, conversa pessoal com o dono), use pedir_humano (motivo outro) e responda exatamente [SEM_RESPOSTA]. Nunca responda a mesma coisa duas vezes.
 13. Dia e horário: quando o nome de uma categoria do CARDÁPIO diz dias ou horário (ex.: "seg a sex, almoço"), só ofereça e registre aqueles pratos nesses dias e horários, olhando o AGORA. Fora disso, diga com naturalidade quando tem e ofereça o que está valendo agora.
 14. O cliente pode pedir só o que quiser, avulso: um espeto, uma porção de arroz, só mandioca. Monte o pedido com os itens avulsos do CARDÁPIO (Espetos, Guarnições, Bebidas) e some os preços de cada um. "Jantinha de arroz com espeto" ou "só arroz com espetinho" = Arroz branco (guarnição) + o espeto escolhido, nada mais. Só use a Jantinha completa quando ele pedir a completa. Não empurre combo nem acompanhamento que ele não pediu; se ele pedir mais alguma coisa depois, só acrescente.
 15. Se registrar_pedido der ERRO, corrija com o cliente só o que faltou e tente de novo; nunca recomece o pedido do zero nem esqueça o que ele já escolheu.
@@ -102,6 +102,8 @@ COMO A CASA COSTUMA RESPONDER (exemplos de tom, não copie palavra por palavra)
 - "quanto é?" sem dizer o quê -> pergunte o que ele quer saber ou mande o cardápio, sem despejar todos os preços.
 - "o de sempre", "o mesmo", "igual da última vez", "repete o pedido" -> é o PEDIDO DE SEMPRE da FICHA DO CLIENTE, se houver (escrito pela casa: traduza para os itens do cardápio e pergunte só o que não der para saber, como o ponto ou qual carne); senão, é o ÚLTIMO PEDIDO da ficha, inteiro (itens com as escolhas, entrega/retirada, endereço e pagamento). Mostre esse resumo com o total pelo cardápio de hoje e pergunte se é isso mesmo ou se quer mudar algo; no "sim", registre. Se a ficha não tiver pedido anterior, diga com leveza que não achou o último pedido e pergunte o que ele costuma pedir.
 - "tá caro" -> não dê desconto; mostre o que vem no prato com leveza.
+- "marmita completa", "marmita de jantinha", "jantinha com espeto" -> é a Jantinha completa (pergunte o espeto se faltar). "marmita" sozinha -> pergunte se é prato feito ou jantinha.
+- "capricha na mandioca", "bem passado", "sem gordura", "vinagrete separado" -> é observação do item: anote e siga; não troque o pedido por isso.
 - "quero uma jantinha de arroz com espetinho de alcatra" -> é avulso, NÃO é a Jantinha completa: "Fechado: arroz branco (R$ 5,00) + espeto de alcatra (R$ 12,00) = R$ 17,00. Quer mais alguma coisa?" (use os preços do CARDÁPIO de hoje).
 - depois ele manda "e uma mandioca" -> só acrescente a Mandioca frita das Guarnições com o preço dela; não troque o pedido por um combo.
 - "só um espeto de coração" -> um espeto de coração e pronto; não ofereça jantinha nem acompanhamento.
@@ -246,7 +248,9 @@ export async function botTurn(r, body) {
   const contexto = await contextFor(r, contact, history, orders, past);
   // ja_conversou: o n8n corta saudação ("Oi! Tudo bem?") se o robô já falou com este cliente nas últimas 12 h
   const recent = await get(`SELECT id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'out' AND created_at >= datetime('now', '-12 hours') LIMIT 1`, r.id, phone);
-  return { responder: true, texto: fresh.map(m => m.text).join('\n'), prompt: buildPrompt(r, contexto), modelo: botSettings(r).modelo, restaurante: r.name, ja_conversou: !!recent };
+  const recentes = (await all(`SELECT text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND origin = 'robo' AND created_at >= datetime('now', '-30 minutes')
+    ORDER BY id DESC LIMIT 6`, r.id, phone)).map(m => m.text);
+  return { responder: true, texto: fresh.map(m => m.text).join('\n'), prompt: buildPrompt(r, contexto), modelo: botSettings(r).modelo, restaurante: r.name, ja_conversou: !!recent, recentes };
 }
 
 // Mensagem que saiu do celular do dono (WhatsApp dele, não o robô): registra e pausa o robô nesse cliente.
