@@ -353,7 +353,7 @@ export async function botOrder(r, body) {
   await alertOwner(r, `🛵 Pedido novo pelo WhatsApp: nº ${order.number}, ${name}, ${brl(total)} (${mode}). Confirme no painel.`);
   const resumo = lines.map(l => `${l.qty}x ${l.name}${l.choices ? ` (${l.choices.split('; ').map(c => c.slice(c.indexOf(': ') + 2)).join(', ')})` : ''} ${brl(l.unit_price_cents * l.qty)}`).join('; ');
   return { resultado: `OK: pedido nº ${order.number} registrado. Itens: ${resumo}. Total dos itens: ${brl(total)}` +
-    `${mode === 'entrega' ? ' (taxa de entrega, se houver, a equipe informa)' : ''}. Pagamento: ${PAYMENTS[payment]}. ` +
+    `${mode === 'entrega' ? ' (sem a taxa de entrega: se ela estiver nas INFORMAÇÕES DA CASA para o bairro, some ao falar o total; senão, diga que a equipe confirma)' : ''}. Pagamento: ${PAYMENTS[payment]}. ` +
     'Agora diga ao cliente o número do pedido, o resumo e o total, e que a equipe confirma por aqui em instantes.' };
 }
 
