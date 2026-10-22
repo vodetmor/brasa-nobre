@@ -34,6 +34,7 @@ const MIGRATIONS = [
   ['wa_orders', 'kitchen_order_id', 'INTEGER'],
   ['wa_messages', 'media_file', "TEXT DEFAULT ''"],
   ['wa_messages', 'media_name', "TEXT DEFAULT ''"],
+  ['wa_contacts', 'usual', "TEXT DEFAULT ''"],
 ];
 
 export const engine = config.databaseUrl ? 'postgres' : 'sqlite';

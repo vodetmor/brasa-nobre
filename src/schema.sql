@@ -155,6 +155,7 @@ CREATE TABLE IF NOT EXISTS wa_contacts (
   needs_human INTEGER NOT NULL DEFAULT 0,
   human_reason TEXT DEFAULT '',
   last_message TEXT DEFAULT '',
+  usual TEXT DEFAULT '',                        -- "o de sempre" definido pela casa
   unread INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),

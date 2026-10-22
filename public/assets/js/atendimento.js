@@ -244,12 +244,13 @@ function renderConvo(scroll = true) {
   box.innerHTML = `
     <div class="at-convo-head">
       <button type="button" class="btn ghost small at-back" id="back">Voltar</button>
-      <div class="who"><b>${esc(label(c))}</b><span>${esc(formatPhone(c.phone))}</span></div>
+      <div class="who"><b>${esc(label(c))}</b><span>${esc(formatPhone(c.phone))}${c.usual ? ` · De sempre: ${esc(c.usual)}` : ''}</span></div>
       <span class="spacer"></span>
       ${c.needs_human
         ? `<span class="tag ${urgent(c) ? 'alert' : 'team'}">${esc(REASON[c.human_reason] || REASON.outro)}</span>
            <button type="button" class="btn ${urgent(c) ? 'ok' : 'soft'} small" id="robot-on" title="O robô volta a responder este cliente">${urgent(c) ? 'Resolvido' : 'Devolver ao robô'}</button>`
         : `<span class="tag">Robô respondendo</span><button type="button" class="btn soft small" id="robot-off">Assumir conversa</button>`}
+      <button type="button" class="btn ghost small" id="set-usual" title="O que o robô entende por &quot;o de sempre&quot; deste cliente">Pedido de sempre</button>
       <button type="button" class="btn ghost small" id="mark-complaint" title="Conta nos avisos de reclamação">Marcar reclamação</button>
     </div>
     <div class="at-msgs">${convo.messages.map(m => `
@@ -268,6 +269,12 @@ function renderConvo(scroll = true) {
   $('#robot-on')?.addEventListener('click', () => setRobot(true));
   $('#robot-off')?.addEventListener('click', () => setRobot(false));
   $('#mark-complaint').addEventListener('click', markComplaint);
+  $('#set-usual').addEventListener('click', async () => {
+    const v = prompt('Pedido de sempre deste cliente (quando ele pedir "o de sempre"). Deixe vazio para usar o último pedido.', c.usual || '');
+    if (v === null) return;
+    try { await api(`/api/r/${slug}/atendimento/sempre`, { method: 'POST', body: { phone: c.phone, usual: v } }); toast('Salvo. O robô usa no próximo "o de sempre".'); convo = null; loadConvo(false); }
+    catch (e) { toast(e.message, 'error'); }
+  });
   $('#compose').addEventListener('submit', async e => {
     e.preventDefault();
     const text = ta.value.trim();

@@ -99,7 +99,7 @@ const FIXED_RULES = `REGRAS FIXAS (valem acima de tudo)
 COMO A CASA COSTUMA RESPONDER (exemplos de tom, não copie palavra por palavra)
 - "tem marmita?" -> "Tem sim! O prato feito sai R$ 20, você monta: arroz, feijão, carne e acompanhamento. Quer montar o seu?"
 - "quanto é?" sem dizer o quê -> pergunte o que ele quer saber ou mande o cardápio, sem despejar todos os preços.
-- "o de sempre" -> use a FICHA DO CLIENTE e confirme: "O mesmo da última vez, [pedido]?"
+- "o de sempre", "o mesmo", "igual da última vez", "repete o pedido" -> é o PEDIDO DE SEMPRE da FICHA DO CLIENTE, se houver (escrito pela casa: traduza para os itens do cardápio e pergunte só o que não der para saber, como o ponto ou qual carne); senão, é o ÚLTIMO PEDIDO da ficha, inteiro (itens com as escolhas, entrega/retirada, endereço e pagamento). Mostre esse resumo com o total pelo cardápio de hoje e pergunte se é isso mesmo ou se quer mudar algo; no "sim", registre. Se a ficha não tiver pedido anterior, diga com leveza que não achou o último pedido e pergunte o que ele costuma pedir.
 - "tá caro" -> não dê desconto; mostre o que vem no prato com leveza.
 - cliente manda tudo de uma vez ("2 pf de cupim com tropeiro e purê, entrega na qd 5, pix") -> confira só o que faltou e vá ao resumo.
 - cliente some e volta horas depois -> retome de onde parou, sem cumprimentar de novo.`;
@@ -127,7 +127,8 @@ export function buildPrompt(r, contexto) {
 async function contextFor(r, contact, history, orders, past = null) {
   const who = { cliente: 'CLIENTE', robo: 'VOCÊ', equipe: 'EQUIPE (pessoa da casa)' };
   // ficha do cliente (memória permanente): desde quando fala com a casa e o que costuma pedir
-  const ficha = past && past.total ? `Já fez ${past.total} pedido${past.total > 1 ? 's' : ''} pelo WhatsApp; o último foi ${past.ultimo}. Se fizer sentido, ofereça repetir ("Vai querer o mesmo de sempre?").` : 'Nenhum pedido anterior pelo WhatsApp.';
+  const sempre = contact?.usual ? `PEDIDO DE SEMPRE (definido pela casa, vale mais que o último pedido): ${clip(contact.usual, 300)}. ` : '';
+  const ficha = past && past.total ? `Já fez ${past.total} pedido${past.total > 1 ? 's' : ''} pelo WhatsApp. ÚLTIMO PEDIDO: ${past.ultimo}. Se fizer sentido, ofereça repetir ("Vai querer o mesmo de sempre?").` : 'Nenhum pedido anterior pelo WhatsApp.';
   return [
     `RESTAURANTE: ${r.name}. Endereço: ${r.address || '(não informado)'}.` + (r.instagram ? ` Instagram: ${r.instagram}.` : ''),
     r.accepting_orders ? 'Pedidos: abertos.' : 'Pedidos: FECHADOS agora (o restaurante não está recebendo pedidos). Não registre pedido; diga isso com gentileza.',
@@ -139,7 +140,7 @@ async function contextFor(r, contact, history, orders, past = null) {
     clip(r.wa_info, 3000) || '(a equipe ainda não preencheu: horário, entrega, taxa e Pix você não sabe)',
     '',
     `CLIENTE: ${contact?.name ? `nome "${contact.name}" (pode ser só o apelido do WhatsApp; confirme o nome para o pedido)` : '(nome ainda não informado)'}. ${history.length ? 'Já conversou antes.' : 'Primeira mensagem dele.'}`,
-    `FICHA DO CLIENTE: ${contact?.created_at ? `fala com a casa desde ${String(contact.created_at).slice(8, 10)}/${String(contact.created_at).slice(5, 7)}. ` : ''}${ficha}`,
+    `FICHA DO CLIENTE: ${sempre}${contact?.created_at ? `fala com a casa desde ${String(contact.created_at).slice(8, 10)}/${String(contact.created_at).slice(5, 7)}. ` : ''}${ficha}`,
     `PEDIDOS EM ANDAMENTO DESTE CLIENTE: ${orders.length ? orders.map(o => `nº ${o.number} (${STATUS_LABEL[o.status]}, ${brl(o.total_cents)})`).join('; ') : 'nenhum'}`,
     '',
     history.some(m => m.direction === 'out') ? 'ATENÇÃO: esta conversa já começou. NÃO cumprimente nem se apresente de novo; responda direto ao que o cliente mandou.' : '',
@@ -223,8 +224,16 @@ export async function botTurn(r, body) {
     ORDER BY id`, r.id, phone, Number(lastOut?.id) || 0);
   const history = await all(`SELECT direction, origin, text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND id <= ?
     ORDER BY id DESC LIMIT 12`, r.id, phone, Number(lastOut?.id) || 0);
-  const pastRows = await all(`SELECT items, created_at FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status <> 'cancelado' ORDER BY id DESC LIMIT 20`, r.id, phone);
-  const past = pastRows.length ? { total: pastRows.length, ultimo: JSON.parse(pastRows[0].items || '[]').map(i => `${i.qty}x ${i.name}${i.choices ? ` (${i.choices.split('; ').map(c => c.slice(c.indexOf(': ') + 2)).join(', ')})` : ''}`).join(', ') } : null;
+  const pastRows = await all(`SELECT items, mode, address, payment, note, created_at FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status <> 'cancelado' ORDER BY id DESC LIMIT 20`, r.id, phone);
+  // "o de sempre": o último pedido completo (itens com escolhas, como recebe e como paga), para a IA repetir e confirmar
+  const lastOrder = pastRows[0];
+  const past = lastOrder ? { total: pastRows.length, ultimo: [
+    JSON.parse(lastOrder.items || '[]').map(i => `${i.qty}x ${i.name}${i.choices ? ` (${i.choices})` : ''}${i.note ? ` [obs.: ${i.note}]` : ''}`).join(', '),
+    lastOrder.mode === 'entrega' ? `entrega em ${lastOrder.address}` : lastOrder.mode === 'local' ? 'comer no local' : 'retirada',
+    PAYMENTS[lastOrder.payment] ? `pagamento ${PAYMENTS[lastOrder.payment]}` : '',
+    lastOrder.note ? `obs.: ${lastOrder.note}` : '',
+    `em ${String(lastOrder.created_at).slice(8, 10)}/${String(lastOrder.created_at).slice(5, 7)}`,
+  ].filter(Boolean).join('; ') } : null;
   const orders = await all(`SELECT * FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status IN ${OPEN_ORDER}
     ORDER BY id DESC LIMIT 3`, r.id, phone);
 
@@ -452,6 +461,12 @@ export async function staffSend(r, body) {
   return { ok: true };
 }
 
+export async function setUsual(r, body) {
+  const { changes } = await run('UPDATE wa_contacts SET usual = ? WHERE restaurant_id = ? AND phone = ?', clip(body.usual, 300), r.id, cleanPhone(body.phone));
+  if (!changes) throw new HttpError(404, 'Conversa não encontrada');
+  return { ok: true };
+}
+
 export async function setRobot(r, body) {
   const on = !!body.on; // on = robô responde
   await run(`UPDATE wa_contacts SET needs_human = ?, human_reason = ? WHERE restaurant_id = ? AND phone = ?`,
@@ -596,7 +611,7 @@ export async function restoreWhatsApp(snap, slug, restaurantId) {
         restaurantId, ...cols.map(c => row[c] ?? null));
     }
   };
-  await copy('wa_contacts', w.contacts, ['phone', 'name', 'stage', 'needs_human', 'human_reason', 'last_message', 'unread', 'created_at', 'updated_at']);
+  await copy('wa_contacts', w.contacts, ['phone', 'name', 'usual', 'stage', 'needs_human', 'human_reason', 'last_message', 'unread', 'created_at', 'updated_at']);
   await copy('wa_complaints', w.complaints || [], ['phone', 'name', 'topic', 'detail', 'created_at']);
   await copy('wa_messages', w.messages, ['phone', 'direction', 'origin', 'text', 'media', 'pending', 'wa_id', 'created_at']);
   // o pedido da cozinha some na recriação: kitchen_order_id não é copiado

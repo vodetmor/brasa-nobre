@@ -216,6 +216,7 @@ api.get('/api/r/:slug/atendimento', async ({ req, params }) => W.inbox(await sta
 api.get('/api/r/:slug/atendimento/conversa', async ({ req, params, query }) =>
   W.conversation(await staffCtx(req, params.slug), query.get('phone')));
 api.post('/api/r/:slug/atendimento/enviar', async ({ req, params }) => W.staffSend(await staffCtx(req, params.slug), await readJson(req)));
+api.post('/api/r/:slug/atendimento/sempre', async ({ req, params }) => W.setUsual(await staffCtx(req, params.slug), await readJson(req)));
 api.post('/api/r/:slug/atendimento/robo', async ({ req, params }) => W.setRobot(await staffCtx(req, params.slug), await readJson(req)));
 api.patch('/api/r/:slug/atendimento/pedidos/:id', async ({ req, params }) =>
   W.setOrderStatus(await staffCtx(req, params.slug), Number(params.id), (await readJson(req)).status));
