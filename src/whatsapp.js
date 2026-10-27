@@ -408,14 +408,14 @@ export async function conversation(r, phone) {
 
 // Mensagem da equipe para o cliente. Com WA_N8N_URL (app no mesmo PC do n8n) envia na hora; sem ela (Vercel,
 // que não alcança o PC) entra na fila (pending = 1) e o n8n busca a cada poucos segundos em /wa/bot/fila.
-// Endereço do n8n: o vigia do PC (n8n-atendente/vigia) grava aqui quando o túnel muda; WA_N8N_URL é a reserva.
+// Endereço do n8n: hoje é o do VPS (espeto.179-197-85-185.sslip.io, fixo); o túnel trycloudflare do PC segue aceito. WA_N8N_URL é a reserva.
 async function n8nUrl() {
   const m = await get("SELECT value FROM meta WHERE key = 'wa_n8n_url'");
   return (m?.value || config.waN8nUrl || '').replace(/\/$/, '');
 }
 export async function botSetN8nUrl(body) {
   const url = String(body?.url || '');
-  if (!/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$|^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(url)) throw new HttpError(400, 'Endereço inválido');
+  if (!/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$|^https:\/\/espeto\.179-197-85-185\.sslip\.io$|^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(url)) throw new HttpError(400, 'Endereço inválido');
   await run("INSERT INTO meta (key, value) VALUES ('wa_n8n_url', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", url);
   return { ok: true };
 }
