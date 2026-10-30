@@ -38,7 +38,7 @@ export const BOT_DEFAULTS = {
   nome: '',
   persona: 'Você atende o WhatsApp da {restaurante}, restaurante de comida caseira. Fale como alguém da casa: simpático, direto e rápido. Seu objetivo é tirar dúvidas do cardápio e fechar o pedido para a equipe confirmar.',
   jeito: [
-    'Fale como alguém da casa no WhatsApp: direto, simpático e informal, tratando por "você" e pelo primeiro nome.',
+    'Fale como alguém da casa no WhatsApp: sempre cordial, simpático e direto, tratando por "você" e chamando o cliente pelo primeiro nome.',
     'UMA mensagem por vez, de 1 a 2 linhas. Só o resumo final pode ter uma linha por item.',
     'Não repita o que o cliente acabou de dizer ("Então é um prato feito com..."): só confirme tudo no resumo final.',
     'Não liste opções, a não ser que o cliente pergunte ou falte escolher algo; aí, numa linha só ("Arroz branco ou com brócolis?").',
@@ -93,7 +93,7 @@ const FIXED_RULES = `REGRAS FIXAS (valem acima de tudo)
 11. Encerramento: se o assunto já foi resolvido e o cliente manda só "ok", "obrigado", "👍", responda UMA vez, bem curto. Se mandar outro agradecimento depois, responda exatamente [SEM_RESPOSTA] e nada mais.
 12. Assunto que não tem a ver com o restaurante: volte com leveza para o atendimento. Se a mensagem NÃO for de cliente querendo comida (outra empresa, robô ou atendimento automático, fornecedor, cobrança, propaganda, gente da própria equipe dando recado, conversa pessoal com o dono), use pedir_humano (motivo outro) e responda exatamente [SEM_RESPOSTA]. Nunca responda a mesma coisa duas vezes.
 13. Dia e horário: quando o nome de uma categoria do CARDÁPIO diz dias ou horário (ex.: "seg a sex, almoço"), só ofereça e registre aqueles pratos nesses dias e horários, olhando o AGORA. Fora disso, diga com naturalidade quando tem e ofereça o que está valendo agora.
-14. O cliente pode pedir só o que quiser, avulso: um espeto, uma porção de arroz, só mandioca. Monte o pedido com os itens avulsos do CARDÁPIO (Espetos, Guarnições, Bebidas) e some os preços de cada um. "Jantinha de arroz com espeto" ou "só arroz com espetinho" = Arroz branco (guarnição) + o espeto escolhido, nada mais. Só use a Jantinha completa quando ele pedir a completa. Todo acompanhamento do prato feito (farofa de ovo, farofa de banana, vinagrete, mix de folhas, maionese...) também é vendido avulso: se não estiver nas Guarnições com preço, diga que tem sim, registre o resto do pedido e ponha o item na observação como "+ [item] avulso (valor a equipe confirma)". Nunca diga que não tem avulso. Não empurre combo nem acompanhamento que ele não pediu; se ele pedir mais alguma coisa depois, só acrescente.
+14. O cliente pode pedir só o que quiser, avulso: um espeto, uma porção de arroz, só mandioca. Monte o pedido com os itens avulsos do CARDÁPIO (Espetos, Guarnições, Bebidas) e some os preços de cada um. "Jantinha de arroz com espeto" ou "só arroz com espetinho" = Arroz branco (guarnição) + o espeto escolhido, nada mais. Só use a Jantinha completa quando ele pedir a completa. Toda proteína e todo acompanhamento também são vendidos avulsos, cada um pelo preço dele no CARDÁPIO (só arroz, só bife e mandioca, só vinagrete, só feijão tropeiro). Prato feito ou jantinha sem algum item ("PF sem feijão", "jantinha sem vinagrete") continua com o preço CHEIO do prato: no prato feito escolha a opção "Sem ..." do grupo, se houver; senão anote "sem [item]" na observação do item. Se um avulso não estiver no CARDÁPIO com preço, diga que tem sim, registre o resto do pedido e ponha o item na observação como "+ [item] avulso (valor a equipe confirma)". Nunca diga que não tem avulso. Não empurre combo nem acompanhamento que ele não pediu; se ele pedir mais alguma coisa depois, só acrescente.
 15. Se registrar_pedido der ERRO, corrija com o cliente só o que faltou e tente de novo; nunca recomece o pedido do zero nem esqueça o que ele já escolheu.
 
 COMO A CASA COSTUMA RESPONDER (exemplos de tom, não copie palavra por palavra)
@@ -134,7 +134,11 @@ async function contextFor(r, contact, history, orders, past = null) {
   const who = { cliente: 'CLIENTE', robo: 'VOCÊ', equipe: 'EQUIPE (pessoa da casa)' };
   // ficha do cliente (memória permanente): desde quando fala com a casa e o que costuma pedir
   const sempre = contact?.usual ? `PEDIDO DE SEMPRE (definido pela casa, vale mais que o último pedido): ${clip(contact.usual, 300)}. ` : '';
-  const ficha = past && past.total ? `Já fez ${past.total} pedido${past.total > 1 ? 's' : ''} pelo WhatsApp. ÚLTIMO PEDIDO: ${past.ultimo}. Se fizer sentido, ofereça repetir ("Vai querer o mesmo de sempre?").` : 'Nenhum pedido anterior pelo WhatsApp.';
+  // cliente frequente: quase sempre pede o mesmo, no mesmo endereço; já na primeira resposta oferece repetir
+  const comeco = !history.some(m => m.direction === 'out');
+  const ficha = past && past.total ? `Já fez ${past.total} pedido${past.total > 1 ? 's' : ''} pelo WhatsApp. ÚLTIMO PEDIDO: ${past.ultimo}. ` +
+    (comeco ? `É CLIENTE DA CASA: nesta primeira resposta (se ele ainda não disse o que quer), cumprimente pelo primeiro nome e ofereça repetir em uma linha, com o total pelo cardápio de hoje, sem mandar o cardápio. Ex.: "Oi, Maria! Vai ser o de sempre? 1 prato feito de cupim com tropeiro e purê, entrega no mesmo endereço, no Pix: R$ 20,00". ` : '') +
+    'Endereço: se for entrega e ele não disser outro, use o do último pedido sem perguntar de novo (só aparece no resumo). Pagamento: se ele não disser, ofereça o mesmo do último pedido.' : 'Nenhum pedido anterior pelo WhatsApp.';
   return [
     `RESTAURANTE: ${r.name}. Endereço: ${r.address || '(não informado)'}.` + (r.instagram ? ` Instagram: ${r.instagram}.` : ''),
     r.accepting_orders ? 'Pedidos: abertos.' : 'Pedidos: FECHADOS agora (o restaurante não está recebendo pedidos). Não registre pedido; diga isso com gentileza.',
@@ -145,7 +149,7 @@ async function contextFor(r, contact, history, orders, past = null) {
     'INFORMAÇÕES DA CASA (escritas pela equipe; o que não estiver aqui você não sabe):',
     clip(r.wa_info, 3000) || '(a equipe ainda não preencheu: horário, entrega, taxa e Pix você não sabe)',
     '',
-    `CLIENTE: ${contact?.name ? `nome "${contact.name}" (pode ser só o apelido do WhatsApp; confirme o nome para o pedido)` : '(nome ainda não informado)'}. ${history.length ? 'Já conversou antes.' : 'Primeira mensagem dele.'}`,
+    `CLIENTE: ${past?.nome ? `nome "${past.nome}" (usado no último pedido: chame pelo primeiro nome e use esse nome no pedido, sem perguntar)` : contact?.name ? `nome "${contact.name}" (pode ser só o apelido do WhatsApp; confirme o nome para o pedido)` : '(nome ainda não informado)'}. ${history.length ? 'Já conversou antes.' : 'Primeira mensagem dele.'}`,
     `FICHA DO CLIENTE: ${sempre}${contact?.created_at ? `fala com a casa desde ${String(contact.created_at).slice(8, 10)}/${String(contact.created_at).slice(5, 7)}. ` : ''}${ficha}`,
     `PEDIDOS EM ANDAMENTO DESTE CLIENTE: ${orders.length ? orders.map(o => `nº ${o.number} (${STATUS_LABEL[o.status]}, ${brl(o.total_cents)})`).join('; ') : 'nenhum'}`,
     '',
@@ -163,7 +167,7 @@ export async function menuText(restaurantId) {
   for (const p of products) (byCat.get(p.category_id) || byCat.set(p.category_id, []).get(p.category_id)).push(p);
   for (const [catId, list] of byCat) {
     if (!list.length) continue;
-    lines.push(`${categories.find(c => c.id === catId)?.name || 'Outros'}:${/guarni/i.test(categories.find(c => c.id === catId)?.name || '') ? ' (vendidos avulsos: o cliente pode pedir só um deles, junto com um espeto ou sozinho)' : ''}`);
+    lines.push(`${categories.find(c => c.id === catId)?.name || 'Outros'}:${/guarni|avuls|prote/i.test(categories.find(c => c.id === catId)?.name || '') ? ' (vendidos avulsos: o cliente pode pedir só um deles, junto com um espeto, outra proteína ou sozinho)' : ''}`);
     for (const p of list) {
       // combo que tem os mesmos itens vendidos avulsos: deixa claro que o cliente pode pedir só parte dele
       const combo = p.option_groups.length || /jantinha|combo|completa/i.test(p.name);
@@ -232,10 +236,10 @@ export async function botTurn(r, body) {
     ORDER BY id`, r.id, phone, Number(lastOut?.id) || 0);
   const history = await all(`SELECT direction, origin, text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND id <= ?
     ORDER BY id DESC LIMIT 12`, r.id, phone, Number(lastOut?.id) || 0);
-  const pastRows = await all(`SELECT items, mode, address, payment, note, created_at FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status <> 'cancelado' ORDER BY id DESC LIMIT 20`, r.id, phone);
+  const pastRows = await all(`SELECT customer_name, items, mode, address, payment, note, created_at FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status <> 'cancelado' ORDER BY id DESC LIMIT 20`, r.id, phone);
   // "o de sempre": o último pedido completo (itens com escolhas, como recebe e como paga), para a IA repetir e confirmar
   const lastOrder = pastRows[0];
-  const past = lastOrder ? { total: pastRows.length, ultimo: [
+  const past = lastOrder ? { total: pastRows.length, nome: lastOrder.customer_name || '', ultimo: [
     JSON.parse(lastOrder.items || '[]').map(i => `${i.qty}x ${i.name}${i.choices ? ` (${i.choices})` : ''}${i.note ? ` [obs.: ${i.note}]` : ''}`).join(', '),
     lastOrder.mode === 'entrega' ? `entrega em ${lastOrder.address}` : lastOrder.mode === 'local' ? 'comer no local' : 'retirada',
     PAYMENTS[lastOrder.payment] ? `pagamento ${PAYMENTS[lastOrder.payment]}` : '',
