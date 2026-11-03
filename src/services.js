@@ -102,7 +102,7 @@ export async function menuFor(restaurantId, { all: includeHidden = false } = {})
   const categories = await all('SELECT * FROM categories WHERE restaurant_id = ? ORDER BY position, id', restaurantId);
   const products = await all(`SELECT * FROM products WHERE restaurant_id = ? ${includeHidden ? '' : 'AND available = 1'}
     ORDER BY position, id`, restaurantId);
-  return { categories, products: products.map(p => ({ ...p, option_groups: parseOptions(p.options) })) };
+  return { categories, products: products.map(p => ({ ...p, option_groups: menuGroups(p.options) })) };
 }
 
 // Destaques do cardápio: mais pedidos (últimos 30 dias, ou o selo "mais pedido") e econômicos (mais baratos).
@@ -148,6 +148,16 @@ export function parseOptions(text) {
     });
     return choices.length ? { name: line.slice(0, i).trim(), choices } : null;
   }).filter(Boolean);
+}
+
+// Cardápio do cliente (QR/NFC): em prato montado (2 ou mais grupos, como o prato feito) cada grupo
+// ganha "Sem <grupo>" sem acréscimo, para quem não quer feijão, arroz etc. O preço do prato é fixo.
+// Grupo único (espeto da jantinha, ovo, cerveja) é só variação do item e não ganha "Sem".
+// O robô do WhatsApp continua usando parseOptions, sem esta opção.
+export function menuGroups(text) {
+  const groups = parseOptions(text);
+  if (groups.length < 2) return groups;
+  return groups.map(g => ({ ...g, choices: [...g.choices, { name: `Sem ${g.name.toLowerCase()}`, add_cents: 0 }] }));
 }
 
 export async function saveProduct(restaurantId, data) {
@@ -279,7 +289,7 @@ export async function createOrder({ table, restaurant }, body, ip) {
     // escolhas: uma opção válida por grupo; o acréscimo também vem do banco
     let unit = p.price_cents;
     const picked = [];
-    for (const g of parseOptions(p.options)) {
+    for (const g of menuGroups(p.options)) {
       const c = g.choices.find(c => c.name === String(it.choices?.[g.name] ?? ''));
       if (!c) throw new HttpError(400, `Escolha ${g.name.toLowerCase()} em ${p.name}`);
       unit += c.add_cents;
