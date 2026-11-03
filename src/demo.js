@@ -1,6 +1,7 @@
 // Restaurantes de demonstração (fictícios) e o seed que os cria.
 // Usado pelo npm run seed (PC) e sozinho no primeiro acesso da Vercel (ensureDemo).
 // Quando SEED_VERSION muda, os demos são recriados.
+import { applyLotes } from './lotes.js';
 import { run, get, all, tx, engine } from './db.js';
 import * as S from './services.js';
 import * as W from './whatsapp.js';
@@ -197,6 +198,7 @@ export async function seedDemos({ force = false, log = () => {} } = {}) {
 // Vercel: cria os demos no primeiro acesso (banco novo do Neon vem vazio). Uma vez por instância.
 let seeding;
 export function ensureDemo() {
-  seeding ||= seedDemos().catch(e => { seeding = null; throw e; });
+  // depois do seed, os lotes de mudança de cardápio (src/lotes.js), uma vez cada
+  seeding ||= seedDemos().then(() => applyLotes()).catch(e => { seeding = null; throw e; });
   return seeding;
 }

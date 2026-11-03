@@ -1,7 +1,7 @@
 // Mudanças de cardápio em lote (preço, nome, foto, item novo) a partir de um JSON, pela API do painel.
 // Cardápio digital e robô do WhatsApp leem o mesmo banco, então mudam juntos. Nunca usa seed.
 // Sem --aplicar só mostra o que vai mudar; para se algum item não for achado.
-// Uso: node scripts/cardapio-lote.js lote.json [--aplicar] [--url ...] [--slug ...] [--pin ...] (ou PIN=...)
+// Uso: node scripts/cardapio-lote.js src/lotes/arquivo.json [--aplicar] [--url ...] [--slug ...] [--pin ...] (ou PIN=...)
 // lote.json: [{ "produto": "Alcatra", "categoria": "Espetos", "preco": 14, "nome": "novo nome", "foto": "/demo/...webp" },
 //             { "categoria": "Espetos", "preco": 14 },                     (todos da categoria)
 //             { "criar": true, "categoria": "Bebidas", "produto": "Corona long neck", "preco": 11 }]
