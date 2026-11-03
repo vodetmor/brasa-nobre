@@ -276,9 +276,9 @@ function renderPremium() {
 function card(p) {
   return `<article class="p-card ${qtyOf(p.id) ? 'in-cart' : ''}" data-id="${p.id}" data-name="${esc(norm(p.name + ' ' + (p.description || '')))}">
     <div class="p-img" data-open="${p.id}">
-      ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'m-ph',textContent:'${esc(p.name[0])}'}))">`
+      ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy" onerror="this.outerHTML=this.dataset.ph" data-ph="${esc(phOf(p))}">`
         : p.model_glb_url ? `<model-viewer src="${esc(p.model_glb_url)}" alt="" auto-rotate rotation-per-second="20deg" disable-zoom interaction-prompt="none" style="width:100%;height:100%;background:#1d1b19;pointer-events:none"></model-viewer>`
-        : `<div class="m-ph">${esc(p.name[0])}</div>`}
+        : phOf(p)}
       ${badgeOf(p) ? `<span class="p-tag">${esc(badgeOf(p))}</span>` : ''}
       ${p.model_glb_url ? '<span class="p-3d">Ver em 3D</span>' : ''}
     </div>
@@ -290,6 +290,17 @@ function card(p) {
   </article>`;
 }
 
+// Prato sem foto: ícone discreto do tipo do item (bebida, espeto ou prato), não uma letra solta.
+const PH = {
+  drink: '<path d="M10 3h4v3l2 3v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V9l2-3z"/><path d="M8 12h8M8 17h8"/>',
+  espeto: '<path d="M4 20 20 4"/><rect x="7" y="11" width="5" height="5" rx="1.2" transform="rotate(-45 9.5 13.5)"/><rect x="11" y="7" width="5" height="5" rx="1.2" transform="rotate(-45 13.5 9.5)"/>',
+  prato: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/>',
+};
+const phOf = p => {
+  const cat = norm(data.categories.find(c => c.id === p.category_id)?.name || '');
+  const k = /bebida|drink|suco|cervej/.test(cat) ? 'drink' : /espet/.test(cat) ? 'espeto' : 'prato';
+  return `<div class="m-ph" role="img" aria-label="Sem foto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">${PH[k]}</svg></div>`;
+};
 const badgeOf = p => p.badge || (data.highlights?.popular.includes(p.id) ? 'Mais pedido' : '');
 const norm = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
@@ -485,7 +496,7 @@ function showDish(id) {
       ${ingredientsOf(p).length ? `<div class="m-label">Ingredientes <span>toque para tirar</span></div>
         <div class="m-ingr">${ingredientsOf(p).map(x => `<button type="button" data-ingr="${esc(x)}" aria-pressed="false">${esc(x)}</button>`).join('')}</div>` : ''}
       <label class="m-label" for="d-note">Alguma observação?</label>
-      <input class="m-input" id="d-note" maxlength="140" placeholder="Ex.: bem passado, molho à parte">
+      <input class="m-input" id="d-note" maxlength="140" placeholder="${phOf(p).includes(PH.drink) ? 'Ex.: bem gelada, com copo e gelo' : 'Ex.: bem passado, molho à parte'}">
     </div>
     ${data.restaurant.accepting_orders ? `<div class="m-dock"><div class="m-dock-inner">
       <span class="m-qty"><button data-q="-1">−</button><span id="d-q">1</span><button data-q="1">+</button></span>
@@ -493,6 +504,8 @@ function showDish(id) {
     </div></div>` : ''}
     </div></div>`);
   el.classList.add('is-dish');
+  // sem foto e sem 3D: não mostra um quadro preto vazio no topo, vai direto ao nome e preço
+  if (!p.image_url && !has3d) el.classList.add('no-media');
 
   const media = el.querySelector('#d-media');
   const show = mode => {
