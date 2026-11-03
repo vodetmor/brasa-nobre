@@ -231,11 +231,14 @@ export async function botTurn(r, body) {
     await run(`UPDATE wa_contacts SET needs_human = 1, human_reason = 'limite_mensagens', updated_at = datetime('now') WHERE id = ?`, contact.id);
     return { responder: false, motivo: 'limite' };
   }
-  const lastOut = await get(`SELECT MAX(id) AS id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'out'`, r.id, phone);
-  const fresh = await all(`SELECT text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'in' AND id > ?
-    ORDER BY id`, r.id, phone, Number(lastOut?.id) || 0);
-  const history = await all(`SELECT direction, origin, text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND id <= ?
-    ORDER BY id DESC LIMIT 12`, r.id, phone, Number(lastOut?.id) || 0);
+  // ordem pelo horário (o histórico importado entra com id novo mas data antiga)
+  const lastOut = await get(`SELECT created_at FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'out'
+    ORDER BY created_at DESC, id DESC LIMIT 1`, r.id, phone);
+  const since = lastOut?.created_at || '';
+  const fresh = await all(`SELECT text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'in' AND created_at >= ?
+    AND created_at >= datetime('now', '-120 minutes') ORDER BY created_at, id`, r.id, phone, since);
+  const history = (await all(`SELECT direction, origin, text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND created_at <= ?
+    ORDER BY created_at DESC, id DESC LIMIT 12`, r.id, phone, since || '0'));
   const pastRows = await all(`SELECT customer_name, items, mode, address, payment, note, created_at FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status <> 'cancelado' ORDER BY id DESC LIMIT 20`, r.id, phone);
   // "o de sempre": o último pedido completo (itens com escolhas, como recebe e como paga), para a IA repetir e confirmar
   const lastOrder = pastRows[0];
@@ -278,6 +281,39 @@ export async function botOutbound(r, body) {
   if (!phone || !text) throw new HttpError(400, 'telefone e texto obrigatórios');
   await logOut(r, phone, text, body.origem === 'equipe' ? 'equipe' : 'robo', 0);
   return { ok: true };
+}
+
+// Importa o histórico antigo das conversas (lido do WAHA na VPS). Só acrescenta: não mexe no robô, em "não lidas"
+// nem em quem precisa da equipe. Pula o que já existe: mesmo id do WhatsApp, ou mesmo texto na mesma direção
+// num intervalo de 10 minutos (respostas do robô e do painel foram gravadas sem o id do WhatsApp).
+// mensagens: [{ telefone, nome, de_mim, origem ('robo' | 'equipe'), texto, midia, msg_id, quando }]  quando = unix (s) ou ISO
+const stamp = d => d.toISOString().slice(0, 19).replace('T', ' ');
+export async function botImport(r, body) {
+  const list = Array.isArray(body.mensagens) ? body.mensagens.slice(0, 500) : [];
+  let novas = 0, repetidas = 0, invalidas = 0;
+  for (const m of list) {
+    const phone = cleanPhone(m.telefone);
+    const raw = Number(m.quando);
+    const when = new Date(raw ? (raw > 1e12 ? raw : raw * 1000) : String(m.quando || ''));
+    const media = ['audio', 'imagem', 'video', 'outro'].includes(m.midia) ? m.midia : '';
+    const text = clip(m.texto, 4000) || (media ? { audio: '[Áudio]', imagem: '[Foto]', video: '[Vídeo]', outro: '[Arquivo]' }[media] : '');
+    if (!phone || !text || Number.isNaN(when.getTime())) { invalidas++; continue; }
+    const at = stamp(when), dir = m.de_mim ? 'out' : 'in', waId = clip(m.msg_id, 120);
+    const dup = (waId && await get('SELECT id FROM wa_messages WHERE restaurant_id = ? AND wa_id = ?', r.id, waId))
+      || await get(`SELECT id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = ? AND text = ? AND created_at BETWEEN ? AND ?`,
+        r.id, phone, dir, text, stamp(new Date(when - 6e5)), stamp(new Date(+when + 6e5)));
+    if (dup) { repetidas++; continue; }
+    await run(`INSERT INTO wa_contacts (restaurant_id, phone, name, last_message, updated_at, unread) VALUES (?, ?, ?, ?, ?, 0)
+      ON CONFLICT (restaurant_id, phone) DO NOTHING`, r.id, phone, clip(m.nome, 60), text.slice(0, 200), at);
+    await run(`UPDATE wa_contacts SET name = CASE WHEN name = '' THEN ? ELSE name END WHERE restaurant_id = ? AND phone = ?`, clip(m.nome, 60), r.id, phone);
+    // a conversa sobe na lista só se esta mensagem for mais nova que a última conhecida
+    await run(`UPDATE wa_contacts SET last_message = ?, updated_at = ? WHERE restaurant_id = ? AND phone = ? AND updated_at < ?`,
+      text.slice(0, 200), at, r.id, phone, at);
+    await run(`INSERT INTO wa_messages (restaurant_id, phone, direction, origin, text, media, wa_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, r.id, phone, dir, dir === 'in' ? 'cliente' : m.origem === 'robo' ? 'robo' : 'equipe', text, media, waId, at);
+    novas++;
+  }
+  return { novas, repetidas, invalidas };
 }
 
 async function logOut(r, phone, text, origin, pending) {
@@ -393,7 +429,7 @@ export async function botOrder(r, body) {
 // ---------- equipe: tela de atendimento ----------
 export async function inbox(r) {
   const contacts = await all(`SELECT phone, name, stage, needs_human, human_reason, last_message, unread, updated_at FROM wa_contacts
-    WHERE restaurant_id = ? ORDER BY updated_at DESC LIMIT 100`, r.id);
+    WHERE restaurant_id = ? ORDER BY updated_at DESC LIMIT 500`, r.id);
   const orders = (await all(`SELECT * FROM wa_orders WHERE restaurant_id = ? AND (status IN ${OPEN_ORDER}
     OR date(created_at, 'localtime') = date('now', 'localtime')) ORDER BY id DESC LIMIT 60`, r.id))
     .map(o => ({ ...o, items: JSON.parse(o.items || '[]') }));
@@ -406,7 +442,7 @@ export async function conversation(r, phone) {
   if (!contact) throw new HttpError(404, 'Conversa não encontrada');
   await run('UPDATE wa_contacts SET unread = 0 WHERE id = ?', contact.id);
   const messages = (await all(`SELECT id, direction, origin, text, media, media_name, (media_file <> '') AS has_file, pending, created_at FROM wa_messages
-    WHERE restaurant_id = ? AND phone = ? ORDER BY id DESC LIMIT 200`, r.id, phone)).reverse();
+    WHERE restaurant_id = ? AND phone = ? ORDER BY created_at DESC, id DESC LIMIT 1000`, r.id, phone)).reverse();
   return { contact: { ...contact, unread: 0 }, messages };
 }
 

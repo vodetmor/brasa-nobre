@@ -45,6 +45,17 @@ export function applyTheme(r) {
   if (meta) meta.content = r.bg_color || '#111';
 }
 
+// Telas da equipe (painel e WhatsApp) em visual claro, como o painel da MedicMais: só a cor da casa vem do restaurante.
+// Usa com /assets/css/equipe.css. Chame depois de applyTheme/staffGate.
+export function equipeTheme() {
+  const root = document.documentElement, s = root.style;
+  root.classList.add('equipe');
+  for (const [k, v] of Object.entries({ '--bg': '#f6f5f2', '--text': '#1c1a17', '--surface': '#ffffff', '--surface-2': '#f1efea',
+    '--border': '#e7e3dc', '--muted': '#6b665e', '--ok': '#1f7a4d', '--warn': '#b07a00', '--danger': '#c62828' })) s.setProperty(k, v);
+  const meta = document.querySelector('meta[name=theme-color]');
+  if (meta) meta.content = '#ffffff';
+}
+
 // Abre uma folha (modal). Retorna { el, close }.
 // Janela de baixo (caixa, cadastro). O botão voltar do celular fecha a janela em vez de sair da página.
 const openSheets = [];

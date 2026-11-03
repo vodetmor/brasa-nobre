@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#121110">
+  <meta name="theme-color" content="#ffffff">
   <meta name="robots" content="noindex">
   <title>Painel do restaurante</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Figtree:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Figtree:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/equipe.css">
   <style>
     :root { --font: "Figtree", system-ui, sans-serif; }
     html, body { overflow-x: hidden; }
@@ -18,19 +19,19 @@
     .pn-logo img { width: 100%; height: 100%; object-fit: cover; }
     .day { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
     .day h2 { font: 600 1.25rem "Fraunces", serif; margin: 0; }
-    .day input { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; color-scheme: dark; }
+    .day input { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; color-scheme: light; }
     .stats { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     @media (min-width: 760px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; min-width: 0; }
+    .stat { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; min-width: 0; box-shadow: var(--shadow-sm); }
     .stat small { display: block; color: var(--muted); font-size: .8rem; }
     .stat strong { display: block; font-size: 1.35rem; font-variant-numeric: tabular-nums; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stat.main { grid-column: 1 / -1; }
-    .stat.main strong { font-size: 2rem; color: var(--primary); }
+    .stat.main strong { font-size: 2rem; color: var(--brand-ink); }
     @media (min-width: 760px) { .stat.main { grid-column: span 1; } }
 
     .cols { display: grid; gap: 10px; margin-top: 10px; }
     @media (min-width: 760px) { .cols { grid-template-columns: 1fr 1fr; } }
-    .box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; min-width: 0; }
+    .box { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 16px; min-width: 0; box-shadow: var(--shadow-sm); }
     .box h3 { font-size: .95rem; margin: 0 0 12px; }
     .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 6px 0; }
     .row + .row { border-top: 1px solid var(--border); }
@@ -39,11 +40,11 @@
     .bar i { display: block; height: 100%; background: var(--primary); border-radius: 6px; }
     .empty { color: var(--muted); font-size: .9rem; margin: 0; }
     .tip { color: var(--muted); font-size: .88rem; margin: 0; }
-    .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
+    .seg { display: inline-flex; background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
     .seg button { border: 0; background: transparent; padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: .88rem; color: var(--muted); cursor: pointer; min-height: 36px; }
-    .seg button[aria-pressed="true"] { background: var(--primary); color: #15110c; }
+    .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
     .delta { display: inline-block; margin-top: 4px; font-size: .78rem; font-weight: 600; color: var(--muted); }
-    .delta.up { color: #5fbf73; } .delta.down { color: #e5735f; }
+    .delta.up { color: var(--ok-ink); } .delta.down { color: var(--danger-ink); }
     .chart { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 3px; align-items: end; height: 150px; padding-top: 8px; }
     .chart .c { position: relative; height: 100%; display: flex; align-items: flex-end; }
     .chart .c i { display: block; width: 100%; border-radius: 4px 4px 0 0; background: var(--primary); min-height: 2px; opacity: .9; }
@@ -57,7 +58,7 @@
     .flow div { background: var(--surface-2); border-radius: 12px; padding: 10px 8px; text-align: center; min-width: 0; }
     .flow b { display: block; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
     .flow small { color: var(--muted); font-size: .72rem; }
-    .flow .ok b { color: #5fbf73; } .flow .no b { color: #e5735f; }
+    .flow .ok b { color: var(--ok-ink); } .flow .no b { color: var(--danger-ink); }
 
     /* estrutura: menu lateral no computador; no celular, barra fina em cima e abas embaixo.
        Cada tela abre uma vez (iframe) e fica carregada. */
@@ -71,44 +72,45 @@
     .side-label { display: block; margin: 16px 12px 6px; font-size: .7rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
     .nav-item { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border-radius: 12px;
       color: var(--muted); font-weight: 700; font-size: .95rem; text-decoration: none; background: none; border: 0; text-align: left; cursor: pointer; }
-    .nav-item:hover { background: var(--surface); color: var(--text); }
-    .nav-item.active { background: color-mix(in srgb, var(--primary) 16%, transparent); color: var(--primary); }
+    .nav-item:hover { background: var(--soft); color: var(--text); }
+    .nav-item.active { background: var(--brand-tint); color: var(--brand-ink); }
+    .nav-item.active::before { content: ''; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 4px; border-radius: 0 4px 4px 0; background: var(--primary); }
     .nav-item .wa-n { margin-left: auto; }
     .side-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
 
     .top { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 10px; padding: calc(8px + env(safe-area-inset-top)) 16px 8px;
-      background: var(--bg); border-bottom: 1px solid var(--border); }
+      background: #fff; border-bottom: 1px solid var(--border); }
     .top .pn-logo { width: 34px; height: 34px; border-radius: 10px; font-size: 1rem; }
     .top b { font-size: 1rem; }
     .top small { color: var(--muted); font-size: .8rem; margin-left: auto; }
     .tabbar { position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
-      padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--border); }
+      padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--border); }
     .tab { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 2px; border: 0; background: none;
       border-radius: 12px; color: var(--muted); font-size: .72rem; font-weight: 700; text-decoration: none; cursor: pointer; }
-    .tab.active { color: var(--primary); }
+    .tab.active { color: var(--brand-ink); background: var(--brand-tint); }
     .tab .wa-n { position: absolute; top: 2px; left: 55%; }
     .more { position: fixed; z-index: 60; left: 8px; right: 8px; bottom: calc(var(--tab-h) + 8px); padding: 8px;
-      background: var(--surface); border: 1px solid var(--border); border-radius: 16px; display: grid; gap: 2px; }
+      background: #fff; border: 1px solid var(--border); border-radius: 16px; display: grid; gap: 2px; box-shadow: var(--shadow); }
     .pn { padding-bottom: calc(var(--tab-h) + 32px); }
 
     .pn-frame { position: fixed; left: 0; right: 0; top: var(--top-h); width: 100%; height: calc(100dvh - var(--top-h) - var(--tab-h)); border: 0; background: var(--bg); }
     .pn-frame.menu { max-width: 430px; margin: 0 auto; }
     .robo { max-width: 720px; margin: 0 auto; padding: 24px 16px calc(var(--tab-h) + 32px); display: grid; gap: 14px; }
-    .robo h1 { font: 600 1.5rem "Fraunces", serif; margin: 0; }
-    .robo-frame { width: 100%; height: calc(100dvh - var(--top-h, 60px) - var(--tab-h, 0px) - 170px); min-height: 560px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); }
+    .robo h1 { font: 600 2rem "Fraunces", serif; margin: 0; }
+    .robo-frame { width: 100%; height: calc(100dvh - var(--top-h, 60px) - var(--tab-h, 0px) - 170px); min-height: 560px; border: 1px solid var(--border); border-radius: 16px; background: var(--soft); }
     @media (min-width: 1024px) {
       body { padding-left: var(--side); }
       .side { display: flex; flex-direction: column; position: fixed; z-index: 50; inset: 0 auto 0 0; width: var(--side); padding: 20px 12px; overflow: auto;
-        background: var(--bg); border-right: 1px solid var(--border); }
+        background: #fff; border-right: 1px solid var(--border); }
       .top, .tabbar, .more { display: none !important; }
       .pn-frame { left: var(--side); width: calc(100% - var(--side)); top: 0; height: 100dvh; }
       .pn-frame.menu { left: calc(var(--side) + (100% - var(--side) - 430px) / 2); top: 16px; height: calc(100dvh - 32px); margin: 0; border: 1px solid var(--border); border-radius: 22px; }
     }
     body.framed { overflow: hidden; }
-    .wa-n { min-width: 18px; padding: 0 6px; border-radius: 999px; background: var(--danger); color: #fff; font-size: .72rem; font-weight: 750; text-align: center; }
+    .wa-n { min-width: 18px; padding: 0 6px; border-radius: 999px; background: var(--danger-ink); color: #fff; font-size: .72rem; font-weight: 750; text-align: center; }
     .wa-n[hidden], .wa-alert[hidden] { display: none; }
     .wa-alert { position: fixed; z-index: 300; left: 50%; bottom: calc(var(--tab-h) + 14px); transform: translateX(-50%); max-width: calc(100% - 32px);
-      background: var(--danger); color: #fff; font-weight: 700; text-decoration: none; padding: 12px 18px; border-radius: 14px; box-shadow: 0 14px 34px -10px rgba(0,0,0,.6); }
+      background: var(--danger-ink); color: #fff; font-weight: 700; text-decoration: none; padding: 12px 18px; border-radius: 14px; box-shadow: var(--shadow); }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -120,7 +122,7 @@
   <nav class="tabbar" id="tabbar" aria-label="Menu do restaurante"></nav>
   <div class="more" id="more" hidden></div>
   <script type="module">
-    import { api, esc, money, applyTheme, slugFromPath, STAFF_TABS, NAV_ICON } from '/assets/js/common.js';
+    import { api, esc, money, applyTheme, equipeTheme, slugFromPath, STAFF_TABS, NAV_ICON } from '/assets/js/common.js';
 
     const PERIOD = {
       hoje: { label: 'Hoje', vs: 'vs ontem', chart: 'Vendas por hora', every: 3 },
@@ -139,6 +141,7 @@
     const slug = slugFromPath();
     const [{ restaurant: r }, list] = await Promise.all([api(`/api/r/${slug}/public`), api('/api/restaurants')]);
     applyTheme(r);
+    equipeTheme();
     document.title = `${r.name} · Painel`;
     const token = list.find(x => x.slug === slug)?.first_token;
 
