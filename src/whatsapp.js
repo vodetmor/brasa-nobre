@@ -195,7 +195,7 @@ const ROBOT_LIMIT = { max: 8, minutes: 3 };
 // com robô (aconteceu em 03/11). Dá para somar números na chave 'wa_ignorar' da tabela meta (separados por vírgula).
 const OTHER_BOTS = ['556191852790'];
 async function ignoredPhone(phone) {
-  const m = await get("SELECT value FROM meta WHERE key = 'wa_ignorar'").catch(() => null);
+  const m = await Promise.resolve().then(() => get("SELECT value FROM meta WHERE key = 'wa_ignorar'")).catch(() => null);
   const list = [...OTHER_BOTS, ...String(m?.value || '').split(',').map(cleanPhone)].filter(Boolean);
   return list.some(x => x === phone || (x.length >= 10 && phone.endsWith(x.slice(-10))));
 }
@@ -215,6 +215,10 @@ export async function botInbound(r, body) {
   return tx(async () => {
     await run(`INSERT INTO wa_contacts (restaurant_id, phone, name) VALUES (?, ?, ?)
       ON CONFLICT (restaurant_id, phone) DO NOTHING`, r.id, phone, pushName);
+    // conversa nova (6 h sem nenhuma mensagem): a passagem para a equipe era daquela conversa, o robô volta a atender.
+    // Sem isso, quem foi atendido pela equipe uma vez ficava sem robô para sempre.
+    const recent = await get(`SELECT id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND created_at >= datetime('now', '-6 hours') LIMIT 1`, r.id, phone);
+    if (!recent) await run(`UPDATE wa_contacts SET needs_human = 0, human_reason = '' WHERE restaurant_id = ? AND phone = ? AND needs_human = 1`, r.id, phone);
     await run(`UPDATE wa_contacts SET last_message = ?, unread = unread + 1, updated_at = datetime('now')
       WHERE restaurant_id = ? AND phone = ?`, text.slice(0, 200), r.id, phone);
     const { lastInsertRowid } = await run(`INSERT INTO wa_messages (restaurant_id, phone, direction, origin, text, media, wa_id, media_file, media_name)
@@ -265,8 +269,9 @@ export async function botTurn(r, body) {
     lastOrder.note ? `obs.: ${lastOrder.note}` : '',
     `em ${String(lastOrder.created_at).slice(8, 10)}/${String(lastOrder.created_at).slice(5, 7)}`,
   ].filter(Boolean).join('; ') } : null;
+  // pedido em andamento só se for de hoje (12 h): pedido esquecido aberto não volta para a conversa dias depois
   const orders = await all(`SELECT * FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status IN ${OPEN_ORDER}
-    ORDER BY id DESC LIMIT 3`, r.id, phone);
+    AND created_at >= datetime('now', '-12 hours') ORDER BY id DESC LIMIT 3`, r.id, phone);
 
   const contexto = await contextFor(r, contact, history, orders, past);
   // ja_conversou: o n8n corta saudação ("Oi! Tudo bem?") se o robô já falou com este cliente nas últimas 12 h
