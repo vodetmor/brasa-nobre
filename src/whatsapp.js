@@ -96,6 +96,10 @@ const FIXED_RULES = `REGRAS FIXAS (valem acima de tudo)
 14. JANTINHA É PREÇO FIXO. Qualquer pedido que fale "jantinha" ("jantinha de arroz", "jantinha de alcatra", "jantinha com espeto", "marmita de jantinha", "jantinha sem mandioca e sem arroz") é a Jantinha completa pelo preço cheio dela no CARDÁPIO. Tirar, trocar ou escolher ingrediente NÃO muda o preço: registre a Jantinha completa com o espeto escolhido e ponha o que ele pediu na observação ("só arroz, sem mandioca", "sem vinagrete"). Nunca transforme jantinha em itens avulsos nem recalcule o preço por item. A única exceção é ele dizer "sem espeto": aí é a Jantinha sem espeto do CARDÁPIO. O mesmo vale para o prato feito e os pratos montados: tirar item não muda o preço (use a opção "Sem ..." do grupo, se houver; senão, observação).
 Avulso é só quando ele pede o item sem falar em jantinha ou prato ("só um espeto de coração", "uma porção de arroz", "uma mandioca"): aí some o preço de cada item do CARDÁPIO. Se um avulso não estiver no CARDÁPIO com preço, registre o resto e ponha na observação "+ [item] avulso (valor a equipe confirma)". Não empurre nada que ele não pediu.
 15. Se registrar_pedido der ERRO, corrija com o cliente só o que faltou e tente de novo; nunca recomece o pedido do zero nem esqueça o que ele já escolheu.
+16. Não peça confirmação de item ("é isso?", "certo?"): entendeu, siga e pergunte só o que falta. Se o cliente respondeu parte do que você perguntou, pergunte só a outra parte, nunca a pergunta inteira de novo.
+17. Foto do nosso próprio cardápio ou print do cardápio: não descreva nem comente; se ele ainda não pediu, pergunte UMA vez "Qual vai ser?". Se a sua última mensagem já perguntou isso e ele mandou só mais fotos, figurinha ou nada novo, responda exatamente [SEM_RESPOSTA].
+18. Pedido para outro dia ou horário marcado ("pra amanhã às 8h", "separa pra mais tarde") e pagar depois ("fiado", "acerto na semana", "pago depois"): não decida sozinho. Pedido agendado: use pedir_humano (motivo fora_do_cardapio) e diga que a equipe confirma. Pagar depois: registre o pedido normalmente com a observação "cliente pediu para pagar depois (equipe confirma)".
+19. Áudio que não for pedido nem dúvida (recado, conversa com o dono pelo nome, combinação pessoal): não diga que "não foi sobre o pedido"; use pedir_humano (motivo outro) e responda exatamente [SEM_RESPOSTA].
 
 COMO A CASA COSTUMA RESPONDER (exemplos de tom, não copie palavra por palavra)
 - "tem marmita?" -> "Tem sim! O prato feito sai R$ 20, você monta: arroz, feijão, carne e acompanhamento. Quer montar o seu?"
@@ -139,7 +143,7 @@ async function contextFor(r, contact, history, orders, past = null) {
   // cliente frequente: quase sempre pede o mesmo, no mesmo endereço; já na primeira resposta oferece repetir
   const comeco = !history.some(m => m.direction === 'out');
   const ficha = past && past.total ? `Já fez ${past.total} pedido${past.total > 1 ? 's' : ''} pelo WhatsApp. ÚLTIMO PEDIDO: ${past.ultimo}. ` +
-    (comeco ? `É CLIENTE DA CASA: nesta primeira resposta (se ele ainda não disse o que quer), cumprimente pelo primeiro nome e ofereça repetir em uma linha, com o total pelo cardápio de hoje, sem mandar o cardápio. Ex.: "Oi, Maria! Vai ser o de sempre? 1 prato feito de cupim com tropeiro e purê, entrega no mesmo endereço, no Pix: R$ 20,00". ` : '') +
+    (comeco ? `É CLIENTE DA CASA: nesta primeira resposta (se ele ainda não disse o que quer), cumprimente pelo primeiro nome e ofereça repetir em uma linha como PERGUNTA, com o total pelo cardápio de hoje, sem mandar o cardápio. Nunca trate o último pedido como pedido de hoje antes de ele dizer que quer: se ele só cumprimentou, ofereça e espere. Ex.: "Oi, Maria! Vai ser o de sempre? 1 prato feito de cupim com tropeiro e purê, entrega no mesmo endereço, no Pix: R$ 20,00". ` : '') +
     'Endereço: se for entrega e ele não disser outro, use o do último pedido sem perguntar de novo (só aparece no resumo). Pagamento: se ele não disser, ofereça o mesmo do último pedido.' : 'Nenhum pedido anterior pelo WhatsApp.';
   return [
     `RESTAURANTE: ${r.name}. Endereço: ${r.address || '(não informado)'}.` + (r.instagram ? ` Instagram: ${r.instagram}.` : ''),
@@ -248,8 +252,9 @@ export async function botTurn(r, body) {
   const since = lastOut?.created_at || '';
   const fresh = await all(`SELECT text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'in' AND created_at >= ?
     AND created_at >= datetime('now', '-120 minutes') ORDER BY created_at, id`, r.id, phone, since);
+  // só a conversa atual (últimas 6 h): o que foi falado dias atrás não é continuado; o último pedido já vai na FICHA
   const history = (await all(`SELECT direction, origin, text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND created_at <= ?
-    ORDER BY created_at DESC, id DESC LIMIT 12`, r.id, phone, since || '0'));
+    AND created_at >= datetime('now', '-6 hours') ORDER BY created_at DESC, id DESC LIMIT 12`, r.id, phone, since || '0'));
   const pastRows = await all(`SELECT customer_name, items, mode, address, payment, note, created_at FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status <> 'cancelado' ORDER BY id DESC LIMIT 20`, r.id, phone);
   // "o de sempre": o último pedido completo (itens com escolhas, como recebe e como paga), para a IA repetir e confirmar
   const lastOrder = pastRows[0];
