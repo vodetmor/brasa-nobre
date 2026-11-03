@@ -1,5 +1,5 @@
 // Folha A4 imprimível com um cartão por mesa: QR Code + aviso de NFC.
-import { api, esc, toast, staffGate, staffNav, tableUrl, slugFromPath, $, $$ } from './common.js';
+import { api, esc, toast, staffGate, staffNav, tableUrl, slugFromPath, screenTitle, $, $$ } from './common.js';
 
 const slug = slugFromPath();
 const PER_PAGE = { g: 4, m: 6, p: 12 };
@@ -18,7 +18,7 @@ async function init() {
   try { R = await staffGate(slug); }
   catch (e) { document.body.innerHTML = `<div class="login-wrap"><div class="card"><h2>Restaurante não encontrado</h2><p class="muted">${esc(e.message)}</p></div></div>`; return; }
 
-  $('#topbar').innerHTML = `<span class="brand">${esc(R.name)}</span>${staffNav(slug, 'qrcodes')}`;
+  $('#topbar').innerHTML = `${screenTitle('QR Codes', 'Cartões das mesas para imprimir em folha A4.', esc(R.name))}${staffNav(slug, 'qrcodes')}`;
   try {
     const d = await api(`/api/r/${slug}/admin`);
     R = d.restaurant;

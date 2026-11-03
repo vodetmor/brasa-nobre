@@ -1,5 +1,5 @@
 // Painel da cozinha: /r/<slug>/cozinha
-import { api, esc, h, $, $$, toast, live, unlockSound, beep, keepAwake, minutesAgo, hhmm, staffGate, staffNav, slugFromPath } from './common.js';
+import { api, esc, h, $, $$, toast, live, unlockSound, beep, keepAwake, minutesAgo, hhmm, staffGate, staffNav, slugFromPath, screenTitle, liveChip } from './common.js';
 import { printOrder, bluetoothPair, bluetoothReconnect, bluetoothConnected, bluetoothName, bluetoothSupported } from './printer.js';
 
 const slug = slugFromPath();
@@ -25,8 +25,8 @@ start();
 async function start() {
   restaurant = await staffGate(slug);
   $('#app').innerHTML = `
-    <header class="topbar"><span class="dot" id="live-dot" title="Conexão em tempo real"></span>
-      <span class="brand">${esc(restaurant.name)} · Cozinha</span><span class="spacer"></span>${staffNav(slug, 'cozinha')}</header>
+    <header class="topbar">${screenTitle('Cozinha', 'Os pedidos chegam aqui na hora. Toque no botão para avançar.', esc(restaurant.name))}
+      <span class="spacer"></span>${liveChip('live-dot')}${staffNav(slug, 'cozinha')}</header>
     <div class="k-tools">
       <label class="row"><span class="muted">Impressão automática</span>
         <select class="input" id="p-mode">

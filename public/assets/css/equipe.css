@@ -61,3 +61,109 @@ html.equipe .card { background: #fff; border-color: var(--line); box-shadow: var
 .icon-btn { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: #fff;
   color: var(--ink); cursor: pointer; flex: none; }
 .icon-btn:hover { border-color: var(--ink); }
+
+/* ---------- mesma cara em todas as telas (Cozinha, Caixa, Pratos e mesas, QR Codes) ---------- */
+html.equipe body { background: var(--soft); color: var(--ink); font-family: var(--font); }
+html.equipe h1, html.equipe h2, html.equipe h3 { color: var(--ink); }
+
+/* topo da tela: título grande + uma linha de ajuda, igual ao WhatsApp e ao Início */
+html.equipe .topbar { background: rgba(255, 255, 255, .92); border-bottom: 1px solid var(--line); gap: 10px 14px; }
+html.equipe .topbar .brand { display: grid; gap: 2px; min-width: 0; }
+html.equipe .topbar .brand b { font: 600 1.25rem/1.15 var(--display); letter-spacing: -.01em; }
+html.equipe .topbar .brand small { color: var(--text-2); font-size: .9rem; font-weight: 500; }
+html.equipe .topbar nav a { background: #fff; border-color: var(--line); color: var(--text-2); }
+html.equipe .topbar nav a.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+html.equipe.embedded .topbar { position: static; background: none; border: 0; backdrop-filter: none; padding: 22px 24px 12px; align-items: flex-end; }
+html.equipe.embedded .topbar .brand b { font-size: 2rem; }
+@media (max-width: 760px) { html.equipe.embedded .topbar { padding: 16px 16px 10px; } html.equipe.embedded .topbar .brand b { font-size: 1.6rem; } }
+
+.live-chip { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 999px;
+  color: var(--danger-ink); background: var(--danger-tint); white-space: nowrap; }
+.live-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger-ink); }
+.live-chip:has(.dot.on) { color: var(--ok-ink); background: var(--ok-tint); }
+.live-chip:has(.dot.on) .dot { background: var(--ok-ink); animation: live-pulse 2s infinite; }
+.live-chip .live-txt::after { content: ''; }
+.live-chip:not(:has(.dot.on)) .live-txt { font-size: 0; }
+.live-chip:not(:has(.dot.on)) .live-txt::after { content: 'Reconectando'; font-size: 13px; }
+
+/* abas e filtros em pílula: a escolhida fica escura, como no WhatsApp */
+html.equipe .tabs, html.equipe .cx-filters { background: var(--soft); border-bottom-color: var(--line); }
+html.equipe .tabs button, html.equipe .cx-filters button { background: #fff; border: 1px solid var(--line); color: var(--text-2); font-weight: 700; }
+html.equipe .tabs button:hover, html.equipe .cx-filters button:hover { border-color: var(--ink); color: var(--ink); }
+html.equipe .tabs button[aria-selected="true"], html.equipe .cx-filters button.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+html.equipe .btn.warn { background: var(--warn-tint); border: 1px solid #f1d08a; color: var(--warn-ink); }
+html.equipe .btn.danger:not(.ghost) { background: #fff; }
+
+/* Cozinha */
+html.equipe .k-tools { padding: 0 24px 12px; border: 0; }
+html.equipe .k-tools .muted { color: var(--text-2); font-weight: 600; }
+html.equipe .calls { padding: 0 24px; }
+html.equipe .call { background: var(--warn-tint); color: var(--warn-ink); border: 1px solid #f1d08a; animation: none; }
+html.equipe .call.conta { background: var(--ok-tint); color: var(--ok-ink); border-color: #bfe3cf; }
+html.equipe .board { padding: 14px 24px 40px; }
+html.equipe .col h2 { font: 800 .8rem/1 var(--font); letter-spacing: .08em; color: var(--text-2); }
+html.equipe .col h2 .count { background: #fff; border: 1px solid var(--line); color: var(--ink); }
+html.equipe .col .empty { background: #fff; border-color: var(--line); color: var(--muted); }
+html.equipe .ticket { background: #fff; border-color: var(--line); border-left-color: #e0a400; box-shadow: var(--shadow-sm); border-radius: 16px; }
+html.equipe .ticket.preparing { border-left-color: var(--info-ink); }
+html.equipe .ticket.ready { border-left-color: var(--ok-ink); }
+html.equipe .ticket .mesa { font-family: var(--display); font-weight: 600; }
+html.equipe .ticket li .isem { color: var(--danger-ink); }
+html.equipe .ticket li .inote { color: var(--brand-ink); }
+html.equipe .ticket .onote { background: var(--brand-tint); }
+html.equipe .ticket .age.late { color: var(--danger-ink); }
+html.equipe .ticket .age.mid { color: var(--warn-ink); }
+html.equipe .sound-cta { background: rgba(28, 26, 23, .45); }
+html.equipe .sound-cta .card { box-shadow: var(--shadow); border-radius: 20px; }
+@media (max-width: 760px) { html.equipe .k-tools, html.equipe .calls { padding-left: 16px; padding-right: 16px; } html.equipe .board { padding: 12px 16px 32px; } }
+
+/* Caixa */
+html.equipe .cx { padding: 0 24px 24px; }
+@media (max-width: 760px) { html.equipe .cx { padding: 0 16px 20px; } }
+html.equipe .cx-stat { background: #fff; border-color: var(--line); border-radius: 14px; box-shadow: var(--shadow-sm); }
+html.equipe .cx-stat small { color: var(--text-2); font-weight: 700; }
+html.equipe .cx-stat.main { background: var(--brand-tint); border-color: color-mix(in srgb, var(--primary) 45%, #fff); }
+html.equipe .cx-filters { background: none; }
+html.equipe .cx-call { background: var(--warn-tint); border-color: #f1d08a; color: var(--warn-ink); }
+html.equipe .cx-call.conta { background: var(--ok-tint); border-color: #bfe3cf; color: var(--ok-ink); }
+html.equipe .tile { background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-sm); color: var(--ink); }
+html.equipe .tile .t-num { font-family: var(--display); font-weight: 600; }
+html.equipe .tile.open { background: var(--brand-tint); border-color: color-mix(in srgb, var(--primary) 55%, #fff); }
+html.equipe .tile.calling { border: 2px solid #e0a400; }
+html.equipe .badge { background: var(--warn-tint); color: var(--warn-ink); border: 1px solid #f1d08a; }
+html.equipe .badge.conta { background: var(--ok-tint); color: var(--ok-ink); border-color: #bfe3cf; }
+html.equipe .st.received { background: var(--info-tint); color: var(--info-ink); }
+html.equipe .st.preparing { background: var(--warn-tint); color: var(--warn-ink); }
+html.equipe .st.ready { background: var(--ok-tint); color: var(--ok-ink); }
+html.equipe .st.canceled { background: var(--danger-tint); color: var(--danger-ink); }
+html.equipe .sheet { background: #fff; color: var(--ink); }
+html.equipe .cx-actions { background: #fff; }
+html.equipe .sheet-call { background: var(--warn-tint); border-color: #f1d08a; }
+html.equipe .sheet-call.conta { background: var(--ok-tint); border-color: #bfe3cf; }
+html.equipe .pay-grid button { background: #fff; border-color: var(--line); }
+html.equipe .pay-grid button.active { border-color: var(--ink); background: var(--soft); }
+html.equipe .stepper button.plus { background: var(--ink); }
+
+/* Pratos e mesas */
+html.equipe .adm { padding-top: 0; }
+html.equipe .tabs { margin-top: 0; }
+html.equipe details.card > summary::after { color: var(--brand-ink); }
+html.equipe .notice { background: var(--warn-tint); border-color: #f1d08a; color: var(--warn-ink); }
+html.equipe .avail { background: var(--danger-tint); border-color: #f0b9b5; color: var(--danger-ink); }
+html.equipe .avail.on { background: var(--ok-tint); border-color: #bfe3cf; color: var(--ok-ink); }
+html.equipe .nfc-status.ok { background: var(--ok-tint); }
+html.equipe .nfc-status.err { background: var(--danger-tint); }
+
+/* QR Codes */
+html.equipe .qr-wrap { padding-top: 0; }
+html.equipe .pick label { background: #fff; border-color: var(--line); }
+html.equipe .pick label:has(input:checked) { background: var(--ink); border-color: var(--ink); color: #fff; }
+html.equipe .page { box-shadow: var(--shadow); }
+/* dentro do painel o conteúdo alinha à esquerda com o título, como nas outras abas */
+html.equipe.embedded .adm, html.equipe.embedded .qr-wrap { max-width: 980px; margin: 0; padding-left: 24px; padding-right: 24px; }
+html.equipe.embedded .tabs { margin-left: -24px; margin-right: -24px; padding-left: 24px; padding-right: 24px; }
+@media (max-width: 760px) {
+  html.equipe.embedded .adm, html.equipe.embedded .qr-wrap { padding-left: 16px; padding-right: 16px; }
+  html.equipe.embedded .tabs { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+}
+html.equipe.embedded .tabs { border-bottom: 0; padding-top: 4px; }
