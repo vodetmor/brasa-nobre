@@ -7,6 +7,7 @@ import * as S from './services.js';
 
 const LOTES = [
   { id: 'central-2026-11-03', slug: 'central-do-espeto', file: 'central-2026-11-03.json' },
+  { id: 'central-2026-11-03-espetos-13', slug: 'central-do-espeto', file: 'central-2026-11-03-espetos-13.json' },
 ];
 
 const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
