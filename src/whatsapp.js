@@ -185,6 +185,14 @@ export async function menuText(restaurantId) {
 // 1) entrada grava e ignora id do WhatsApp repetido; 2) o n8n espera alguns segundos e pergunta a vez: só a
 // mensagem mais nova do cliente responde, juntando as anteriores; 3) limite de respostas do robô por cliente.
 const ROBOT_LIMIT = { max: 8, minutes: 3 };
+// Números de outros robôs (ex.: o atendente da MedicMais): o robô nunca responde, para não virar robô conversando
+// com robô (aconteceu em 03/11). Dá para somar números na chave 'wa_ignorar' da tabela meta (separados por vírgula).
+const OTHER_BOTS = ['556191852790'];
+async function ignoredPhone(phone) {
+  const m = await get("SELECT value FROM meta WHERE key = 'wa_ignorar'").catch(() => null);
+  const list = [...OTHER_BOTS, ...String(m?.value || '').split(',').map(cleanPhone)].filter(Boolean);
+  return list.some(x => x === phone || (x.length >= 10 && phone.endsWith(x.slice(-10))));
+}
 
 export async function botInbound(r, body) {
   const phone = cleanPhone(body.telefone);
@@ -206,14 +214,14 @@ export async function botInbound(r, body) {
     const { lastInsertRowid } = await run(`INSERT INTO wa_messages (restaurant_id, phone, direction, origin, text, media, wa_id, media_file, media_name)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, r.id, phone, 'in', 'cliente', text, media, waId, mediaFile, mediaName);
     const contact = await get('SELECT needs_human FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, phone);
-    return { id: Number(lastInsertRowid), pausado: !r.wa_robot_on || !!contact.needs_human };
+    return { id: Number(lastInsertRowid), pausado: !r.wa_robot_on || !!contact.needs_human || await ignoredPhone(phone) };
   });
 }
 
 // Antes de gastar IA com foto/vídeo: o robô vai responder este cliente? (robô ligado e equipe não assumiu)
 export async function botState(r, body) {
   const c = await get('SELECT needs_human FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, cleanPhone(body.telefone));
-  return { pausado: !r.wa_robot_on || !!c?.needs_human };
+  return { pausado: !r.wa_robot_on || !!c?.needs_human || await ignoredPhone(cleanPhone(body.telefone)) };
 }
 
 // A vez de responder: só a mensagem mais nova do cliente responde, com tudo o que ele mandou desde a última resposta.
@@ -222,6 +230,7 @@ export async function botTurn(r, body) {
   const id = Number(body.id) || 0;
   const contact = await get('SELECT * FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, phone);
   if (!r.wa_robot_on) return { responder: false, motivo: 'robo_pausado' };
+  if (await ignoredPhone(phone)) return { responder: false, motivo: 'outro_robo' };
   if (!contact || contact.needs_human) return { responder: false, motivo: 'equipe' };
   const last = await get(`SELECT MAX(id) AS id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'in'`, r.id, phone);
   if (Number(last?.id) !== id) return { responder: false, motivo: 'mensagem_mais_nova' };
