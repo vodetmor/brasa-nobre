@@ -41,6 +41,8 @@ export function applyTheme(r) {
   if (r.accent_color) s.setProperty('--accent', r.accent_color);
   if (r.bg_color) s.setProperty('--bg', r.bg_color);
   if (r.text_color) s.setProperty('--text', r.text_color);
+  // telas da equipe (<html class="equipe">): só a cor da casa vem do restaurante, o resto fica claro
+  if (document.documentElement.classList.contains('equipe')) { equipeTheme(); return; }
   const meta = document.querySelector('meta[name=theme-color]');
   if (meta) meta.content = r.bg_color || '#111';
 }
@@ -51,7 +53,8 @@ export function equipeTheme() {
   const root = document.documentElement, s = root.style;
   root.classList.add('equipe');
   for (const [k, v] of Object.entries({ '--bg': '#f6f5f2', '--text': '#1c1a17', '--surface': '#ffffff', '--surface-2': '#f1efea',
-    '--border': '#e7e3dc', '--muted': '#6b665e', '--ok': '#1f7a4d', '--warn': '#b07a00', '--danger': '#c62828' })) s.setProperty(k, v);
+    '--border': '#e7e3dc', '--muted': '#6b665e', '--ok': '#1f7a4d', '--warn': '#b07a00', '--danger': '#c62828',
+    '--accent': 'color-mix(in srgb, var(--primary) 62%, #000)' })) s.setProperty(k, v);
   const meta = document.querySelector('meta[name=theme-color]');
   if (meta) meta.content = '#ffffff';
 }
@@ -181,6 +184,11 @@ export const NAV_ICON = {
 export const STAFF_TABS = [['painel', 'Início'], ['cozinha', 'Cozinha'], ['caixa', 'Caixa'], ['atendimento', 'WhatsApp'], ['admin', 'Pratos e mesas'], ['qrcodes', 'QR Codes']];
 // Dentro do /painel (aba em iframe) a navegação é a do painel: a tela não repete os botões.
 export const embedded = window.top !== window.self;
+if (embedded) document.documentElement.classList.add('embedded');
+// Título da tela no padrão do painel (fonte de título + uma linha de ajuda). Fora do painel leva o nome da casa.
+export const screenTitle = (title, help, rname) =>
+  `<span class="brand"><b>${embedded ? title : `${rname} · ${title}`}</b>${help ? `<small>${help}</small>` : ''}</span>`;
+export const liveChip = id => `<span class="live-chip" id="${id}-wrap"><span class="dot" id="${id}"></span><span class="live-txt">Ao vivo</span></span>`;
 export function staffNav(slug, active) {
   if (embedded) return '';
   return `<nav aria-label="Telas do restaurante">${STAFF_TABS.map(([p, l]) =>

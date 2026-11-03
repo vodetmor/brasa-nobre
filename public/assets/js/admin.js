@@ -1,5 +1,5 @@
 // Painel do dono do restaurante: configurações, cardápio, mesas (QR/NFC) e relatório do dia.
-import { api, money, esc, h, toast, sheet, applyTheme, staffGate, staffNav, embedded, tableUrl, slugFromPath, $, $$ } from './common.js';
+import { api, money, esc, h, toast, sheet, applyTheme, staffGate, staffNav, embedded, tableUrl, slugFromPath, screenTitle, $, $$ } from './common.js';
 
 const slug = slugFromPath();
 let R = null;               // restaurante (linha completa, inclui staff_pin)
@@ -73,11 +73,6 @@ async function init() {
   renderTopbar();
   $('#app').hidden = false;
   $$('#tabs [data-tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
-  if (embedded) {
-    const out = h('<button class="tab-out">Sair</button>');
-    out.addEventListener('click', async () => { await api(`/api/r/${slug}/logout`, { method: 'POST' }).catch(() => {}); location.reload(); });
-    $('#tabs').append(out);
-  }
   window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
   showTab(location.hash.slice(1) || 'menu');
 }
@@ -91,8 +86,7 @@ async function load() {
 function renderTopbar() {
   const tb = $('#topbar');
   // dentro do /painel o nome e as telas já estão na barra de cima: aqui só repetiria
-  tb.hidden = embedded;
-  tb.innerHTML = `<span class="brand">${esc(R.name)}</span>${staffNav(slug, 'admin')}<span class="spacer"></span>
+  tb.innerHTML = `${screenTitle('Pratos e mesas', 'Preços, fotos, o que tem hoje, mesas e dados da casa.', esc(R.name))}${staffNav(slug, 'admin')}<span class="spacer"></span>
     <button class="btn ghost small" id="logout">Sair</button>`;
   $('#logout', tb).addEventListener('click', async () => {
     await api(`/api/r/${slug}/logout`, { method: 'POST' }).catch(() => {});

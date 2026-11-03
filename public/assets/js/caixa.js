@@ -1,7 +1,7 @@
 // Caixa: mapa de mesas, comanda em tempo real, fechamento, impressão e lançamento de pedidos.
 import {
   api, money, hhmm, minutesAgo, esc, $, $$, h, toast, sheet, live, unlockSound, beep, keepAwake,
-  staffGate, staffNav, slugFromPath,
+  staffGate, staffNav, slugFromPath, screenTitle, liveChip,
 } from './common.js';
 
 const slug = slugFromPath();
@@ -86,8 +86,8 @@ async function refresh() {
 // ---------- topo, resumo, chamados, mapa ----------
 function renderTopbar() {
   $('#topbar').innerHTML = `
-    <span class="brand">${esc(S.restaurant.name)} · Caixa</span>
-    <span class="dot" id="live-dot" title="Tempo real desconectado"></span>
+    ${screenTitle('Caixa', 'Mesas abertas, comandas e fechamento da conta.', esc(S.restaurant.name))}
+    <span class="spacer"></span>${liveChip('live-dot')}
     ${staffNav(slug, 'caixa')}
     <button class="btn warn small sound-btn" id="sound-btn" type="button">Ativar som</button>`;
   $('#sound-btn').addEventListener('click', enableSound);
