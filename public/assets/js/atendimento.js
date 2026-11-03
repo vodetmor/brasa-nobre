@@ -1,6 +1,6 @@
 // Atendimento pelo WhatsApp: /r/<slug>/atendimento
 // O robô responde sozinho; a equipe acompanha, assume a conversa quando quiser e confirma os pedidos.
-import { api, esc, $, $$, toast, money, hhmm, parseDate, staffGate, staffNav, slugFromPath, embedded } from './common.js';
+import { api, esc, $, $$, toast, money, hhmm, parseDate, staffGate, staffNav, slugFromPath, embedded, equipeTheme } from './common.js';
 
 const slug = slugFromPath();
 const REASON = {
@@ -20,7 +20,7 @@ Não aceitamos vale-refeição.`;
 let restaurant, data = { contacts: [], orders: [], info: '' };
 // ?so=robo: só os controles do robô (embutido na área "Robô do WhatsApp" do painel), sem conversas nem avisos
 const onlyRobot = new URLSearchParams(location.search).get('so') === 'robo';
-let tab = onlyRobot ? 'robo' : 'conversas', open = null, convo = null, seenOrders = null, filter = 'todas';
+let tab = onlyRobot ? 'robo' : 'conversas', open = null, convo = null, seenOrders = null, filter = 'todas', query = '';
 
 // ---------- avisos de atendimento humano (como no painel da MedicMais) ----------
 // barra vermelha no topo + som "ding-dong" + notificação do navegador + título piscando; "plim" para mensagem nova.
@@ -116,15 +116,19 @@ start();
 
 async function start() {
   restaurant = await staffGate(slug);
+  equipeTheme();
   $('#app').innerHTML = `
-    <header class="topbar"><span class="dot on" id="live-dot" title="Atualizando"></span>
-      <span class="brand">${esc(restaurant.name)} · WhatsApp</span><span class="spacer"></span>${staffNav(slug, 'atendimento')}</header>
-    <div class="at-tabs" role="tablist">
-      <button type="button" role="tab" data-tab="conversas">Conversas<span class="count hidden" id="c-conv"></span></button>
-      <button type="button" role="tab" data-tab="pedidos">Pedidos<span class="count hidden" id="c-ped"></span></button>
-      <button type="button" role="tab" data-tab="reclamacoes">Reclamações</button>
-      <button type="button" role="tab" data-tab="robo">Robô</button>
-      <span class="spacer"></span><button type="button" class="btn soft small" id="som" aria-pressed="false">Ligar som e avisos</button>
+    ${embedded ? '' : `<header class="topbar"><span class="brand">${esc(restaurant.name)}</span><span class="spacer"></span>${staffNav(slug, 'atendimento')}</header>`}
+    <div class="at-head">
+      <div class="at-title"><h1>WhatsApp</h1><p>Conversas e pedidos do WhatsApp da casa. Atualiza sozinho a cada poucos segundos.</p></div>
+      <div class="at-head-r"><span class="live" id="live"><i></i><span id="live-t">ao vivo</span></span>
+        <button type="button" class="btn ghost small" id="som" aria-pressed="false">Ligar som e avisos</button></div>
+    </div>
+    <div class="at-tabs" role="tablist" aria-label="Seções do WhatsApp">
+      <button type="button" role="tab" data-tab="conversas">${ICO.chat}<span>Conversas</span><span class="count hidden" id="c-conv"></span></button>
+      <button type="button" role="tab" data-tab="pedidos">${ICO.bag}<span>Pedidos</span><span class="count hidden" id="c-ped"></span></button>
+      <button type="button" role="tab" data-tab="reclamacoes">${ICO.alert}<span>Reclamações</span></button>
+      <button type="button" role="tab" data-tab="robo">${ICO.bot}<span>Robô</span></button>
     </div>
     <div id="banner"></div>
     <section class="robot-bar" id="robot-bar" aria-live="polite"></section>
@@ -143,8 +147,8 @@ async function start() {
 async function refresh() {
   try {
     data = await api(`/api/r/${slug}/atendimento`);
-    $('#live-dot').classList.add('on');
-  } catch { $('#live-dot').classList.remove('on'); return; }
+    setLive(true);
+  } catch { setLive(false); return; }
   const fresh = data.orders.filter(o => o.status === 'novo').map(o => o.id);
   if (seenOrders && fresh.some(id => !seenOrders.has(id))) { if (soundOn()) dingDong(); toast('Pedido novo pelo WhatsApp'); }
   seenOrders = new Set(data.orders.map(o => o.id));
@@ -167,6 +171,27 @@ function render(passive = false) {
   else renderRobot();
 }
 
+function setLive(on) {
+  const el = $('#live'); if (!el) return;
+  el.classList.toggle('off', !on);
+  $('#live-t').textContent = on ? 'ao vivo' : 'sem conexão';
+}
+const ic = d => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+const ICO = {
+  chat: ic('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z"/>'),
+  bag: ic('<path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>'),
+  alert: ic('<path d="M12 3.5 2.8 19.5h18.4zM12 10v4.5M12 17.2v.1"/>'),
+  bot: ic('<rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 4.5V8M9 13v1.5M15 13v1.5"/><circle cx="12" cy="3.5" r="1"/>'),
+  search: ic('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>'),
+  send: ic('<path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/>'),
+  left: ic('<path d="m14.5 5-7 7 7 7"/>'),
+  check: ic('<path d="m5 12.5 4.5 4.5L19 7.5"/>'),
+  user: ic('<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/>'),
+  star: ic('<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>'),
+  flag: ic('<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>'),
+};
+const initials = c => { const n = (c.name || '').trim(); if (!n) return '#'; const p = n.split(/\s+/); return ((p[0][0] || '') + (p.length > 1 ? p.at(-1)[0] : '')).toUpperCase(); };
+
 const setCount = (sel, n) => { const el = $(sel); el.textContent = n; el.classList.toggle('hidden', !n); };
 const label = c => c.name || formatPhone(c.phone);
 function formatPhone(p) {
@@ -182,36 +207,47 @@ function when(s) {
 function renderChat(passive) {
   let wrap = $('.at-chat');
   if (!wrap) {
-    $('#view').innerHTML = `<div class="at-chat"><aside class="at-side"><div class="at-filters">
-      <button type="button" data-filter="todas">Todas</button><button type="button" data-filter="humano">Pedem atendimento<span id="f-n"></span></button></div>
-      <div class="at-list" aria-label="Conversas"></div></aside><section class="at-convo"></section></div>`;
+    $('#view').innerHTML = `<div class="at-chat"><aside class="at-side">
+      <div class="at-find"><label class="at-search">${ICO.search}<input type="search" id="q" placeholder="Buscar nome, telefone ou mensagem" aria-label="Buscar conversa"></label>
+      <div class="at-filters"><button type="button" data-filter="todas">Todas</button><button type="button" data-filter="humano">Pedem atendimento<span class="fn" id="f-n"></span></button></div></div>
+      <div class="at-list" aria-label="Conversas"></div></aside><section class="at-convo" aria-label="Conversa aberta"></section></div>`;
     $$('.at-filters button').forEach(b => b.addEventListener('click', () => { filter = b.dataset.filter; renderChat(false); }));
+    $('#q').value = query;
+    $('#q').addEventListener('input', e => { query = e.target.value; renderChat(false); });
     wrap = $('.at-chat');
     new ResizeObserver(() => document.documentElement.style.setProperty('--top', `${wrap.getBoundingClientRect().top + scrollY}px`)).observe(document.body);
     passive = false;
   }
   wrap.classList.toggle('open', !!open);
+  document.body.classList.toggle('chat-open', !!open);
   const list = $('.at-list');
   // pede atenção primeiro, depois a mais recente
   $$('.at-filters button').forEach(b => b.setAttribute('aria-pressed', b.dataset.filter === filter));
   const nh = data.contacts.filter(urgent).length;
-  $('#f-n').textContent = nh ? ` ${nh}` : '';
-  const sorted = data.contacts.filter(c => filter !== 'humano' || c.needs_human).sort((a, b) => (urgent(b) - urgent(a)) || (b.updated_at > a.updated_at ? 1 : -1));
+  $('#f-n').textContent = nh ? nh : '';
+  const q = norm(query), qd = query.replace(/\D/g, '');
+  const sorted = data.contacts.filter(c => filter !== 'humano' || c.needs_human)
+    .filter(c => !q || norm(c.name).includes(q) || norm(c.last_message).includes(q) || (qd.length >= 3 && c.phone.includes(qd)))
+    .sort((a, b) => (urgent(b) - urgent(a)) || (b.updated_at > a.updated_at ? 1 : -1));
   // só redesenha a lista quando algo mudou (não rouba o clique nem o hover a cada atualização)
   const key = JSON.stringify([sorted, open]);
   if (passive && list.dataset.key === key) return;
   list.dataset.key = key;
   list.innerHTML = sorted.length ? sorted.map(c => `
-    <button type="button" class="at-contact${c.phone === open ? ' active' : ''}" data-phone="${esc(c.phone)}">
-      <b>${esc(label(c))}</b><time>${when(c.updated_at)}</time>
-      <span class="last">${esc(c.last_message || '')}</span>
-      <span class="badges">${c.needs_human ? `<span class="tag ${urgent(c) ? 'alert' : 'team'}">${esc(REASON[c.human_reason] || REASON.outro)}</span>` : ''}
-        ${c.unread && c.phone !== open ? `<span class="unread">${c.unread}</span>` : ''}</span>
-    </button>`).join('') : filter === 'humano' ? '<p class="at-empty">Ninguém esperando a equipe agora.</p>'
+    <button type="button" class="at-contact${c.phone === open ? ' active' : ''}${urgent(c) ? ' urgent' : ''}" data-phone="${esc(c.phone)}">
+      <span class="av${urgent(c) ? ' hot' : ''}" aria-hidden="true">${esc(initials(c))}</span>
+      <span class="ct">
+        <span class="ct-top"><b>${esc(label(c))}</b><time>${when(c.updated_at)}</time></span>
+        <span class="last">${esc(c.last_message || '')}</span>
+        <span class="badges">${c.needs_human ? `<span class="chip ${urgent(c) ? 'alert' : 'team'}">${esc(REASON[c.human_reason] || REASON.outro)}</span>` : ''}
+          ${c.unread && c.phone !== open ? `<span class="unread">${c.unread} nova${c.unread > 1 ? 's' : ''}</span>` : ''}</span>
+      </span>
+    </button>`).join('') : query ? '<p class="at-empty">Nada encontrado com essa busca.</p>' : filter === 'humano' ? '<p class="at-empty">Ninguém esperando a equipe agora.</p>'
     : '<p class="at-empty">Nenhuma conversa ainda. Quando um cliente mandar mensagem para o WhatsApp da casa, ela aparece aqui.</p>';
   list.querySelectorAll('[data-phone]').forEach(b => b.addEventListener('click', () => openConvo(b.dataset.phone)));
   if (!passive || !open) renderConvo();
 }
+const norm = t => String(t || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 const urgent = c => (c.needs_human && !['equipe_assumiu', 'dono_respondeu'].includes(c.human_reason) ? 1 : 0);
 
 async function openConvo(phone) {
@@ -226,7 +262,8 @@ async function loadConvo(scroll) {
   try {
     const d = await api(`/api/r/${slug}/atendimento/conversa?phone=${encodeURIComponent(phone)}`);
     if (phone !== open) return;
-    const changed = !convo || JSON.stringify(d.messages.map(m => m.pending)) !== JSON.stringify(convo.messages.map(m => m.pending)) || d.contact.needs_human !== convo.contact.needs_human;
+    const sig = x => JSON.stringify([x.messages.map(m => [m.id, m.pending]), x.contact.needs_human, x.contact.usual]);
+    const changed = !convo || sig(d) !== sig(convo);
     convo = d;
     if (changed && tab === 'conversas') renderConvo(scroll || isAtBottom());
   } catch (e) { if (scroll) toast(e.message, 'error'); }
@@ -234,36 +271,53 @@ async function loadConvo(scroll) {
 
 const isAtBottom = () => { const m = $('.at-msgs'); return !m || m.scrollHeight - m.scrollTop - m.clientHeight < 80; };
 
+const WHO = { cliente: 'Cliente', robo: 'Robô', equipe: 'Equipe' };
+function dayLabel(s) {
+  const d = parseDate(s), today = new Date(), y = new Date(); y.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Hoje';
+  if (d.toDateString() === y.toDateString()) return 'Ontem';
+  return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' });
+}
+function messagesHtml(list) {
+  let day = '';
+  return list.map(m => {
+    const dl = dayLabel(m.created_at), sep = dl !== day ? `<div class="day-sep"><span>${esc(dl)}</span></div>` : '';
+    day = dl;
+    const st = m.pending === 1 ? ' · enviando…' : m.pending === -1 ? ' · não enviada' : '';
+    return `${sep}<div class="msg ${m.direction} ${m.origin}"><span class="who">${WHO[m.origin] || m.origin}</span>${mediaView(m)}<div class="tx">${esc(m.text)}</div><time>${hhmm(m.created_at)}${st}</time></div>`;
+  }).join('');
+}
+
 function renderConvo(scroll = true) {
   const box = $('.at-convo');
   if (!box) return;
-  if (!open) { box.innerHTML = '<p class="at-empty">Escolha uma conversa para ver as mensagens.</p>'; return; }
+  if (!open) { box.innerHTML = `<div class="at-pick">${ICO.chat}<p>Escolha uma conversa à esquerda para ler as mensagens e responder.</p></div>`; return; }
   if (!convo) { box.innerHTML = '<p class="at-empty">Carregando…</p>'; return; }
   const c = convo.contact;
   const draft = $('#reply')?.value || '';
   box.innerHTML = `
     <div class="at-convo-head">
-      <button type="button" class="btn ghost small at-back" id="back">Voltar</button>
+      <button type="button" class="icon-btn at-back" id="back" aria-label="Voltar para a lista">${ICO.left}</button>
+      <span class="av${urgent(c) ? ' hot' : ''}" aria-hidden="true">${esc(initials(c))}</span>
       <div class="who"><b>${esc(label(c))}</b><span>${esc(formatPhone(c.phone))}${c.usual ? ` · De sempre: ${esc(c.usual)}` : ''}</span></div>
-      <span class="spacer"></span>
-      ${c.needs_human
-        ? `<span class="tag ${urgent(c) ? 'alert' : 'team'}">${esc(REASON[c.human_reason] || REASON.outro)}</span>
-           <button type="button" class="btn ${urgent(c) ? 'ok' : 'soft'} small" id="robot-on" title="O robô volta a responder este cliente">${urgent(c) ? 'Resolvido' : 'Devolver ao robô'}</button>`
-        : `<span class="tag">Robô respondendo</span><button type="button" class="btn soft small" id="robot-off">Assumir conversa</button>`}
-      <button type="button" class="btn ghost small" id="set-usual" title="O que o robô entende por &quot;o de sempre&quot; deste cliente">Pedido de sempre</button>
-      <button type="button" class="btn ghost small" id="mark-complaint" title="Conta nos avisos de reclamação">Marcar reclamação</button>
+      <div class="acts">
+        ${c.needs_human
+          ? `<span class="chip ${urgent(c) ? 'alert' : 'team'}">${esc(REASON[c.human_reason] || REASON.outro)}</span>
+             <button type="button" class="btn ${urgent(c) ? 'ok' : 'ghost'} small" id="robot-on" title="O robô volta a responder este cliente">${ICO.check}${urgent(c) ? 'Resolvido' : 'Devolver ao robô'}</button>`
+          : `<span class="chip ok">Robô respondendo</span><button type="button" class="btn ghost small" id="robot-off">${ICO.user}Assumir conversa</button>`}
+        <button type="button" class="btn ghost small" id="set-usual" title="O que o robô entende por &quot;o de sempre&quot; deste cliente">${ICO.star}Pedido de sempre</button>
+        <button type="button" class="btn ghost small" id="mark-complaint" title="Conta nos avisos de reclamação">${ICO.flag}Reclamação</button>
+      </div>
     </div>
-    <div class="at-msgs">${convo.messages.map(m => `
-      <div class="msg ${m.direction} ${m.origin}">${mediaView(m)}${esc(m.text)}<small>${m.origin === 'cliente' ? '' : m.origin === 'robo' ? 'Robô · ' : 'Equipe · '}${hhmm(m.created_at)}${m.pending === 1 ? ' · enviando…' : m.pending === -1 ? ' · não enviada' : ''}</small></div>`).join('')
-      || '<p class="at-empty">Sem mensagens.</p>'}</div>
+    <div class="at-msgs" role="log" aria-live="polite">${messagesHtml(convo.messages) || '<p class="at-empty">Sem mensagens.</p>'}</div>
     <form class="at-compose" id="compose">
-      <textarea class="input" id="reply" rows="1" placeholder="${data.can_send ? 'Escreva para o cliente (o robô pausa nesta conversa)' : 'Envio pelo painel desligado'}" ${data.can_send ? '' : 'disabled'}></textarea>
-      <button class="btn" ${data.can_send ? '' : 'disabled'}>Enviar</button>
+      <textarea class="input" id="reply" rows="1" aria-label="Mensagem para o cliente" placeholder="${data.can_send ? (matchMedia('(max-width: 760px)').matches ? 'Mensagem para o cliente' : 'Escreva para o cliente (o robô pausa nesta conversa)') : 'Envio pelo painel desligado'}" ${data.can_send ? '' : 'disabled'}></textarea>
+      <button class="send" aria-label="Enviar" ${data.can_send ? '' : 'disabled'}>${ICO.send}</button>
     </form>`;
   const ta = $('#reply');
   ta.value = draft;
   ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight}px`; });
-  ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#compose').requestSubmit(); } });
+  ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !matchMedia('(pointer: coarse)').matches) { e.preventDefault(); $('#compose').requestSubmit(); } });
   if (scroll) { const m = $('.at-msgs'); m.scrollTop = m.scrollHeight; }
   $('#back').addEventListener('click', () => { open = null; convo = null; render(); });
   $('#robot-on')?.addEventListener('click', () => setRobot(true));
@@ -280,14 +334,14 @@ function renderConvo(scroll = true) {
     const text = ta.value.trim();
     if (!text) return;
     const btn = e.target.querySelector('button');
-    btn.disabled = true; btn.textContent = 'Enviando…';
+    btn.disabled = true; btn.classList.add('busy');
     try {
       await api(`/api/r/${slug}/atendimento/enviar`, { method: 'POST', body: { phone: open, text } });
-      ta.value = '';
+      ta.value = ''; ta.style.height = 'auto';
       await loadConvo(true);
       refresh();
     } catch (err) { toast(err.message, 'error'); }
-    finally { btn.disabled = false; btn.textContent = 'Enviar'; }
+    finally { btn.disabled = false; btn.classList.remove('busy'); }
   });
 }
 
@@ -355,7 +409,7 @@ function renderOrders() {
   ordersKey = key;
   $('#view').innerHTML = list.length ? `<div class="at-orders">${list.map(o => `
     <article class="order ${o.status}">
-      <div class="top"><span class="num">nº ${o.number}</span><span class="pill">${STATUS[o.status]}</span><time>${hhmm(o.created_at)}</time></div>
+      <div class="top"><span class="num">nº ${o.number}</span><span class="chip st-${o.status}">${STATUS[o.status]}</span><time>${hhmm(o.created_at)}</time></div>
       <div><b>${esc(o.customer_name)}</b> · <span class="muted">${esc(formatPhone(o.phone))}</span></div>
       <ul>${o.items.map(i => `<li>${i.qty}x ${esc(i.name)} · ${money(i.unit_price_cents * i.qty)}
         ${i.choices ? `<small>${esc(i.choices)}</small>` : ''}${i.note ? `<small>Obs.: ${esc(i.note)}</small>` : ''}</li>`).join('')}</ul>

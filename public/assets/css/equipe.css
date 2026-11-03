@@ -1,0 +1,63 @@
+/* Visual claro das telas da equipe (painel e WhatsApp), no mesmo conceito do painel da MedicMais:
+   fundo claro, cartões brancos, letra escura e grande, botões em pílula e a cor da casa só como destaque.
+   As variáveis entram por equipeTheme() em common.js (ganham das cores escuras do cardápio). */
+html.equipe {
+  --ink: #1c1a17;
+  --text-2: #57524a;
+  --line: #e7e3dc;
+  --soft: #f6f5f2;
+  --brand-ink: color-mix(in srgb, var(--primary) 62%, #000);
+  --brand-tint: color-mix(in srgb, var(--primary) 14%, #fff);
+  --ok-ink: #1f7a4d; --ok-tint: #e7f5ee;
+  --warn-ink: #8a5a00; --warn-tint: #fff4dc;
+  --danger-ink: #b3261e; --danger-tint: #fdecea;
+  --info-ink: #2b5fa8; --info-tint: #e8f0fb;
+  --shadow-sm: 0 1px 2px rgba(28, 26, 23, .06), 0 6px 16px -10px rgba(28, 26, 23, .22);
+  --shadow: 0 18px 40px -18px rgba(28, 26, 23, .3);
+  --display: "Fraunces", Georgia, serif;
+  --font: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+html.equipe body { font-size: 15px; line-height: 1.45; }
+html.equipe :focus-visible { outline: 2px solid var(--brand-ink); outline-offset: 2px; }
+
+/* botões */
+html.equipe .btn { color: var(--ink); font-weight: 700; }
+html.equipe .btn:hover { filter: none; background: color-mix(in srgb, var(--primary) 85%, #000); }
+html.equipe .btn.ghost { background: #fff; border: 1px solid var(--line); color: var(--ink); }
+html.equipe .btn.ghost:hover { background: #fff; border-color: var(--ink); }
+html.equipe .btn.soft { background: var(--soft); border: 1px solid var(--line); color: var(--ink); }
+html.equipe .btn.soft:hover { background: #fff; border-color: var(--ink); }
+html.equipe .btn.ok { background: var(--ok-ink); color: #fff; }
+html.equipe .btn.ok:hover { background: #17623d; }
+html.equipe .btn.danger { background: #fff; border: 1px solid #f0b9b5; color: var(--danger-ink); }
+html.equipe .btn.danger:hover { background: var(--danger-tint); }
+html.equipe .input, html.equipe select.input, html.equipe textarea.input { background: #fff; border-color: var(--line); color: var(--ink); }
+html.equipe .input:focus { border-color: var(--brand-ink); box-shadow: 0 0 0 3px var(--brand-tint); }
+html.equipe label.field, html.equipe label.field > span { color: var(--text-2); font-weight: 600; }
+html.equipe .toast { background: var(--ink); box-shadow: var(--shadow); }
+html.equipe .toast.error { background: var(--danger-ink); }
+html.equipe .sheet-backdrop { background: rgba(28, 26, 23, .45); }
+html.equipe .card { background: #fff; border-color: var(--line); box-shadow: var(--shadow-sm); }
+
+/* "ao vivo" */
+.live { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: var(--ok-ink); background: var(--ok-tint);
+  padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok-ink); animation: live-pulse 2s infinite; }
+.live.off { color: var(--danger-ink); background: var(--danger-tint); }
+.live.off i { background: var(--danger-ink); animation: none; }
+@keyframes live-pulse { 0% { box-shadow: 0 0 0 0 rgba(31, 122, 77, .45); } 70% { box-shadow: 0 0 0 7px rgba(31, 122, 77, 0); } 100% { box-shadow: 0 0 0 0 rgba(31, 122, 77, 0); } }
+
+/* etiquetas */
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  background: var(--soft); color: var(--text-2); border: 1px solid var(--line); white-space: nowrap; }
+.chip.alert { background: var(--danger-ink); border-color: var(--danger-ink); color: #fff; }
+.chip.alert::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+.chip.team { background: var(--warn-tint); border-color: #f1d08a; color: var(--warn-ink); }
+.chip.ok { background: var(--ok-tint); border-color: #bfe3cf; color: var(--ok-ink); }
+.chip.info { background: var(--info-tint); border-color: #c9d9f2; color: var(--info-ink); }
+
+.ic { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: #fff;
+  color: var(--ink); cursor: pointer; flex: none; }
+.icon-btn:hover { border-color: var(--ink); }

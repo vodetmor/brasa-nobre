@@ -210,6 +210,7 @@ api.post('/api/r/:slug/wa/bot/saida', async ({ req, params }) => W.botOutbound(a
 api.post('/api/r/:slug/wa/bot/pedido', async ({ req, params }) => W.botOrder(await botCtx(req, params.slug), await readJson(req)));
 api.post('/api/r/:slug/wa/bot/fila', async ({ req, params }) => W.botQueue(await botCtx(req, params.slug)));
 api.post('/api/r/:slug/wa/bot/fila/ok', async ({ req, params }) => W.botQueueDone(await botCtx(req, params.slug), await readJson(req)));
+api.post('/api/r/:slug/wa/bot/importar', async ({ req, params }) => W.botImport(await botCtx(req, params.slug), await readJson(req)));
 api.post('/api/r/:slug/wa/bot/humano', async ({ req, params }) => W.botHuman(await botCtx(req, params.slug), await readJson(req)));
 
 api.get('/api/r/:slug/atendimento', async ({ req, params }) => W.inbox(await staffCtx(req, params.slug)));
