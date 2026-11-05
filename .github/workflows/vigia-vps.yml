@@ -1,0 +1,15 @@
+# Vigia do painel Modernizai Admin: de 10 em 10 min pergunta ao painel se a VPS
+# continua mandando relatório. Se parou há mais de 10 min, o painel manda push.
+# Só faz um GET público que não recebe nem devolve dado sensível.
+name: Vigia da VPS
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+permissions: {}
+jobs:
+  vigia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: curl -fsS -m 30 https://modernizai-df.vercel.app/api/admin/vigia

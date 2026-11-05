@@ -1,0 +1,10 @@
+{
+  "name": "modernizai-site",
+  "private": true,
+  "description": "Site da Modernizai + painel admin (/admin) com funções em /api/admin",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@vercel/blob": "2.8.2",
+    "web-push": "3.6.7"
+  }
+}
