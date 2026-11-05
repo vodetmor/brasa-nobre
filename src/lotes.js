@@ -8,6 +8,7 @@ import * as S from './services.js';
 const LOTES = [
   { id: 'central-2026-11-03', slug: 'central-do-espeto', file: 'central-2026-11-03.json' },
   { id: 'central-2026-11-03-espetos-13', slug: 'central-do-espeto', file: 'central-2026-11-03-espetos-13.json' },
+  { id: 'central-2026-11-05', slug: 'central-do-espeto', file: 'central-2026-11-05.json' },
 ];
 
 const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -31,6 +32,8 @@ export async function applyLotes({ log = console.log } = {}) {
         if (op.preco != null) data.price_cents = Math.round(Number(op.preco) * 100);
         if (op.nome) data.name = op.nome;
         if (op.foto) data.image_url = op.foto;
+        if (op.opcoes != null) data.options = op.opcoes;
+        if (op.disponivel != null) data.available = op.disponivel ? 1 : 0;
         if (op.criar && !products.some(p => norm(p.name) === norm(op.produto))) {
           const [category_id] = catIds(op.categoria);
           if (!category_id) { skipped.push(op.produto); continue; }

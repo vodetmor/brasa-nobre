@@ -1,0 +1,20 @@
+[
+  { "produto": "Central", "preco": 24 },
+  { "produto": "Sertanejo", "preco": 24 },
+  { "produto": "Fit", "preco": 24 },
+  { "produto": "Prato feito", "opcoes": "Arroz: Arroz branco, Arroz com brócolis\nFeijão: Feijão tropeiro, Feijão de caldo\nCarne: Bife de cupim, Contra filé, Parmegiana de carne +3, Parmegiana de frango +3, Carne de panela, Filé de frango grelhado, Frango com bacon, Carne de sol\nAcompanhamento: Purê, Maionese, Mix de folhas, Batata frita, Mandioca frita, Farofa de ovo, Farofa de banana, Vinagrete" },
+
+  { "produto": "Refrigerante lata", "preco": 6.5, "opcoes": "Sabor: Coca-Cola, Coca-Cola Zero, Sprite, Fanta Uva, Fanta Laranja, Guaraná, Guaraná Zero, Água tônica, Pepsi Black" },
+  { "produto": "Guaraná 1 L", "preco": 9.5 },
+  { "produto": "Coca-Cola 2 L", "preco": 14.5 },
+  { "produto": "Guaraná 1,5 L", "disponivel": false },
+  { "produto": "Energético", "nome": "Monster", "preco": 13, "foto": "" },
+  { "criar": true, "categoria": "Bebidas", "produto": "Red Bull", "preco": 13 },
+  { "produto": "Antarctica ou Skol", "nome": "Antarctica palito 269 ml", "preco": 5, "opcoes": "" },
+  { "criar": true, "categoria": "Bebidas", "produto": "Coca-Cola 600 ml", "preco": 8.5 },
+  { "criar": true, "categoria": "Bebidas", "produto": "Coca-Cola Zero 600 ml", "preco": 8.5 },
+  { "criar": true, "categoria": "Bebidas", "produto": "Coca-Cola Zero 2 L", "preco": 14.5 },
+  { "criar": true, "categoria": "Bebidas", "produto": "Guaraná 2 L", "preco": 14 },
+  { "criar": true, "categoria": "Bebidas", "produto": "Guaraná Zero 2 L", "preco": 14 },
+  { "criar": true, "categoria": "Bebidas", "produto": "Stella Pure Gold", "preco": 11 }
+]
