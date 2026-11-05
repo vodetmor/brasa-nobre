@@ -2,6 +2,9 @@
 // tudo passa pelas funções em /api/admin, protegidas pelo cookie de login.
 "use strict";
 
+// O app vive em /admin/ (escopo do PWA). Sem a barra, o celular não oferece instalar.
+if (location.pathname === "/admin") location.replace("/admin/" + location.search);
+
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t == null ? "" : t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const ehIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
