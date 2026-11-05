@@ -1,0 +1,16 @@
+// GET /api/admin/status → último relatório da VPS + clientes (precisa estar logado)
+const { json, logado, lerJson, ARQ } = require("./_lib");
+const clientes = require("./_clientes");
+
+module.exports = async (req, res) => {
+  if (req.method !== "GET") return json(res, 405, { erro: "método" });
+  if (!logado(req)) return json(res, 401, { erro: "login" });
+  const status = await lerJson(ARQ.status, null);
+  return json(res, 200, {
+    agora: new Date().toISOString(),
+    status,
+    clientes: clientes.map(({ id, nome, servico, situacao, whatsapp, robo, links }) => ({
+      id, nome, servico, situacao, whatsapp, robo, links,
+    })),
+  });
+};

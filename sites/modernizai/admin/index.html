@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#001534">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MZ Admin">
+<title>Modernizai Admin</title>
+<link rel="manifest" href="/admin/manifest.webmanifest">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/admin/icone-180.png">
+<link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+<header class="topo">
+  <div class="topo__marca">
+    <img src="/favicon.svg" alt="" width="32" height="32">
+    <div><strong>Modernizai</strong><span>Admin</span></div>
+  </div>
+  <button class="topo__sair" id="sair" hidden>Sair</button>
+</header>
+
+<main id="app">
+  <!-- Login -->
+  <section class="login" id="tela-login" hidden>
+    <h1>Entrar no painel</h1>
+    <p class="suave">Clientes, WhatsApps e VPS em um só lugar.</p>
+    <form id="form-login">
+      <label for="senha">Senha</label>
+      <input id="senha" name="senha" type="password" autocomplete="current-password" required>
+      <button class="botao" type="submit">Entrar</button>
+      <p class="erro" id="erro-login" role="alert"></p>
+    </form>
+  </section>
+
+  <!-- Painel -->
+  <section id="tela-painel" hidden>
+    <div class="resumo" id="resumo">
+      <span class="resumo__ponto"></span>
+      <div><strong id="resumo-titulo">Carregando…</strong><small id="resumo-hora"></small></div>
+    </div>
+
+    <div class="aviso" id="aviso-push" hidden>
+      <p><strong>Ative as notificações</strong> para saber na hora quando um WhatsApp cair ou a VPS tiver problema.</p>
+      <button class="botao" id="ativar-push">Ativar notificações</button>
+    </div>
+
+    <h2>WhatsApps</h2>
+    <ul class="lista" id="lista-whatsapp"></ul>
+
+    <h2>Robôs</h2>
+    <ul class="lista" id="lista-robos"></ul>
+
+    <h2>VPS</h2>
+    <div class="cartao" id="vps"></div>
+
+    <h2>Serviços</h2>
+    <ul class="lista lista--compacta" id="lista-servicos"></ul>
+
+    <h2>Clientes</h2>
+    <div id="lista-clientes"></div>
+
+    <h2>Notificações</h2>
+    <div class="cartao notif">
+      <p id="push-estado" class="suave">—</p>
+      <div class="notif__botoes">
+        <button class="botao botao--leve" id="testar-push" hidden>Mandar teste</button>
+        <button class="botao botao--leve" id="desligar-push" hidden>Desligar neste celular</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Pop-up de instalação -->
+<div class="instalar" id="instalar" hidden role="dialog" aria-labelledby="instalar-titulo">
+  <img src="/admin/icone-192.png" alt="" width="48" height="48">
+  <div class="instalar__texto">
+    <strong id="instalar-titulo">Instalar o app do painel</strong>
+    <p id="instalar-dica">Fica na tela inicial e recebe os alertas.</p>
+  </div>
+  <div class="instalar__botoes">
+    <button class="botao" id="instalar-sim">Instalar</button>
+    <button class="botao botao--leve" id="instalar-nao">Agora não</button>
+  </div>
+</div>
+
+<script src="/admin/admin.js" defer></script>
+</body>
+</html>
