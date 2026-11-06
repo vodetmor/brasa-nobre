@@ -285,7 +285,10 @@ def chamadas_ia(dados, nos, wf_nome=""):
     return achadas
 
 
-IA_VERSAO = 2
+IA_VERSAO = 3
+# O atendente do Espeto usava o glm-4.6 (modelo escolhido por expressão) até esta hora (UTC);
+# o fluxo atual está fixo no glm-4.5-air, então o histórico anterior é corrigido na leitura.
+ESPETO_GLM46_ATE = datetime.datetime(2026, 11, 6, 19, 19, tzinfo=datetime.timezone.utc).timestamp()
 
 
 def ler_estado_ia():
@@ -344,6 +347,8 @@ def coletar_ia(estado):
                     log(f"ia: execução {r['id']}#{eid} ilegível: {e}")
                     continue
                 for modelo, ent, sai, cache, parte in chamadas:
+                    if r["id"] == "espeto" and modelo == "glm-4.5-air" and parte == "atendente" and ts < ESPETO_GLM46_ATE:
+                        modelo = "glm-4.6"
                     estado["eventos"].append([int(ts), r["id"], modelo, ent, sai, cache, parte])
             estado["ultimo"][r["id"]] = ultimo
         finally:
@@ -504,10 +509,13 @@ def avisar_whatsapp(textos, destino):
         return
     chat = "".join(c for c in str(destino) if c.isdigit()) + "@c.us"
     for texto in textos[:3]:
+        tentou = False
+        enviado = False
         for w in WA:
             estado, _ = waha_status(w["waha"])
             if estado != "WORKING":
                 continue
+            tentou = True
             corpo = json.dumps({"session": "default", "chatId": chat, "text": str(texto)[:1000]})
             cmd = ["docker", "exec", "-i", w["waha"], "sh", "-c",
                    'curl -s -m 30 -X POST -H "X-Api-Key: $WAHA_API_KEY" -H "content-type: application/json" '
@@ -516,11 +524,13 @@ def avisar_whatsapp(textos, destino):
                 r = subprocess.run(cmd, input=corpo, capture_output=True, text=True, timeout=60)
                 if json.loads(r.stdout or "{}").get("id"):
                     log(f"aviso IA enviado via {w['id']}")
+                    enviado = True
                     break
+                log(f"aviso IA sem id via {w['id']}: {(r.stdout or r.stderr or '')[:200]}")
             except Exception as e:
                 log(f"aviso IA falhou via {w['id']}: {e!r}")
-        else:
-            log("aviso IA: nenhum WhatsApp conectado para enviar")
+        if not enviado:
+            log("aviso IA: não enviado (nenhum WhatsApp WORKING)" if not tentou else "aviso IA: não enviado (veja as linhas acima)")
 
 
 def relatorio(resumo_ia_atual=None):
