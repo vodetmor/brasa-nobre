@@ -168,6 +168,7 @@ async function carregar() {
 
 // ---------- saldo da IA (z.ai) ----------
 const dolar = (v) => "US$ " + Number(v || 0).toFixed(2).replace(".", ",");
+const reais = (v) => "R$ " + Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const milTokens = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " mi" : Math.round(n / 1000) + " mil");
 const dataHora = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 
@@ -197,16 +198,24 @@ function mostrarIa(ia, agora) {
     ? `<div class="ia__dias" aria-label="Gasto por dia">${ia.dias.map((d) => `<span data-h="${Math.round((d.custo / maxDia) * 100)}" title="${esc(d.dia.slice(8, 10) + "/" + d.dia.slice(5, 7))}: ${esc(dolar(d.custo))}"></span>`).join("")}</div>
        <div class="ia__dias-legenda"><span>${esc(ia.dias[0].dia.slice(8, 10) + "/" + ia.dias[0].dia.slice(5, 7))}</span><span>gasto por dia</span><span>hoje</span></div>`
     : "";
-  el.innerHTML = `<div class="ia__topo"><div><p class="ia__rotulo">${real ? "Saldo na z.ai" : "Saldo estimado agora"}</p><p class="ia__valor">${dolar(ia.estimado)}</p></div>${seloIa}</div>
+  const brl = (ia.cotacao && ia.cotacao.brl) || 5.5;
+  const comIof = (usd) => usd * brl * (1 + ((ia.cotacao && ia.cotacao.iof) || 0));
+  const mes = ia.mes || { precisa: 0, recarregar: 0 };
+  const recarga = `<div class="ia__recarga"><strong>${mes.recarregar > 0 ? `Recarregar ${dolar(mes.recarregar)} para durar 30 dias` : "O saldo cobre 30 dias no ritmo atual"}</strong>
+    <span>${mes.recarregar > 0 ? `≈ ${reais(comIof(mes.recarregar))} no cartão (com IOF). ` : ""}Um mês neste ritmo custa ${dolar(mes.precisa)} ≈ ${reais(comIof(mes.precisa))}.</span></div>`;
+  const tabela = (ia.porRoboModelo24h || []).length
+    ? `<table class="ia__tabela"><thead><tr><th>Últimas 24h</th><th>Chamadas</th><th>Tokens</th><th>Custo</th></tr></thead><tbody>${ia.porRoboModelo24h.map((l) => `<tr><td>${esc(l.robo)}<small>${esc(l.modelo === "glm-auto" ? "modelo automático" : l.modelo)}</small></td><td>${l.chamadas}</td><td>${milTokens(l.entrada + l.saida)}</td><td>${dolar(l.custo)}</td></tr>`).join("")}</tbody></table>`
+    : "";
+  el.innerHTML = `<div class="ia__topo"><div><p class="ia__rotulo">${real ? "Saldo na z.ai" : "Saldo estimado agora"}</p><p class="ia__valor">${dolar(ia.estimado)}</p><p class="ia__rotulo">≈ ${reais(ia.estimado * brl)} · dólar a ${reais(brl)}</p></div>${seloIa}</div>
     <p class="ia__ritmo">${esc(dura)}</p>
     <p class="ia__base">${base}${real ? "" : " · gasto desde então " + dolar(ia.gastoDesde)}</p>
     <div class="ia__numeros">
       <div><strong>${dolar(ia.hoje.custo)}</strong><span>Hoje · ${ia.hoje.chamadas} chamadas · ${milTokens(ia.hoje.entrada + ia.hoje.saida)} tokens</span></div>
       <div><strong>${dolar(ia.h24.custo)}</strong><span>Últimas 24h · ${ia.h24.chamadas} chamadas · ${milTokens(ia.h24.entrada + ia.h24.saida)} tokens</span></div>
     </div>
-    ${(ia.porRobo24h || []).length ? `<ul class="ia__robos">${ia.porRobo24h.map((r) => `<li><span>${esc(r.nome)} (24h)</span><strong>${dolar(r.custo)}</strong></li>`).join("")}</ul>` : ""}
+    ${recarga}${tabela}
     ${dias}${acoes}
-    <p class="ia__nota">${real ? "Saldo lido da z.ai a cada 5 min. Gasto por dia e por robô calculado pelos tokens que os robôs usam (tabela de preço da z.ai)." : "Estimativa pelos tokens que os robôs gastam (tabela de preço da z.ai). Confira o saldo real na z.ai de vez em quando e informe aqui."}</p>`;
+    <p class="ia__nota">${real ? `Saldo lido da z.ai a cada 5 min. Ritmo ${ia.ritmoFonte === "real" ? "medido pelo gasto real das últimas " + ia.ritmoHoras + " h" : "estimado pelos tokens"}. Divisão por robô pelos tokens de cada um, ajustada ao gasto real.` : "Estimativa pelos tokens que os robôs gastam (tabela de preço da z.ai). Confira o saldo real na z.ai de vez em quando e informe aqui."}</p>`;
   el.querySelectorAll("[data-h]").forEach((b) => { b.style.height = Math.max(3, Number(b.dataset.h)) + "%"; });
 }
 

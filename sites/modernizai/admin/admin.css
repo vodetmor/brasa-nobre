@@ -163,3 +163,11 @@ input[type="password"] {
 .ia-form input { width: 100%; min-height: 48px; padding: 0 14px; font: inherit; font-size: 16px; border: 1px solid var(--linha); border-radius: 10px; background: var(--branco); color: var(--texto); }
 .ia-form__dica { font-size: 13px; margin-top: 6px; }
 .selo--atencao { background: var(--atencao-fundo); color: var(--atencao); }
+.ia__recarga { margin-top: 14px; padding: 12px; border-radius: 10px; background: #e8f1fe; }
+.ia__recarga strong { display: block; color: var(--marinho); }
+.ia__recarga span { font-size: 13px; color: var(--suave); }
+.ia__tabela { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+.ia__tabela th { text-align: right; font-weight: 600; color: var(--suave); padding: 4px 0 6px 6px; font-size: 12px; }
+.ia__tabela th:first-child, .ia__tabela td:first-child { text-align: left; padding-left: 0; }
+.ia__tabela td { text-align: right; padding: 6px 0 6px 6px; border-top: 1px solid var(--linha); vertical-align: top; }
+.ia__tabela td small { display: block; color: var(--suave); font-size: 12px; }

@@ -29,8 +29,9 @@ module.exports = async (req, res) => {
     const { avisos: avisosIa, avisados } = zai.decidirAvisos(zai.resumo(ia, cfgIa), cfgIa);
     const { _recarregado, ...avisadosLimpos } = avisados;
     const recarga = _recarregado != null && _recarregado !== cfgIa.recarregado;
-    if (avisosIa.length || recarga) {
-      await zai.gravarConfig({ ...cfgIa, avisados: avisadosLimpos, ...(recarga ? { recarregado: _recarregado } : {}) });
+    const amostras = zai.novaAmostra(ia, cfgIa);
+    if (avisosIa.length || recarga || amostras) {
+      await zai.gravarConfig({ ...cfgIa, avisados: avisadosLimpos, ...(recarga ? { recarregado: _recarregado } : {}), ...(amostras ? { amostras } : {}) });
       avisos.push(...avisosIa);
       whatsapp.push(...avisosIa.map((a) => `${a.titulo}\n${a.texto}`));
     }
