@@ -62,6 +62,7 @@ async function start() {
   await reload();
   live(`/api/r/${slug}/stream`, {
     order: o => {
+      if (o.source === 'whatsapp') return; // pedido do WhatsApp fica só na aba WhatsApp do painel (imprime lá)
       if (['delivered', 'canceled'].includes(o.status)) orders.delete(o.id); else orders.set(o.id, o);
       if (o.status === 'received' && !printed.has(o.id)) onNewOrder(o);
       render();
@@ -80,7 +81,8 @@ async function start() {
 }
 
 async function reload() {
-  const [list, callList] = await Promise.all([api(`/api/r/${slug}/orders`), api(`/api/r/${slug}/calls`)]);
+  const [all, callList] = await Promise.all([api(`/api/r/${slug}/orders`), api(`/api/r/${slug}/calls`)]);
+  const list = all.filter(o => o.source !== 'whatsapp'); // WhatsApp: só na aba WhatsApp do painel
   orders = new Map(list.map(o => [o.id, o]));
   calls = new Map(callList.map(c => [c.id, c]));
   render(); renderCalls();
