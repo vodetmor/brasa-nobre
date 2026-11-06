@@ -1,0 +1,14 @@
+[
+  { "produto": "Jantinha completa", "categoria": "Jantinha", "foto": "/demo/central-do-espeto/ce-jantinha-completa.webp" },
+  { "produto": "Jantinha sem espeto", "categoria": "Jantinha", "foto": "/demo/central-do-espeto/ce-jantinha-sem-espeto.webp" },
+  { "produto": "Coca-Cola Zero 2 L", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-coca-cola-zero-2l.webp" },
+  { "produto": "Coca-Cola Zero 600 ml", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-coca-cola-zero-600.webp" },
+  { "produto": "Coca-Cola 600 ml", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-coca-cola-600.webp" },
+  { "produto": "Guaraná 2 L", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-guarana-2l.webp" },
+  { "produto": "Guaraná Zero 2 L", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-guarana-zero-2l.webp" },
+  { "produto": "Monster", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-monster.webp" },
+  { "produto": "Stella Pure Gold", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-stella-pure-gold.webp" },
+  { "produto": "Pão de alho", "categoria": "Espetos", "foto": "/demo/central-do-espeto/ce-pao-de-alho.webp" },
+  { "produto": "Camarão", "categoria": "Espetos", "foto": "/demo/central-do-espeto/ce-camarao.webp" },
+  { "produto": "Kafta", "categoria": "Espetos", "foto": "/demo/central-do-espeto/ce-kafta.webp" }
+]
