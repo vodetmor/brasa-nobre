@@ -4,9 +4,8 @@
 //   ADMIN_SEGREDO          segredo para assinar o cookie de sessão
 //   PAINEL_CHAVE_VPS       chave que a VPS manda no POST /api/admin/ingest
 //   VAPID_PUBLICA / VAPID_PRIVADA   chaves das notificações push
-//   BLOB_READ_WRITE_TOKEN  criado pela Vercel ao ligar o Blob (privado)
+//   DATABASE_URL           criada pela Vercel ao ligar o Neon (guarda status, alertas, inscrições e saldo da IA)
 const crypto = require("crypto");
-const { put, get } = require("@vercel/blob");
 
 const COOKIE = "mz_admin";
 const DIAS_SESSAO = 30;
@@ -83,28 +82,43 @@ function mesmaOrigem(req) {
   }
 }
 
-// ---------- armazenamento (Vercel Blob privado) ----------
+// ---------- armazenamento (Postgres do Neon) ----------
+// Uma tabela chave → JSON. A conexão vem de DATABASE_URL (criada pelo Neon na Vercel).
+let _pool;
+let _pronta;
+function banco() {
+  if (!_pool) {
+    const { Pool } = require("pg");
+    const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+    if (!url) throw new Error("DATABASE_URL não configurada");
+    _pool = new Pool({ connectionString: url, max: 1, idleTimeoutMillis: 10000, connectionTimeoutMillis: 8000, ssl: { rejectUnauthorized: false } });
+    _pool.on("error", (e) => console.error("pg", e && e.message));
+  }
+  if (!_pronta) {
+    _pronta = _pool
+      .query("create table if not exists admin_kv (chave text primary key, valor jsonb not null, atualizado timestamptz not null default now())")
+      .catch((e) => { _pronta = null; throw e; });
+  }
+  return _pronta.then(() => _pool);
+}
+
 async function lerJson(caminho, padrao) {
   try {
-    const r = await get(caminho, { access: "private", useCache: false });
-    if (!r || r.statusCode !== 200 || !r.stream) return padrao;
-    const txt = await new Response(r.stream).text();
-    return JSON.parse(txt);
+    const pool = await banco();
+    const r = await pool.query("select valor from admin_kv where chave = $1", [caminho]);
+    return r.rows.length ? r.rows[0].valor : padrao;
   } catch (e) {
-    if (String(e && e.message).includes("not found") || (e && e.name === "BlobNotFoundError")) return padrao;
     console.error("lerJson", caminho, e && e.message);
     return padrao;
   }
 }
 
 async function gravarJson(caminho, dados) {
-  await put(caminho, JSON.stringify(dados), {
-    access: "private",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: "application/json",
-    cacheControlMaxAge: 60,
-  });
+  const pool = await banco();
+  await pool.query(
+    "insert into admin_kv (chave, valor, atualizado) values ($1, $2::jsonb, now()) on conflict (chave) do update set valor = excluded.valor, atualizado = now()",
+    [caminho, JSON.stringify(dados)]
+  );
 }
 
 const ARQ = {
