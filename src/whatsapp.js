@@ -190,7 +190,7 @@ export async function menuText(restaurantId) {
 // Travas contra rajada de mensagens (o cliente escreve picado, o WhatsApp às vezes entrega a mesma mensagem 2 vezes):
 // 1) entrada grava e ignora id do WhatsApp repetido; 2) o n8n espera alguns segundos e pergunta a vez: só a
 // mensagem mais nova do cliente responde, juntando as anteriores; 3) limite de respostas do robô por cliente.
-const ROBOT_LIMIT = { max: 8, minutes: 3 };
+const ROBOT_LIMIT = { max: 15, minutes: 3 }; // fotos do cardápio e respostas em partes contam cada uma (06/11: 8 travava conversa normal)
 // Números de outros robôs (ex.: o atendente da MedicMais): o robô nunca responde, para não virar robô conversando
 // com robô (aconteceu em 03/11). Dá para somar números na chave 'wa_ignorar' da tabela meta (separados por vírgula).
 const OTHER_BOTS = ['556191852790'];
