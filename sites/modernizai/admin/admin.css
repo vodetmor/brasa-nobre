@@ -171,3 +171,4 @@ input[type="password"] {
 .ia__tabela th:first-child, .ia__tabela td:first-child { text-align: left; padding-left: 0; }
 .ia__tabela td { text-align: right; padding: 6px 0 6px 6px; border-top: 1px solid var(--linha); vertical-align: top; }
 .ia__tabela td small { display: block; color: var(--suave); font-size: 12px; }
+.ia__maior { margin-top: 14px; font-size: 14px; }
