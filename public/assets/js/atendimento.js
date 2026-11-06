@@ -1,6 +1,7 @@
 // Atendimento pelo WhatsApp: /r/<slug>/atendimento
 // O robô responde sozinho; a equipe acompanha, assume a conversa quando quiser e confirma os pedidos.
-import { api, esc, $, $$, toast, money, hhmm, parseDate, staffGate, staffNav, slugFromPath, embedded, equipeTheme } from './common.js';
+import { api, esc, $, $$, toast, money, hhmm, parseDate, minutesAgo, staffGate, staffNav, slugFromPath, embedded, equipeTheme } from './common.js';
+import { printOrder } from './printer.js';
 
 const slug = slugFromPath();
 const REASON = {
@@ -28,6 +29,56 @@ const AL = { base: null, pend: [], unread: null, orig: '', blink: null };
 const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { return null; } };
 const soundOn = () => store('wa_som') === '1';
 let actx;
+
+// ---------- impressão dos pedidos do WhatsApp ----------
+// Mesmas preferências e mesma lista de "já impressos" da tela da Cozinha (mesmo navegador = não imprime duas vezes).
+const PR = {
+  get mode() { const m = store('print_mode'); return m === 'browser' || m === 'rawbt' || m === 'bluetooth' ? m : 'off'; },
+  set mode(v) { store('print_mode', v); },
+  get paper() { return Number(store('print_paper') || 80); },
+  set paper(v) { store('print_paper', String(v)); },
+};
+const PRINTED_KEY = `printed_${slug}`;
+const printedSet = () => { try { return new Set(JSON.parse(store(PRINTED_KEY) || '[]')); } catch { return new Set(); } };
+const printKey = o => o.kitchen_order_id || `wa${o.id}`;
+const MODE_TXT = { entrega: 'ENTREGA', retirada: 'RETIRADA', local: 'COMER NO LOCAL' };
+const asTicket = o => ({
+  number: o.number, table_label: 'WhatsApp', created_at: o.created_at, customer_name: o.customer_name, total_cents: o.total_cents, source: 'whatsapp',
+  note: [MODE_TXT[o.mode] || o.mode, o.address, PAY[o.payment], o.note].filter(Boolean).join(' · '),
+  items: (o.items || []).map(i => ({ qty: i.qty, name: i.name, note: i.note || '', choices: i.choices ? String(i.choices).split('; ') : [] })),
+});
+async function printWa(o, mode = PR.mode) {
+  const set = printedSet(); set.add(printKey(o));
+  store(PRINTED_KEY, JSON.stringify([...set].slice(-300)));
+  try { await printOrder(mode === 'off' ? 'browser' : mode, asTicket(o), restaurant, PR.paper); }
+  catch (e) { toast(`Não imprimiu o pedido nº ${o.number}: ${e.message}`, 'error'); }
+}
+// pedido aprovado (já na cozinha) dos últimos 15 min que ainda não saiu na impressora
+function autoPrint() {
+  if (onlyRobot || PR.mode === 'off') return;
+  const done = printedSet();
+  for (const o of [...data.orders].sort((a, b) => a.id - b.id)) {
+    if (['novo', 'cancelado'].includes(o.status) || done.has(printKey(o)) || minutesAgo(o.created_at) > 15) continue;
+    printWa(o);
+  }
+}
+function printerControls() {
+  return `<label class="at-print"><span>Impressão automática</span>
+    <select class="input small" id="p-mode">
+      <option value="off">Desligada</option><option value="browser">Impressora do sistema</option><option value="rawbt">RawBT (Android)</option>
+    </select><select class="input small" id="p-paper"><option value="80">80 mm</option><option value="58">58 mm</option></select></label>`;
+}
+function setupPrinter() {
+  const m = $('#p-mode'), p = $('#p-paper');
+  if (!m) return;
+  m.value = PR.mode === 'bluetooth' ? 'off' : PR.mode; p.value = String(PR.paper);
+  m.addEventListener('change', () => {
+    PR.mode = m.value;
+    if (m.value !== 'off') toast('Pedidos do WhatsApp aprovados vão imprimir sozinhos. Deixe esta tela aberta.');
+    autoPrint();
+  });
+  p.addEventListener('change', () => { PR.paper = Number(p.value); });
+}
 function audio() {
   try { actx ||= new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch { actx = null; }
   return actx;
@@ -122,6 +173,7 @@ async function start() {
     <div class="at-head">
       <div class="at-title"><h1>WhatsApp</h1><p>Conversas e pedidos do WhatsApp da casa. Atualiza sozinho a cada poucos segundos.</p></div>
       <div class="at-head-r"><span class="live" id="live"><i></i><span id="live-t">ao vivo</span></span>
+        ${onlyRobot ? '' : printerControls()}
         <button type="button" class="btn ghost small" id="som" aria-pressed="false">Ligar som e avisos</button></div>
     </div>
     <div class="at-tabs" role="tablist" aria-label="Seções do WhatsApp">
@@ -137,6 +189,7 @@ async function start() {
   if (onlyRobot) { document.body.classList.add('only-robot'); render(); }
   $('#som').addEventListener('click', toggleSound);
   soundButton();
+  setupPrinter();
   // o navegador só toca som depois de um clique na página
   addEventListener('pointerdown', () => soundOn() && audio(), { once: true });
   await refresh();
@@ -153,6 +206,7 @@ async function refresh() {
   if (seenOrders && fresh.some(id => !seenOrders.has(id))) { if (soundOn()) dingDong(); toast('Pedido novo pelo WhatsApp'); }
   seenOrders = new Set(data.orders.map(o => o.id));
   if (!onlyRobot) checkAlerts();
+  autoPrint();
   render(true);
 }
 
@@ -418,6 +472,7 @@ function renderOrders() {
         Pagamento: <b>${PAY[o.payment] || '-'}</b>${o.note ? `<br>Obs.: ${esc(o.note)}` : ''}</div>
       <div class="actions">${(NEXT[o.status]?.(o) || []).map(([s, l, cls]) =>
         `<button type="button" class="btn small ${cls}" data-id="${o.id}" data-status="${s}">${l}</button>`).join('')}
+        <button type="button" class="btn small ghost" data-print="${o.id}">Imprimir</button>
         <button type="button" class="btn small ghost" data-open="${esc(o.phone)}">Ver conversa</button></div>
     </article>`).join('')}</div>`
     : '<p class="at-empty">Nenhum pedido pelo WhatsApp hoje. Quando o robô fechar um pedido com o cliente, ele aparece aqui para a equipe confirmar.</p>';
@@ -431,6 +486,7 @@ function renderOrders() {
     } catch (e) { toast(e.message, 'error'); b.disabled = false; }
   }));
   $$('[data-open]').forEach(b => b.addEventListener('click', () => { tab = 'conversas'; openConvo(b.dataset.open); }));
+  $$('[data-print]').forEach(b => b.addEventListener('click', () => { const o = data.orders.find(x => x.id === Number(b.dataset.print)); if (o) printWa(o); }));
 }
 const STATUS_MSG_HINT = { confirmado: 'Confirmado. O cliente recebeu o aviso no WhatsApp.', saiu: 'O cliente foi avisado que o pedido saiu.', pronto: 'O cliente foi avisado que pode retirar.' };
 

@@ -25,7 +25,7 @@ export function ticketLines(order, restaurant, cols = 32) {
   if (order.note) { out.push({ t: line }); out.push({ t: `OBS: ${order.note}`, bold: true }); }
   out.push({ t: line });
   out.push({ t: `Total: ${money(order.total_cents)}` });
-  out.push({ t: `Origem: ${order.source === 'nfc' ? 'NFC' : order.source === 'garcom' ? 'Garcom' : 'QR Code'}` });
+  out.push({ t: `Origem: ${order.source === 'nfc' ? 'NFC' : order.source === 'garcom' ? 'Garcom' : order.source === 'whatsapp' ? 'WhatsApp' : 'QR Code'}` });
   return out;
 }
 
