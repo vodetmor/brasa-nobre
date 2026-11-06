@@ -202,8 +202,18 @@ function mostrarIa(ia, agora) {
   const mes = ia.mes || { precisa: 0, recarregar: 0 };
   const recarga = `<div class="ia__recarga"><strong>${mes.recarregar > 0 ? `Recarregar ${dolar(mes.recarregar)} para durar 30 dias` : "O saldo cobre 30 dias no ritmo atual"}</strong>
     <span>${mes.recarregar > 0 ? `≈ ${reais(comIof(mes.recarregar))} no cartão (com IOF). ` : ""}Um mês neste ritmo custa ${dolar(mes.precisa)} ≈ ${reais(comIof(mes.precisa))}.</span></div>`;
-  const tabela = (ia.porRoboModelo24h || []).length
-    ? `<table class="ia__tabela"><thead><tr><th>Últimas 24h</th><th>Chamadas</th><th>Tokens</th><th>Custo</th></tr></thead><tbody>${ia.porRoboModelo24h.map((l) => `<tr><td>${esc(l.robo)}<small>${esc(l.modelo === "glm-auto" ? "modelo automático" : l.modelo)}</small></td><td>${l.chamadas}</td><td>${milTokens(l.entrada + l.saida)}</td><td>${dolar(l.custo)}</td></tr>`).join("")}</tbody></table>`
+  // onde é gasto: o modelo diz qual parte do robô chamou a IA
+  const parte = (robo, modelo) => {
+    if (/v(-|$)/.test(modelo.replace(/^glm-/, ""))) return "Ler foto/vídeo (reserva do Groq)";
+    if (robo === "MedicMais" && modelo === "glm-4.5-air") return "Memória do paciente";
+    return "Atendente respondendo clientes";
+  };
+  const linhas = ia.porRoboModelo24h || [];
+  const total24 = linhas.reduce((t, l) => t + l.custo, 0) || 1;
+  const maior = linhas[0];
+  const tabela = linhas.length
+    ? `${maior && maior.custo > 0 ? `<p class="ia__maior">Onde mais gasta: <strong>${esc(maior.robo)} · ${esc(parte(maior.robo, maior.modelo))}</strong> (${Math.round((maior.custo / total24) * 100)}% nas últimas 24h)</p>` : ""}
+      <table class="ia__tabela"><thead><tr><th>Últimas 24h</th><th>Chamadas</th><th>Custo</th><th>%</th></tr></thead><tbody>${linhas.map((l) => `<tr><td>${esc(l.robo)} · ${esc(parte(l.robo, l.modelo))}<small>${esc(l.modelo === "glm-auto" ? "modelo automático" : l.modelo)} · ${milTokens(l.entrada + l.saida)} tokens · ${l.chamadas ? milTokens((l.entrada + l.saida) / l.chamadas) : 0} por chamada</small></td><td>${l.chamadas}</td><td>${dolar(l.custo)}</td><td>${Math.round((l.custo / total24) * 100)}%</td></tr>`).join("")}</tbody></table>`
     : "";
   el.innerHTML = `<div class="ia__topo"><div><p class="ia__rotulo">${real ? "Saldo na z.ai" : "Saldo estimado agora"}</p><p class="ia__valor">${dolar(ia.estimado)}</p><p class="ia__rotulo">≈ ${reais(ia.estimado * brl)} · dólar a ${reais(brl)}</p></div>${seloIa}</div>
     <p class="ia__ritmo">${esc(dura)}</p>
