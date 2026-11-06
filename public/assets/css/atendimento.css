@@ -7,6 +7,8 @@ body { min-height: 100vh; min-height: 100dvh; background: var(--soft); color: va
 .at-title h1 { font: 600 2rem/1.1 var(--display); margin: 0 0 4px; letter-spacing: -.01em; }
 .at-title p { margin: 0; color: var(--text-2); font-size: .95rem; }
 .at-head-r { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.at-print { display: flex; align-items: center; gap: 6px; font-size: .88rem; color: var(--text-2); flex-wrap: wrap; }
+.at-print .input { width: auto; padding: 6px 8px; min-height: 0; }
 .at-head-r .btn[aria-pressed=true] { background: var(--ok-tint); border-color: #bfe3cf; color: var(--ok-ink); }
 
 /* abas */
