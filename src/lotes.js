@@ -9,6 +9,7 @@ const LOTES = [
   { id: 'central-2026-11-03', slug: 'central-do-espeto', file: 'central-2026-11-03.json' },
   { id: 'central-2026-11-03-espetos-13', slug: 'central-do-espeto', file: 'central-2026-11-03-espetos-13.json' },
   { id: 'central-2026-11-05', slug: 'central-do-espeto', file: 'central-2026-11-05.json' },
+  { id: 'central-2026-11-06-fotos', slug: 'central-do-espeto', file: 'central-2026-11-06-fotos.json' },
 ];
 
 const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
