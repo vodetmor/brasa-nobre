@@ -115,12 +115,24 @@ function render() {
   $$('.ticket [data-act]').forEach(b => b.addEventListener('click', () => act(Number(b.closest('.ticket').dataset.id), b.dataset.act)));
 }
 
+// Observações em destaque no topo do cartão (SEM / OBS em maiúsculas).
+function alertBlock(o) {
+  const a = [];
+  if (o.note) a.push(`OBS: ${o.note}`);
+  for (const i of o.items) {
+    if (i.removed?.length) a.push(`${i.qty}x ${i.name}: SEM ${i.removed.join(', ')}`);
+    if (i.note) a.push(`${i.qty}x ${i.name}: ${i.note}`);
+  }
+  return a.length ? `<div class="oalert">${a.map(x => `<div>${esc(x.toUpperCase())}</div>`).join('')}</div>` : '';
+}
+
 function ticket(o, col) {
   const age = minutesAgo(o.created_at);
   return `<article class="ticket ${o.status} ${fresh.has(o.id) ? 'new' : ''}" data-id="${o.id}">
     <div class="top"><span class="mesa">${o.table_number ? `Mesa ${o.table_number}` : esc(o.table_label || "WhatsApp")}</span><span class="num">#${o.number}</span>
       <span class="age ${age >= 25 ? 'late' : age >= 12 ? 'mid' : ''}" title="Chegou às ${hhmm(o.created_at)}">${age} min</span></div>
     <div class="who">${esc(o.customer_name)}${o.source === 'garcom' ? ' · lançado pela equipe' : ''}</div>
+    ${alertBlock(o)}
     <ul>${o.items.map(itemLine).join('')}</ul>
     ${o.note ? `<div class="onote">Obs.: ${esc(o.note)}</div>` : ''}
     <div class="actions">

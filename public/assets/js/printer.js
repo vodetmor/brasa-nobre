@@ -15,14 +15,27 @@ export function ticketLines(order, restaurant, cols = 32) {
   out.push({ t: order.table_number ? `MESA ${order.table_number}` : String(order.table_label || "WhatsApp").toUpperCase(), big: true, center: true });
   out.push({ t: `Pedido #${order.number}  ${hhmm(order.created_at)}`, center: true });
   out.push({ t: `Cliente: ${order.customer_name}`, bold: true });
+  // Observações em destaque no topo (SEM / OBS em maiúsculas), para a cozinha não perder.
+  const up = s => String(s).toUpperCase();
+  const alerts = [];
+  if (order.note) alerts.push(`OBS: ${up(order.note)}`);
+  for (const i of order.items) {
+    const tag = `${i.qty}x ${up(i.name)}`;
+    if (i.removed?.length) alerts.push(`${tag}: SEM ${up(i.removed.join(', '))}`);
+    if (i.note) alerts.push(`${tag}: ${up(i.note)}`);
+  }
+  if (alerts.length) {
+    out.push({ t: line });
+    out.push({ t: '*** ATENCAO ***', bold: true, center: true });
+    for (const a of alerts) out.push({ t: a, bold: true });
+  }
   out.push({ t: line });
   for (const i of order.items) {
     out.push({ t: `${i.qty}x ${i.name}`, bold: true });
     for (const c of i.choices || []) out.push({ t: `   ${c.split(': ').pop()}`, bold: true });
-    if (i.removed?.length) out.push({ t: `   SEM ${i.removed.join(', ')}`, bold: true });
-    if (i.note) out.push({ t: `   OBS: ${i.note}` });
+    if (i.removed?.length) out.push({ t: `   SEM ${up(i.removed.join(', '))}`, bold: true });
+    if (i.note) out.push({ t: `   OBS: ${up(i.note)}`, bold: true });
   }
-  if (order.note) { out.push({ t: line }); out.push({ t: `OBS: ${order.note}`, bold: true }); }
   out.push({ t: line });
   out.push({ t: `Total: ${money(order.total_cents)}` });
   out.push({ t: `Origem: ${order.source === 'nfc' ? 'NFC' : order.source === 'garcom' ? 'Garcom' : order.source === 'whatsapp' ? 'WhatsApp' : 'QR Code'}` });
