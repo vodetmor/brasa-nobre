@@ -10,7 +10,7 @@ HTML/CSS/JS puro. Publicado na Vercel (projeto `modernizai`) pela nuvem via cone
 App instalável (PWA) com login, status dos WhatsApps, robôs, VPS, clientes e notificações push.
 
 ```
-VPS (cron, 1/min)  --POST HTTPS-->  /api/admin/ingest  --> Vercel Blob privado (status, inscrições, alertas)
+VPS (cron, 1/min)  --POST HTTPS-->  /api/admin/ingest  --> Neon (Postgres: status, inscrições, alertas, saldo da IA)
                                                        --> push para os celulares inscritos
 celular (/admin)   --cookie-->      /api/admin/status, /api/admin/push
 GitHub Actions (10 min) -->         /api/admin/vigia   --> push "VPS sem sinal" se parou de chegar relatório
@@ -22,7 +22,7 @@ GitHub Actions (10 min) -->         /api/admin/vigia   --> push "VPS sem sinal" 
   Clientes mostrados em `_clientes.js`.
 - `vps/painel_status.py` script da VPS (só leitura, stdlib). Não vai para a Vercel (`.vercelignore`).
 - Variáveis na Vercel: `ADMIN_SENHA`, `ADMIN_SEGREDO`, `PAINEL_CHAVE_VPS`, `VAPID_PUBLICA`, `VAPID_PRIVADA`,
-  `BLOB_READ_WRITE_TOKEN` (Blob privado `modernizai-admin`).
+  `DATABASE_URL` (criada pelo Neon ligado ao projeto; tabela `admin_kv`, criada sozinha).
 - iPhone: push só funciona com o app instalado (Compartilhar → Adicionar à Tela de Início), iOS 16.4+.
 
 ### Saldo da IA (z.ai)
@@ -36,4 +36,4 @@ Se a consulta falhar por mais de 30 min, o painel volta para a estimativa:
 - `api/admin/_zai.js`: tabela de preços (US$/1M tokens), cálculo e avisos (abaixo de US$ 1,50, de US$ 0,50, ou acabando em < 2 dias).
   Cada aviso vai uma vez por saldo informado, por push e por WhatsApp (a resposta do ingest devolve `whatsapp`; a VPS envia
   para `whatsapp_destino` do config.json pelo WhatsApp que estiver conectado).
-- `POST /api/admin/zai {saldo}`: botão "Informar saldo atual" no painel. Use depois de cada recarga. Blob `admin/zai.json`.
+- `POST /api/admin/zai {saldo}`: botão "Informar saldo atual" no painel. Use depois de cada recarga. Chave `admin/zai.json`.
