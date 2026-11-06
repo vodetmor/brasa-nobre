@@ -174,9 +174,12 @@ const dataHora = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit"
 function mostrarIa(ia, agora) {
   const el = $("ia");
   if (!ia) { el.innerHTML = `<p class="suave">Sem dados.</p>`; return; }
-  const base = `Último saldo informado: ${dolar(ia.saldoInformado)} em ${esc(dataHora(ia.informadoEm))}`;
-  const acoes = `<div class="ia__acoes"><button class="botao" type="button" id="ia-informar">Informar saldo atual</button>
-    <a class="botao botao--leve" href="https://z.ai/manage-apikey/billing" target="_blank" rel="noopener">Abrir z.ai</a></div>`;
+  const real = ia.fonte === "zai" && ia.real;
+  const base = real
+    ? `Saldo real da conta, consultado ${haQuanto(real.consultadoEm, agora)} · recarregado ${dolar(real.recarregado + real.bonus)} · gasto total ${dolar(real.gastoTotal)}`
+    : `Estimativa: último saldo informado ${dolar(ia.saldoInformado)} em ${esc(dataHora(ia.informadoEm))}`;
+  const acoes = `<div class="ia__acoes">${real ? "" : `<button class="botao" type="button" id="ia-informar">Informar saldo atual</button>`}
+    <a class="botao${real ? "" : " botao--leve"}" href="https://z.ai/manage-apikey/billing" target="_blank" rel="noopener">Recarregar na z.ai</a></div>`;
   if (!ia.temDados || !ia.sincronizado) {
     el.dataset.nivel = "";
     el.innerHTML = `<p class="ia__rotulo">${ia.temDados ? "Atualizando a conta…" : "Aguardando a VPS mandar o uso da IA"}</p>
@@ -194,16 +197,16 @@ function mostrarIa(ia, agora) {
     ? `<div class="ia__dias" aria-label="Gasto por dia">${ia.dias.map((d) => `<span data-h="${Math.round((d.custo / maxDia) * 100)}" title="${esc(d.dia.slice(8, 10) + "/" + d.dia.slice(5, 7))}: ${esc(dolar(d.custo))}"></span>`).join("")}</div>
        <div class="ia__dias-legenda"><span>${esc(ia.dias[0].dia.slice(8, 10) + "/" + ia.dias[0].dia.slice(5, 7))}</span><span>gasto por dia</span><span>hoje</span></div>`
     : "";
-  el.innerHTML = `<div class="ia__topo"><div><p class="ia__rotulo">Saldo estimado agora</p><p class="ia__valor">${dolar(ia.estimado)}</p></div>${seloIa}</div>
+  el.innerHTML = `<div class="ia__topo"><div><p class="ia__rotulo">${real ? "Saldo na z.ai" : "Saldo estimado agora"}</p><p class="ia__valor">${dolar(ia.estimado)}</p></div>${seloIa}</div>
     <p class="ia__ritmo">${esc(dura)}</p>
-    <p class="ia__base">${base} · gasto desde então ${dolar(ia.gastoDesde)}</p>
+    <p class="ia__base">${base}${real ? "" : " · gasto desde então " + dolar(ia.gastoDesde)}</p>
     <div class="ia__numeros">
       <div><strong>${dolar(ia.hoje.custo)}</strong><span>Hoje · ${ia.hoje.chamadas} chamadas · ${milTokens(ia.hoje.entrada + ia.hoje.saida)} tokens</span></div>
       <div><strong>${dolar(ia.h24.custo)}</strong><span>Últimas 24h · ${ia.h24.chamadas} chamadas · ${milTokens(ia.h24.entrada + ia.h24.saida)} tokens</span></div>
     </div>
     ${(ia.porRobo24h || []).length ? `<ul class="ia__robos">${ia.porRobo24h.map((r) => `<li><span>${esc(r.nome)} (24h)</span><strong>${dolar(r.custo)}</strong></li>`).join("")}</ul>` : ""}
     ${dias}${acoes}
-    <p class="ia__nota">Estimativa pelos tokens que os robôs gastam (tabela de preço da z.ai). Confira o saldo real na z.ai de vez em quando e informe aqui.</p>`;
+    <p class="ia__nota">${real ? "Saldo lido da z.ai a cada 5 min. Gasto por dia e por robô calculado pelos tokens que os robôs usam (tabela de preço da z.ai)." : "Estimativa pelos tokens que os robôs gastam (tabela de preço da z.ai). Confira o saldo real na z.ai de vez em quando e informe aqui."}</p>`;
   el.querySelectorAll("[data-h]").forEach((b) => { b.style.height = Math.max(3, Number(b.dataset.h)) + "%"; });
 }
 

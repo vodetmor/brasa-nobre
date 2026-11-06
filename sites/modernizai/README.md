@@ -26,7 +26,10 @@ GitHub Actions (10 min) -->         /api/admin/vigia   --> push "VPS sem sinal" 
 - iPhone: push só funciona com o app instalado (Compartilhar → Adicionar à Tela de Início), iOS 16.4+.
 
 ### Saldo da IA (z.ai)
-A z.ai não informa o saldo pela chave de API, então o painel estima:
+Saldo REAL: a VPS consulta `GET https://api.z.ai/api/biz/account/query-customer-account-report`
+(`Authorization: Bearer <chave dos robôs>`, lida do .env só na VPS) a cada 5 min e manda `ia.saldo_real`
+(disponível, recarregado, gasto total). Recarga detectada pelo total recarregado libera os avisos de novo.
+Se a consulta falhar por mais de 30 min, o painel volta para a estimativa:
 `saldo estimado = último saldo informado − custo dos tokens gastos desde então`.
 - A VPS (`painel_status.py`) lê as execuções do n8n (nó `lmChatOpenAi` → `tokenUsage`; nós HTTP com `usage` e `model` glm),
   guarda os eventos em `~/painel/zai_uso.json` (35 dias) e manda os totais no campo `ia` do relatório.

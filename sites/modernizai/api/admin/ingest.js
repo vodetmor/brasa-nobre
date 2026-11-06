@@ -27,8 +27,10 @@ module.exports = async (req, res) => {
   const whatsapp = [];
   if (ia) {
     const { avisos: avisosIa, avisados } = zai.decidirAvisos(zai.resumo(ia, cfgIa), cfgIa);
-    if (avisosIa.length) {
-      await zai.gravarConfig({ ...cfgIa, avisados });
+    const { _recarregado, ...avisadosLimpos } = avisados;
+    const recarga = _recarregado != null && _recarregado !== cfgIa.recarregado;
+    if (avisosIa.length || recarga) {
+      await zai.gravarConfig({ ...cfgIa, avisados: avisadosLimpos, ...(recarga ? { recarregado: _recarregado } : {}) });
       avisos.push(...avisosIa);
       whatsapp.push(...avisosIa.map((a) => `${a.titulo}\n${a.texto}`));
     }
