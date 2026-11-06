@@ -528,7 +528,7 @@ const FUNNEL = [
   ['IA monta a resposta', 'Usa a personalidade e o roteiro abaixo, as regras fixas, o cardápio, as informações da casa, a memória da conversa com cada cliente, as últimas mensagens e a ficha do cliente (pedidos anteriores)'],
   ['Manda o cardápio', 'Quando pedem o cardápio, envia as duas fotos do cardápio da casa.'],
   ['Conduz o pedido', 'Pedido, entrega/retirada/local, endereço, pagamento e nome. Mostra o resumo e espera o "sim".'],
-  ['Registra e aprova', 'O sistema calcula o preço pelo cardápio (a IA não inventa valor). O pedido já entra confirmado e vai direto para a Cozinha, que toca e imprime.'],
+  ['Registra e aprova', 'O sistema calcula o preço pelo cardápio (a IA não inventa valor). O pedido já entra confirmado e imprime na aba WhatsApp (Pedidos), com a Impressão automática ligada.'],
   ['Equipe só avisa o andamento', 'Na aba Pedidos: Saiu para entrega ou Pronto. O cliente recebe o aviso no WhatsApp.'],
 ];
 const BOT_FORM = [
