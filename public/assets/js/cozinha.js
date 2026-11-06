@@ -19,6 +19,16 @@ let restaurant;
 let orders = new Map();
 let calls = new Map();
 const fresh = new Set(); // pedidos que acabaram de chegar (piscam)
+// Impressão: cada pedido imprime uma vez só, chegue ele pelo aviso em tempo real ou pela recarga da lista.
+// Antes, a recarga (que roda a cada reconexão) colocava o pedido na lista antes do aviso chegar e ele não imprimia.
+const PRINTED_KEY = `printed_${slug}`;
+const printed = new Set((() => { try { return JSON.parse(localStorage.getItem(PRINTED_KEY) || '[]'); } catch { return []; } })());
+const markPrinted = id => {
+  printed.add(id);
+  try { localStorage.setItem(PRINTED_KEY, JSON.stringify([...printed].slice(-300))); } catch {}
+};
+let online = true; // a primeira carga já é feita no start()
+const RECENT_MIN = 15; // ao abrir a tela, imprime os pedidos novos dos últimos 15 min que ainda não saíram
 
 start();
 
@@ -52,9 +62,8 @@ async function start() {
   await reload();
   live(`/api/r/${slug}/stream`, {
     order: o => {
-      const isNew = !orders.has(o.id) && o.status === 'received';
       if (['delivered', 'canceled'].includes(o.status)) orders.delete(o.id); else orders.set(o.id, o);
-      if (isNew) onNewOrder(o);
+      if (o.status === 'received' && !printed.has(o.id)) onNewOrder(o);
       render();
     },
     call: c => {
@@ -62,7 +71,11 @@ async function start() {
       renderCalls();
     },
     session: () => {},
-  }, ok => { $('#live-dot').classList.toggle('on', ok); if (ok) reload(); });
+  }, ok => {
+    $('#live-dot').classList.toggle('on', ok);
+    if (ok && !online) reload(); // só ao reconectar (no modo polling isto era chamado a cada 2 s)
+    online = ok;
+  });
   setInterval(render, 30_000); // atualiza os "há X min"
 }
 
@@ -71,9 +84,16 @@ async function reload() {
   orders = new Map(list.map(o => [o.id, o]));
   calls = new Map(callList.map(c => [c.id, c]));
   render(); renderCalls();
+  // pedidos que chegaram com a tela fechada ou sem internet (até 15 min atrás) e ainda não imprimiram
+  for (const o of list.sort((a, b) => a.id - b.id)) {
+    if (o.status === 'received' && !printed.has(o.id) && minutesAgo(o.created_at) <= RECENT_MIN) onNewOrder(o);
+    else markPrinted(o.id); // antigos não imprimem de surpresa
+  }
 }
 
 async function onNewOrder(o) {
+  if (printed.has(o.id)) return;
+  markPrinted(o.id);
   fresh.add(o.id);
   setTimeout(() => { fresh.delete(o.id); }, 4000);
   beep();
