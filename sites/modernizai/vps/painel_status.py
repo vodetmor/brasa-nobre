@@ -285,7 +285,10 @@ def chamadas_ia(dados, nos, wf_nome=""):
     return achadas
 
 
-IA_VERSAO = 2
+IA_VERSAO = 3
+# O atendente do Espeto usava o glm-4.6 (modelo escolhido por expressão) até esta hora (UTC);
+# o fluxo atual está fixo no glm-4.5-air, então o histórico anterior é corrigido na leitura.
+ESPETO_GLM46_ATE = datetime.datetime(2026, 11, 6, 19, 19, tzinfo=datetime.timezone.utc).timestamp()
 
 
 def ler_estado_ia():
@@ -344,6 +347,8 @@ def coletar_ia(estado):
                     log(f"ia: execução {r['id']}#{eid} ilegível: {e}")
                     continue
                 for modelo, ent, sai, cache, parte in chamadas:
+                    if r["id"] == "espeto" and modelo == "glm-4.5-air" and parte == "atendente" and ts < ESPETO_GLM46_ATE:
+                        modelo = "glm-4.6"
                     estado["eventos"].append([int(ts), r["id"], modelo, ent, sai, cache, parte])
             estado["ultimo"][r["id"]] = ultimo
         finally:
