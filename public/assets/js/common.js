@@ -4,7 +4,19 @@ export async function api(path, { method = 'GET', body, raw } = {}) {
   const opts = { method, headers: {}, credentials: 'same-origin' };
   if (raw) { opts.body = raw; opts.headers['Content-Type'] = 'application/octet-stream'; }
   else if (body !== undefined) { opts.body = JSON.stringify(body); opts.headers['Content-Type'] = 'application/json'; }
-  const res = await fetch(path, opts);
+  // leitura (GET) tenta de novo quando o servidor demora a acordar (502/503/504) ou a rede oscila,
+  // para o cliente que encostou o celular na mesa não ver "Erro 504". Pedido (POST) nunca repete.
+  let res;
+  for (let tries = method === 'GET' ? 3 : 1, i = 1; ; i++) {
+    try {
+      res = await fetch(path, opts);
+      if (i < tries && [502, 503, 504].includes(res.status)) { await new Promise(r => setTimeout(r, 800 * i)); continue; }
+      break;
+    } catch (e) {
+      if (i >= tries) throw new Error('Sem conexão. Verifique a internet e tente de novo.');
+      await new Promise(r => setTimeout(r, 800 * i));
+    }
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) { const e = new Error(data.error || `Erro ${res.status}`); e.status = res.status; throw e; }
   return data;

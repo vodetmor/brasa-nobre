@@ -260,8 +260,9 @@ export async function orderFull(id) {
     JOIN tables t ON t.id = o.table_id WHERE o.id = ?`, id);
   if (!o) return null;
   // fila: pedidos do mesmo restaurante ainda na cozinha que chegaram antes deste
+  // (os do WhatsApp não entram: não aparecem na tela da cozinha e ficam só na aba WhatsApp)
   o.ahead = ['received', 'preparing'].includes(o.status) ? (await get(`SELECT COUNT(*) AS n FROM orders WHERE restaurant_id = ?
-    AND status IN ('received', 'preparing') AND id < ?`, o.restaurant_id, o.id)).n : 0;
+    AND status IN ('received', 'preparing') AND source != 'whatsapp' AND id < ?`, o.restaurant_id, o.id)).n : 0;
   return await withItems(o);
 }
 
