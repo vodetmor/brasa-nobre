@@ -424,10 +424,13 @@ export async function botOrder(r, body) {
 
   const total = lines.reduce((s, l) => s + l.unit_price_cents * l.qty, 0);
   const order = await tx(async () => {
-    const { n } = await get(`SELECT COUNT(*) AS n FROM wa_orders WHERE restaurant_id = ?
+    // numeração do dia por canal (pedido do Ribeiro, 06/11): mesa 1+, retirada 101+, entrega 201+.
+    // "Comer no local" pelo WhatsApp entra na faixa da retirada (é pedido de balcão).
+    const entrega = mode === 'entrega';
+    const { n } = await get(`SELECT COUNT(*) AS n FROM wa_orders WHERE restaurant_id = ? AND ${entrega ? "mode = 'entrega'" : "mode != 'entrega'"}
       AND date(created_at, 'localtime') = date('now', 'localtime')`, r.id);
     const { lastInsertRowid } = await run(`INSERT INTO wa_orders (restaurant_id, number, phone, customer_name, items, total_cents, mode, address, payment, note)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, r.id, n + 1, phone, name, JSON.stringify(lines), total, mode,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, r.id, (entrega ? 200 : 100) + n + 1, phone, name, JSON.stringify(lines), total, mode,
       mode === 'entrega' ? address : '', payment, clip(body.observacao, 300));
     await run(`UPDATE wa_contacts SET name = ?, stage = 'pedido', updated_at = datetime('now') WHERE restaurant_id = ? AND phone = ?`, name, r.id, phone);
     return get('SELECT * FROM wa_orders WHERE id = ?', lastInsertRowid);
@@ -574,11 +577,10 @@ async function toKitchen(r, o) {
       t = await get('SELECT * FROM tables WHERE restaurant_id = ? AND number = 0', r.id);
     }
     const { lastInsertRowid: sid } = await run('INSERT INTO table_sessions (restaurant_id, table_id) VALUES (?, ?)', r.id, t.id);
-    const { n } = await get(`SELECT COUNT(*) AS n FROM orders WHERE restaurant_id = ?
-      AND date(created_at, 'localtime') = date('now', 'localtime')`, r.id);
+    // mesmo número que o cliente recebeu no WhatsApp (101+ retirada, 201+ entrega)
     const note = [`WhatsApp nº ${o.number} · ${MODE_LABEL[o.mode] || o.mode}`, o.address, PAYMENTS[o.payment], o.note].filter(Boolean).join(' · ');
     const { lastInsertRowid } = await run(`INSERT INTO orders (restaurant_id, table_id, session_id, number, customer_name, note, total_cents, source)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'whatsapp')`, r.id, t.id, sid, n + 1, o.customer_name || 'WhatsApp', note.slice(0, 200), o.total_cents);
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'whatsapp')`, r.id, t.id, sid, o.number, o.customer_name || 'WhatsApp', note.slice(0, 200), o.total_cents);
     for (const i of items) {
       const p = await get('SELECT id FROM products WHERE restaurant_id = ? AND name = ?', r.id, i.name);
       await run('INSERT INTO order_items (order_id, product_id, name, unit_price_cents, qty, note, removed, choices) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',

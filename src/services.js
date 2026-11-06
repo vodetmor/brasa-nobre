@@ -303,7 +303,8 @@ export async function createOrder({ table, restaurant }, body, ip) {
 
   const id = await tx(async () => {
     session = session || await openSession(restaurant.id, table.id);
-    const { n } = await get(`SELECT COUNT(*) AS n FROM orders WHERE restaurant_id = ?
+    // numeração do dia por canal: mesa 1, 2, 3...; WhatsApp retirada 101+ e entrega 201+ (src/whatsapp.js)
+    const { n } = await get(`SELECT COUNT(*) AS n FROM orders WHERE restaurant_id = ? AND source != 'whatsapp'
       AND date(created_at, 'localtime') = date('now', 'localtime')`, restaurant.id);
     const { lastInsertRowid } = await run(`INSERT INTO orders (restaurant_id, table_id, session_id, number, customer_name, note, total_cents, source, client_ip)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, restaurant.id, table.id, session.id, n + 1, name,
