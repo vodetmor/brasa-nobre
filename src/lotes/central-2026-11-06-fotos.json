@@ -1,0 +1,16 @@
+[
+  { "produto": "Coca-Cola 2 L", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-coca-cola-2l.webp" },
+  { "produto": "Spaten 360 ml", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-spaten.webp" },
+  { "produto": "Guaraná 1,5 L", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-guarana-1-5l.webp" },
+  { "produto": "Guaraná 1 L", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-guarana-1l.webp" },
+  { "produto": "Suco Del Valle lata", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-del-valle-uva.webp" },
+  { "produto": "Corona long neck", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-corona.webp" },
+  { "produto": "Suco natural 300 ml", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-suco-laranja.webp" },
+  { "produto": "Red Bull", "categoria": "Bebidas", "foto": "/demo/central-do-espeto/ce-red-bull.webp" },
+  { "produto": "Queijo coalho", "categoria": "Espetos", "foto": "/demo/central-do-espeto/ce-queijo-coalho.webp" },
+  { "produto": "Coração", "categoria": "Espetos", "foto": "/demo/central-do-espeto/ce-coracao.webp" },
+  { "produto": "Central", "categoria": "Pratos da casa", "foto": "/demo/central-do-espeto/ce-central.webp" },
+  { "produto": "Sertanejo", "categoria": "Pratos da casa", "foto": "/demo/central-do-espeto/ce-sertanejo.webp" },
+  { "produto": "Fit", "categoria": "Pratos da casa", "foto": "/demo/central-do-espeto/ce-fit.webp" },
+  { "produto": "Batata frita", "categoria": "Guarnições", "foto": "/demo/central-do-espeto/ce-batata-frita.webp" }
+]
