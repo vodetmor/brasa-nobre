@@ -18,6 +18,7 @@ Roda como root (sudo -n) pelo mesmo motivo do alertas.py: docker exec e leitura
 só-leitura do SQLite do n8n dentro do volume do Docker.
 """
 import datetime
+import fcntl
 import json
 import time
 import os
@@ -428,6 +429,12 @@ def main():
 
 if __name__ == "__main__":
     try:
+        # Uma execução por vez (a 1ª leitura do histórico do n8n pode passar de 1 min).
+        trava = open(os.path.join(BASE, ".trava"), "w")
+        try:
+            fcntl.flock(trava, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            sys.exit(0)
         main()
     except Exception as e:
         log(f"FALHA: {e!r}")
