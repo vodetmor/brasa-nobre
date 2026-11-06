@@ -537,6 +537,9 @@ const BOT_FORM = [
   ['jeito', 'Jeito de falar', 'textarea', 'Uma regra por linha.'],
   ['roteiro', 'Roteiro do pedido', 'textarea', 'A ordem das perguntas. Uma etapa por linha.'],
   ['extras', 'Regras extras da casa', 'textarea', 'Ex.: Não fazemos troca de acompanhamento no prato da casa.'],
+  ['prazo_almoco', 'Prazo de entrega no almoço', 'input', 'O que o robô informa quando perguntam "tem previsão?" (até 17h). Ex.: 40 a 60 minutos. Vazio = a equipe confirma.'],
+  ['prazo_jantar', 'Prazo de entrega no jantar', 'input', 'Vale depois das 17h. Em dia cheio, mude aqui na hora.'],
+  ['prazo_retirada', 'Prazo para retirar', 'input', 'Ex.: 20 a 30 minutos.'],
   ['avisar', 'Celular que toca a cada pedido', 'input', 'Com DDD. O WhatsApp da casa manda um aviso para este número quando chega pedido ou alguém pede a equipe. Use outro número, não o da casa.'],
 ];
 let robot = null;

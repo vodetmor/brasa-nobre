@@ -53,13 +53,17 @@ export const BOT_DEFAULTS = {
     'Resumo final UMA vez e curto: itens com preço, taxa, total e "Posso fechar?". Se ele mudar algo, responda só a mudança e o novo total ("Trocado! Total R$ 45,00. Posso fechar?"), sem repetir o resumo inteiro.',
   ].join('\n'),
   extras: '',
-  modelo: 'glm-4.5-air',
+  modelo: 'glm-4.6',
   avisar: '',
+  // prazos padrão que o robô pode informar (ajustáveis no painel); vazio = o robô diz que a equipe confirma
+  prazo_almoco: '40 a 60 minutos',
+  prazo_jantar: '40 a 60 minutos',
+  prazo_retirada: '20 a 30 minutos',
 };
 // modelos da z.ai que dá para escolher no painel (preço aproximado por conversa de pedido)
 export const MODELS = [
-  { id: 'glm-4.5-air', nome: 'Econômico e rápido (recomendado)', custo: 'cerca de R$ 0,01 por resposta' },
-  { id: 'glm-4.6', nome: 'Mais esperto, 3x mais caro', custo: 'cerca de R$ 0,03 por resposta' },
+  { id: 'glm-4.6', nome: 'Mais esperto e confiável (recomendado)', custo: 'cerca de R$ 0,03 por resposta' },
+  { id: 'glm-4.5-air', nome: 'Econômico, mas erra mais pedidos', custo: 'cerca de R$ 0,01 por resposta' },
 ];
 const BOT_FIELDS = Object.keys(BOT_DEFAULTS);
 const OLD_ROTEIRO = ['Na primeira resposta da conversa: saudação curta + o cardápio resumido (uma linha por prato ou grupo, com preço) + "Qual vai ser o seu pedido?". Se a pessoa já chegou pedindo algo, responda a isso em vez de mandar o cardápio inteiro.',
@@ -76,6 +80,7 @@ export function botSettings(r) {
   if (!MODELS.some(m => m.id === out.modelo)) out.modelo = BOT_DEFAULTS.modelo;
   // o roteiro antigo escrevia o cardápio; agora manda a imagem
   if (!saved.roteiro_v2 && out.roteiro === OLD_ROTEIRO) out.roteiro = BOT_DEFAULTS.roteiro;
+  if (saved.modelo === 'glm-4.5-air' && !saved.modelo_escolhido) out.modelo = BOT_DEFAULTS.modelo;
   return out;
 }
 
@@ -87,7 +92,7 @@ const FIXED_RULES = `REGRAS FIXAS (valem acima de tudo)
 5. CONFIRMAÇÃO SÓ UMA VEZ, NO FIM: não pergunte "é isso mesmo?", "confirma?" ou "tá certo?" no meio da conversa; só peça o que falta. Quando tiver tudo (itens, entrega/retirada/local, endereço se for entrega, pagamento), mande o resumo curto (itens com preço, taxa se houver, total) e "Posso fechar?". Qualquer resposta positiva ("sim", "pode", "isso", "fecha", "manda", "beleza", "ok", "👍") = use registrar_pedido NA HORA, sem perguntar de novo. Se ele mudar algo depois do resumo, ajuste e pergunte "Posso fechar?" de novo, só com a mudança e o novo total.
 6. registrar_pedido responde OK ou ERRO. Se ERRO, explique de forma simples o que falta e pergunte. Se OK, faça o que a ferramenta disser (normalmente: o pedido já está confirmado e em preparo). Nunca diga que o pedido foi feito sem o OK da ferramenta.
 7. Use pedir_humano NA HORA, sem tentar convencer, quando o cliente: pedir uma pessoa, atendente, gerente ou dono; reclamar; quiser alterar ou cancelar um pedido já registrado; pedir encomenda grande, evento ou algo fora do cardápio; ou quando você não souber resolver. Motivos: pediu_atendente, reclamacao, alterar_cancelar, fora_do_cardapio, duvida ou outro. Nesse caso responda só uma frase curta avisando que a equipe vai continuar a conversa por aqui.
-8. Se perguntarem do pedido, use PEDIDOS EM ANDAMENTO. Não prometa tempo de entrega que não esteja nas informações.
+8. Se perguntarem do pedido, use PEDIDOS EM ANDAMENTO. Tempo de entrega ou de retirada: use SÓ os PRAZOS PADRÃO das INFORMAÇÕES DA CASA, dito como estimativa ("costuma levar de 40 a 60 minutos"); se não houver prazo lá, diga que a equipe confirma. Se o pedido é antigo e ainda não chegou, não repita o prazo: use pedir_humano (motivo duvida).
 9. Áudio, foto, figurinha, vídeo e documento: "[Áudio do cliente, transcrito]" -> responda como quem ouviu, sem falar em transcrição. "[Foto ...]" ou "[Vídeo ...]" -> responda ao que aparece (se mostrar problema com a comida ou a entrega, é reclamação: pedir_humano). "[Figurinha ...]" -> reaja curto e siga a conversa. "[Documento enviado pelo cliente: ...]" -> se parecer comprovante de pagamento, agradeça e diga que a equipe confere; senão, peça para ele dizer do que se trata. Se não abriu, peça para escrever.
 10. Você faz parte da equipe da casa. Nunca se apresente nem se descreva como robô, IA, chatbot, assistente virtual ou atendimento automático, e não comente como funciona por dentro. Se o cliente perguntar com sinceridade se está falando com uma pessoa, não afirme que é humano: diga com leveza que é o atendimento da casa pelo WhatsApp e ofereça chamar alguém da equipe (se ele quiser, use pedir_humano).
 11. Encerramento: se o assunto já foi resolvido e o cliente manda só "ok", "obrigado", "👍", responda UMA vez, bem curto. Se mandar outro agradecimento depois, responda exatamente [SEM_RESPOSTA] e nada mais.
@@ -100,6 +105,7 @@ Avulso é só quando ele pede o item sem falar em jantinha ou prato ("só um esp
 17. Foto do nosso próprio cardápio ou print do cardápio: não descreva nem comente; se ele ainda não pediu, pergunte UMA vez "Qual vai ser?". Se a sua última mensagem já perguntou isso e ele mandou só mais fotos, figurinha ou nada novo, responda exatamente [SEM_RESPOSTA].
 18. Pedido para outro dia ou horário marcado ("pra amanhã às 8h", "separa pra mais tarde") e pagar depois ("fiado", "acerto na semana", "pago depois"): não decida sozinho. Pedido agendado: use pedir_humano (motivo fora_do_cardapio) e diga que a equipe confirma. Pagar depois: registre o pedido normalmente com a observação "cliente pediu para pagar depois (equipe confirma)".
 19. Áudio que não for pedido nem dúvida (recado, conversa com o dono pelo nome, combinação pessoal): não diga que "não foi sobre o pedido"; use pedir_humano (motivo outro) e responda exatamente [SEM_RESPOSTA].
+20. "Marquim", "Marquinho" ou "Marcos" é o dono da casa, não é prato nem item do cardápio. Se o cliente falar dele pelo nome (recado, conversa pessoal), use pedir_humano (motivo outro) e responda só uma frase curta.
 
 COMO A CASA COSTUMA RESPONDER (exemplos de tom, não copie palavra por palavra)
 - "tem marmita?" -> "Tem sim! O prato feito sai R$ 20, você monta: arroz, feijão, carne e acompanhamento. Quer montar o seu?"
@@ -121,7 +127,11 @@ function nowText() {
     hour: '2-digit', minute: '2-digit' }).format(new Date());
 }
 
-export function buildPrompt(r, contexto) {
+export function buildPrompt(r, ctx) {
+  // ctx = [parte fixa (restaurante, cardápio, informações), parte variável (cliente, pedidos, histórico)].
+  // A z.ai cobra bem menos pela parte repetida no começo do prompt: por isso a hora (que muda a cada minuto)
+  // e tudo do cliente ficam no FIM.
+  const [fixo, variavel] = Array.isArray(ctx) ? ctx : [ctx, ''];
   const b = botSettings(r);
   const persona = b.persona.replaceAll('{restaurante}', r.name);
   return [
@@ -130,9 +140,21 @@ export function buildPrompt(r, contexto) {
     '', FIXED_RULES,
     '', 'ROTEIRO DO PEDIDO (uma pergunta por vez, nesta ordem)', b.roteiro,
     ...(b.extras.trim() ? ['', 'REGRAS EXTRAS DA CASA', b.extras] : []),
+    '', fixo,
     '', `AGORA: ${nowText()} (horário de Brasília).`,
-    '', contexto,
+    '', variavel,
   ].join('\n');
+}
+
+// Prazos padrão de entrega/retirada (editáveis no painel), com o turno de agora (almoço até 17h)
+function prazoLinhas(r) {
+  const b = botSettings(r);
+  const h = Number(new Intl.DateTimeFormat('pt-BR', { timeZone: config.timezone, hour: '2-digit', hour12: false }).format(new Date()));
+  const turno = h < 17 ? ['almoço', b.prazo_almoco] : ['jantar', b.prazo_jantar];
+  const l = [];
+  if (clip(turno[1], 40)) l.push(`Entrega (${turno[0]}): costuma levar ${clip(turno[1], 40)}.`);
+  if (clip(b.prazo_retirada, 40)) l.push(`Retirada: fica pronto em ${clip(b.prazo_retirada, 40)}.`);
+  return l.length ? ['', 'PRAZOS PADRÃO (estimativas que você pode informar; em dia cheio a equipe avisa):', ...l] : [];
 }
 
 // O que vai junto com o prompt: restaurante, cardápio, informações da casa, cliente, pedidos e histórico.
@@ -145,7 +167,7 @@ async function contextFor(r, contact, history, orders, past = null) {
   const ficha = past && past.total ? `Já fez ${past.total} pedido${past.total > 1 ? 's' : ''} pelo WhatsApp. ÚLTIMO PEDIDO: ${past.ultimo}. ` +
     (comeco ? `É CLIENTE DA CASA: nesta primeira resposta (se ele ainda não disse o que quer), cumprimente pelo primeiro nome e ofereça repetir em uma linha como PERGUNTA, com o total pelo cardápio de hoje, sem mandar o cardápio. Nunca trate o último pedido como pedido de hoje antes de ele dizer que quer: se ele só cumprimentou, ofereça e espere. Ex.: "Oi, Maria! Vai ser o de sempre? 1 prato feito de cupim com tropeiro e purê, entrega no mesmo endereço, no Pix: R$ 20,00". ` : '') +
     'Endereço: se for entrega e ele não disser outro, use o do último pedido sem perguntar de novo (só aparece no resumo). Pagamento: se ele não disser, ofereça o mesmo do último pedido.' : 'Nenhum pedido anterior pelo WhatsApp.';
-  return [
+  const fixo = [
     `RESTAURANTE: ${r.name}. Endereço: ${r.address || '(não informado)'}.` + (r.instagram ? ` Instagram: ${r.instagram}.` : ''),
     r.accepting_orders ? 'Pedidos: abertos.' : 'Pedidos: FECHADOS agora (o restaurante não está recebendo pedidos). Não registre pedido; diga isso com gentileza.',
     '',
@@ -154,7 +176,9 @@ async function contextFor(r, contact, history, orders, past = null) {
     '',
     'INFORMAÇÕES DA CASA (escritas pela equipe; o que não estiver aqui você não sabe):',
     clip(r.wa_info, 3000) || '(a equipe ainda não preencheu: horário, entrega, taxa e Pix você não sabe)',
-    '',
+    ...prazoLinhas(r),
+  ].join('\n');
+  const variavel = [
     `CLIENTE: ${past?.nome ? `nome "${past.nome}" (usado no último pedido: chame pelo primeiro nome e use esse nome no pedido, sem perguntar)` : contact?.name ? `nome "${contact.name}" (pode ser só o apelido do WhatsApp; confirme o nome para o pedido)` : '(nome ainda não informado)'}. ${history.length ? 'Já conversou antes.' : 'Primeira mensagem dele.'}`,
     `FICHA DO CLIENTE: ${sempre}${contact?.created_at ? `fala com a casa desde ${String(contact.created_at).slice(8, 10)}/${String(contact.created_at).slice(5, 7)}. ` : ''}${ficha}`,
     `PEDIDOS EM ANDAMENTO DESTE CLIENTE: ${orders.length ? orders.map(o => `nº ${o.number} (${STATUS_LABEL[o.status]}, ${brl(o.total_cents)})`).join('; ') : 'nenhum'}`,
@@ -163,6 +187,7 @@ async function contextFor(r, contact, history, orders, past = null) {
     'ÚLTIMAS MENSAGENS (fonte da verdade; inclui o que a equipe escreveu):',
     history.length ? [...history].reverse().map(m => `${who[m.origin] || m.origin}: ${m.text.slice(0, 240)}`).join('\n') : '(nenhuma)',
   ].join('\n');
+  return [fixo, variavel];
 }
 
 // ---------- texto do cardápio para a IA ----------
@@ -212,7 +237,8 @@ export async function botInbound(r, body) {
   const mediaName = clip(body.midia_nome, 120);
   if (waId && await get('SELECT id FROM wa_messages WHERE restaurant_id = ? AND wa_id = ?', r.id, waId)) return { duplicada: true, pausado: true };
 
-  return tx(async () => {
+  let released = null;
+  const result = await tx(async () => {
     await run(`INSERT INTO wa_contacts (restaurant_id, phone, name) VALUES (?, ?, ?)
       ON CONFLICT (restaurant_id, phone) DO NOTHING`, r.id, phone, pushName);
     // conversa nova (6 h sem nenhuma mensagem): a passagem para a equipe era daquela conversa, o robô volta a atender.
@@ -223,9 +249,23 @@ export async function botInbound(r, body) {
       WHERE restaurant_id = ? AND phone = ?`, text.slice(0, 200), r.id, phone);
     const { lastInsertRowid } = await run(`INSERT INTO wa_messages (restaurant_id, phone, direction, origin, text, media, wa_id, media_file, media_name)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, r.id, phone, 'in', 'cliente', text, media, waId, mediaFile, mediaName);
-    const contact = await get('SELECT needs_human FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, phone);
+    let contact = await get('SELECT needs_human, human_reason, name FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, phone);
+    // Passou para a equipe (reclamação, dúvida...) e ninguém respondeu em 5 min: o robô volta a atender
+    if (contact.needs_human && !['equipe_assumiu', 'dono_respondeu'].includes(contact.human_reason)) {
+      const before = await get(`SELECT MAX(created_at) AS t FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND id < ?`, r.id, phone, lastInsertRowid);
+      const teamReplied = await get(`SELECT id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND origin = 'equipe' AND direction = 'out'
+        AND created_at >= datetime('now', '-30 minutes') LIMIT 1`, r.id, phone);
+      const quiet = await get(`SELECT ? <= datetime('now', '-5 minutes') AS ok`, before?.t || '0');
+      if (!teamReplied && before?.t && quiet?.ok) {
+        await run(`UPDATE wa_contacts SET needs_human = 0, human_reason = '' WHERE restaurant_id = ? AND phone = ?`, r.id, phone);
+        released = { nome: contact.name || phone };
+        contact = { ...contact, needs_human: 0 };
+      }
+    }
     return { id: Number(lastInsertRowid), pausado: !r.wa_robot_on || !!contact.needs_human || await ignoredPhone(phone) };
   });
+  if (released) await alertOwner(r, `⚠️ ${released.nome} pediu a equipe e ninguém respondeu em 5 minutos. O robô voltou a atender essa conversa; vale conferir no painel.`);
+  return result;
 }
 
 // Antes de gastar IA com foto/vídeo: o robô vai responder este cliente? (robô ligado e equipe não assumiu)
@@ -382,6 +422,11 @@ export async function botOrder(r, body) {
   if (mode === 'entrega' && address.length < 8) return { resultado: 'ERRO: pedido de entrega sem endereço completo (rua, número, bairro e referência). Pergunte ao cliente.' };
   const payment = Object.keys(PAYMENTS).find(k => norm(body.pagamento).includes(k === 'cartao' ? 'cart' : k)) || '';
   if (!payment) return { resultado: 'ERRO: falta a forma de pagamento (dinheiro, Pix ou cartão). Pergunte ao cliente.' };
+
+  // Cliente que corrige DEPOIS de fechar não abre um 2º pedido (aconteceu em 06/11: nº 115 e 116): a equipe altera o certo.
+  const aberto = await get(`SELECT number FROM wa_orders WHERE restaurant_id = ? AND phone = ? AND status IN ('novo', 'confirmado')
+    AND created_at >= datetime('now', '-20 minutes') ORDER BY id DESC LIMIT 1`, r.id, phone);
+  if (aberto) return { resultado: `ERRO: este cliente já tem o pedido nº ${aberto.number} registrado há poucos minutos. NÃO registre outro. Se ele quer mudar ou corrigir algo, use pedir_humano (motivo alterar_cancelar) e diga em uma frase que a equipe ajusta o pedido nº ${aberto.number}.` };
 
   const { products } = await menuFor(r.id);
   const problems = [];
@@ -611,7 +656,8 @@ export async function saveBot(r, body) {
   const b = {};
   for (const k of BOT_FIELDS) if (typeof body?.[k] === 'string') b[k] = clip(body[k], k === 'nome' ? 40 : 3000);
   if (b.avisar !== undefined) b.avisar = cleanPhone(b.avisar);
-  await run('UPDATE restaurants SET wa_bot = ? WHERE id = ?', JSON.stringify({ ...botSettings(r), ...b, roteiro_v2: '1' }), r.id);
+  const extra = b.modelo ? { modelo_escolhido: '1' } : {}; // quem escolhe o modelo no painel não é mexido pela migração para o 4.6
+  await run('UPDATE restaurants SET wa_bot = ? WHERE id = ?', JSON.stringify({ ...botSettings(r), ...b, ...extra, roteiro_v2: '1' }), r.id);
   return { ok: true };
 }
 
