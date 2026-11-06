@@ -24,3 +24,13 @@ GitHub Actions (10 min) -->         /api/admin/vigia   --> push "VPS sem sinal" 
 - Variáveis na Vercel: `ADMIN_SENHA`, `ADMIN_SEGREDO`, `PAINEL_CHAVE_VPS`, `VAPID_PUBLICA`, `VAPID_PRIVADA`,
   `BLOB_READ_WRITE_TOKEN` (Blob privado `modernizai-admin`).
 - iPhone: push só funciona com o app instalado (Compartilhar → Adicionar à Tela de Início), iOS 16.4+.
+
+### Saldo da IA (z.ai)
+A z.ai não informa o saldo pela chave de API, então o painel estima:
+`saldo estimado = último saldo informado − custo dos tokens gastos desde então`.
+- A VPS (`painel_status.py`) lê as execuções do n8n (nó `lmChatOpenAi` → `tokenUsage`; nós HTTP com `usage` e `model` glm),
+  guarda os eventos em `~/painel/zai_uso.json` (35 dias) e manda os totais no campo `ia` do relatório.
+- `api/admin/_zai.js`: tabela de preços (US$/1M tokens), cálculo e avisos (abaixo de US$ 1,50, de US$ 0,50, ou acabando em < 2 dias).
+  Cada aviso vai uma vez por saldo informado, por push e por WhatsApp (a resposta do ingest devolve `whatsapp`; a VPS envia
+  para `whatsapp_destino` do config.json pelo WhatsApp que estiver conectado).
+- `POST /api/admin/zai {saldo}`: botão "Informar saldo atual" no painel. Use depois de cada recarga. Blob `admin/zai.json`.

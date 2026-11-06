@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Relatório da VPS para o painel admin da Modernizai (https://modernizai-df.vercel.app/admin).
 
-SÓ LEITURA: não reinicia, não desconecta e não muda nada. Junta o estado dos
+SÓ LEITURA: não reinicia, não desconecta e não muda nada. Única escrita para
+fora: quando o painel pede, manda um aviso de texto (ex.: saldo da IA acabando)
+para o número em config.json ("whatsapp_destino"), pelo WhatsApp que estiver conectado. Junta o estado dos
 WhatsApps (WAHA), dos containers, disco/memória/swap e erros recentes do n8n e
 manda por HTTPS (saída) para /api/admin/ingest. Nenhuma porta nova é aberta.
 
 Instalação (como claudenuvem):
   mkdir -p ~/painel && cp painel_status.py ~/painel/
-  echo '{"url":"https://modernizai-df.vercel.app/api/admin/ingest","chave":"COLE_A_CHAVE"}' > ~/painel/config.json
+  echo '{"url":"https://modernizai-df.vercel.app/api/admin/ingest","chave":"COLE_A_CHAVE","whatsapp_destino":"55DDNUMERO"}' > ~/painel/config.json
   chmod 600 ~/painel/config.json
   sudo -n /usr/bin/python3 ~/painel/painel_status.py --mostrar   # só mostra, não envia
   (crontab -l; echo '* * * * * sudo -n /usr/bin/python3 /home/claudenuvem/painel/painel_status.py >/dev/null 2>&1') | crontab -
@@ -17,6 +19,7 @@ só-leitura do SQLite do n8n dentro do volume do Docker.
 """
 import datetime
 import json
+import time
 import os
 import shutil
 import sqlite3
@@ -41,6 +44,10 @@ ROBOS = [
 # Só os containers dos nossos robôs (Vixplay e outros ficam de fora).
 CONTAINERS = ["waha-espeto", "waha-atendente", "n8n-espeto", "n8n-atendente",
               "qr-espeto", "qr-medicmais", "db-atendente", "frames-atendente", "caddy"]
+IA_ESTADO = os.path.join(BASE, "zai_uso.json")
+IA_GUARDAR_DIAS = 35
+IA_MAX_POR_VEZ = 400
+BRT = datetime.timezone(datetime.timedelta(hours=-3))
 IGNORAR = ("temporário", "temporario", "teste", "sonda", "sim ")
 JANELA_MIN = 15
 
@@ -124,7 +131,255 @@ def vps():
     }
 
 
-def relatorio():
+# ---------------------------------------------------------------------------
+# Uso da IA z.ai (GLM). A z.ai não tem API pública de saldo pela chave, então
+# contamos os tokens que cada chamada devolve e o painel converte em dólar.
+# Lê o mesmo SQLite do n8n (só leitura). Cada execução é contada uma vez só
+# (guardamos o último id lido em zai_uso.json).
+#  - nó lmChatOpenAi (agente "Modelo z.ai"): json.tokenUsage de cada item;
+#    o modelo vem do parâmetro do nó.
+#  - nó httpRequest (visão, memória): json.usage quando json.model começa com
+#    "glm". Nós IF que repetem o mesmo json ficam de fora (não são httpRequest).
+# ---------------------------------------------------------------------------
+def flatted(txt):
+    arr = json.loads(txt)
+    if not isinstance(arr, list) or not arr:
+        return arr
+    vistos = {}
+
+    def reviver(v):
+        if isinstance(v, str):
+            try:
+                i = int(v)
+            except ValueError:
+                return v
+            if i in vistos:
+                return vistos[i]
+            bruto = arr[i]
+            if isinstance(bruto, dict):
+                out = {}
+                vistos[i] = out
+                for k, x in bruto.items():
+                    out[k] = reviver(x)
+                return out
+            if isinstance(bruto, list):
+                out = []
+                vistos[i] = out
+                out.extend(reviver(x) for x in bruto)
+                return out
+            vistos[i] = bruto
+            return bruto
+        return v
+
+    return reviver("0")
+
+
+def _modelo_param(p):
+    m = (p or {}).get("model")
+    if isinstance(m, dict):
+        m = m.get("value") or m.get("cachedResultName")
+    return str(m or "").strip().lower()
+
+
+def _itens(run, canal):
+    out = []
+    for lista in ((run or {}).get("data") or {}).get(canal) or []:
+        for it in lista or []:
+            if isinstance(it, dict) and isinstance(it.get("json"), dict):
+                out.append(it["json"])
+    return out
+
+
+def _n(v):
+    try:
+        return int(v or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def chamadas_ia(dados, nos):
+    """Lista (modelo, entrada, saída, cache) de uma execução, sem duplicar."""
+    run_data = (((dados or {}).get("resultData") or {}).get("runData")) or {}
+    achadas = []
+    for nome, runs in run_data.items():
+        no = nos.get(nome) or {}
+        tipo = no.get("type", "")
+        for run in runs or []:
+            if tipo.endswith("lmChatOpenAi") or tipo.endswith("lmChatOpenAI"):
+                modelo = _modelo_param(no.get("parameters"))
+                if not modelo.startswith("glm"):
+                    continue
+                for j in _itens(run, "ai_languageModel"):
+                    tu = j.get("tokenUsage") or {}
+                    if tu:
+                        achadas.append((modelo, _n(tu.get("promptTokens")), _n(tu.get("completionTokens")), 0))
+            elif tipo.endswith("httpRequest"):
+                for j in _itens(run, "main"):
+                    u = j.get("usage")
+                    modelo = str(j.get("model") or "").lower()
+                    if isinstance(u, dict) and modelo.startswith("glm"):
+                        cache = _n(((u.get("prompt_tokens_details") or {}).get("cached_tokens")))
+                        achadas.append((modelo, _n(u.get("prompt_tokens")), _n(u.get("completion_tokens")), cache))
+    return achadas
+
+
+def ler_estado_ia():
+    try:
+        with open(IA_ESTADO) as f:
+            e = json.load(f)
+        if isinstance(e, dict):
+            e.setdefault("ultimo", {})
+            e.setdefault("eventos", [])
+            return e
+    except Exception:
+        pass
+    return {"ultimo": {}, "eventos": [], "desde": None}
+
+
+def coletar_ia(estado):
+    agora = time.time()
+    for r in ROBOS:
+        try:
+            con = sqlite3.connect(f"file:{r['db']}?mode=ro", uri=True, timeout=10)
+        except Exception as e:
+            log(f"ia: não abriu n8n {r['id']}: {e}")
+            continue
+        try:
+            ultimo = estado["ultimo"].get(r["id"])
+            if ultimo is None:  # primeira vez: lê tudo que o n8n ainda guarda (7 dias)
+                ultimo = 0
+            linhas = con.execute(
+                """select e.id, e.status, e.startedAt, e.workflowId, d.data
+                   from execution_entity e left join execution_data d on d.executionId = e.id
+                   where e.id > ? order by e.id limit ?""", (ultimo, IA_MAX_POR_VEZ)).fetchall()
+            nos_wf = {}
+            for eid, status, inicio, wf, dado in linhas:
+                try:
+                    ts = datetime.datetime.fromisoformat(str(inicio).replace("Z", "").split(".")[0]).replace(
+                        tzinfo=datetime.timezone.utc).timestamp()
+                except Exception:
+                    ts = agora
+                if status in ("new", "running", "waiting") and agora - ts < 3600:
+                    break  # ainda rodando: volta nela no próximo minuto
+                ultimo = eid
+                if not dado or status not in ("success", "error", "crashed", "canceled"):
+                    continue
+                if wf not in nos_wf:
+                    row = con.execute("select nodes from workflow_entity where id = ?", (wf,)).fetchone()
+                    try:
+                        nos_wf[wf] = {n.get("name"): n for n in json.loads(row[0] if row else "[]")}
+                    except Exception:
+                        nos_wf[wf] = {}
+                try:
+                    chamadas = chamadas_ia(flatted(dado), nos_wf[wf])
+                except Exception as e:
+                    log(f"ia: execução {r['id']}#{eid} ilegível: {e}")
+                    continue
+                for modelo, ent, sai, cache in chamadas:
+                    estado["eventos"].append([int(ts), r["id"], modelo, ent, sai, cache])
+            estado["ultimo"][r["id"]] = ultimo
+        finally:
+            con.close()
+    limite = agora - IA_GUARDAR_DIAS * 86400
+    estado["eventos"] = [e for e in estado["eventos"] if e[0] >= limite]
+
+
+def _somar(dest, chave, ev):
+    d = dest.setdefault(chave, {"entrada": 0, "saida": 0, "cache": 0, "chamadas": 0})
+    d["entrada"] += ev[3]
+    d["saida"] += ev[4]
+    d["cache"] += ev[5]
+    d["chamadas"] += 1
+
+
+def resumo_ia(estado):
+    agora = time.time()
+    desde = estado.get("desde")
+    try:
+        desde_ts = datetime.datetime.fromisoformat(desde.replace("Z", "+00:00")).timestamp() if desde else None
+    except Exception:
+        desde_ts = None
+    hoje = datetime.datetime.now(BRT).strftime("%Y-%m-%d")
+    janelas = {"desde": {}, "h24": {}, "d7": {}, "hoje": {}}
+    dias = {}
+    for ev in estado["eventos"]:
+        ts = ev[0]
+        chave = ev[1] + "|" + ev[2]  # robô|modelo
+        dia = datetime.datetime.fromtimestamp(ts, BRT).strftime("%Y-%m-%d")
+        if desde_ts is not None and ts >= desde_ts:
+            _somar(janelas["desde"], chave, ev)
+        if ts >= agora - 86400:
+            _somar(janelas["h24"], chave, ev)
+        if ts >= agora - 7 * 86400:
+            _somar(janelas["d7"], chave, ev)
+        if dia == hoje:
+            _somar(janelas["hoje"], chave, ev)
+        _somar(dias.setdefault(dia, {}), ev[2], ev)
+    ultimos = sorted(dias)[-14:]
+    return {
+        "desde": desde if desde_ts is not None else None,
+        "janelas": janelas,
+        "dias": [{"dia": d, "modelos": dias[d]} for d in ultimos],
+        "primeiro": min((e[0] for e in estado["eventos"]), default=None),
+    }
+
+
+def ia():
+    estado = ler_estado_ia()
+    try:
+        coletar_ia(estado)
+    except Exception as e:
+        log(f"ia: falha coletando: {e!r}")
+    try:
+        tmp = IA_ESTADO + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(estado, f, separators=(",", ":"))
+        os.replace(tmp, IA_ESTADO)
+    except Exception as e:
+        log(f"ia: não gravou estado: {e!r}")
+    return estado, resumo_ia(estado)
+
+
+def guardar_desde(estado, desde):
+    if not desde or desde == estado.get("desde"):
+        return
+    estado["desde"] = str(desde)[:40]
+    try:
+        tmp = IA_ESTADO + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(estado, f, separators=(",", ":"))
+        os.replace(tmp, IA_ESTADO)
+    except Exception as e:
+        log(f"ia: não gravou 'desde': {e!r}")
+
+
+def avisar_whatsapp(textos, destino):
+    """Manda os avisos do painel (ex.: saldo da IA acabando) pelo WhatsApp que estiver conectado.
+    Mesmo caminho do alertas.py: curl dentro do container do WAHA (a chave nunca sai de lá)."""
+    if not textos or not destino:
+        return
+    chat = "".join(c for c in str(destino) if c.isdigit()) + "@c.us"
+    for texto in textos[:3]:
+        for w in WA:
+            estado, _ = waha_status(w["waha"])
+            if estado != "WORKING":
+                continue
+            corpo = json.dumps({"session": "default", "chatId": chat, "text": str(texto)[:1000]})
+            cmd = ["docker", "exec", "-i", w["waha"], "sh", "-c",
+                   'curl -s -m 30 -X POST -H "X-Api-Key: $WAHA_API_KEY" -H "content-type: application/json" '
+                   '-d @- "http://localhost:3000/api/sendText"']
+            try:
+                r = subprocess.run(cmd, input=corpo, capture_output=True, text=True, timeout=60)
+                if json.loads(r.stdout or "{}").get("id"):
+                    log(f"aviso IA enviado via {w['id']}")
+                    break
+            except Exception as e:
+                log(f"aviso IA falhou via {w['id']}: {e!r}")
+        else:
+            log("aviso IA: nenhum WhatsApp conectado para enviar")
+
+
+def relatorio(resumo_ia_atual=None):
     wa = []
     for w in WA:
         estado, numero = waha_status(w["waha"])
@@ -143,11 +398,13 @@ def relatorio():
         "whatsapp": wa,
         "servicos": containers(),
         "robos": robos,
+        "ia": resumo_ia_atual,
     }
 
 
 def main():
-    dados = relatorio()
+    estado_ia, res_ia = ia()
+    dados = relatorio(res_ia)
     if "--mostrar" in sys.argv:
         print(json.dumps(dados, ensure_ascii=False, indent=2))
         return
@@ -159,6 +416,14 @@ def main():
     with urllib.request.urlopen(req, timeout=20) as r:
         if r.status != 200:
             log(f"resposta {r.status}")
+        try:
+            resp = json.loads(r.read() or b"{}")
+        except Exception:
+            resp = {}
+    # O painel diz desde quando contar o gasto (último saldo informado) e
+    # devolve os avisos que precisam ir por WhatsApp (ex.: saldo da IA no fim).
+    guardar_desde(estado_ia, resp.get("ia_desde"))
+    avisar_whatsapp(resp.get("whatsapp") or [], cfg.get("whatsapp_destino"))
 
 
 if __name__ == "__main__":

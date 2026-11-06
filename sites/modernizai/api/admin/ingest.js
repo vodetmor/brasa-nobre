@@ -2,6 +2,7 @@
 // Guarda o relatório e manda push quando algo cai ou volta.
 const { json, lerCorpo, iguais, lerJson, gravarJson, ARQ, enviarPush } = require("./_lib");
 const { normalizar, verificacoes, decidir } = require("./_regras");
+const zai = require("./_zai");
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") return json(res, 405, { erro: "método" });
@@ -20,9 +21,22 @@ module.exports = async (req, res) => {
   if (estado.semSinal)
     avisos.unshift({ titulo: "✅ VPS voltou a responder", texto: "Os relatórios voltaram a chegar.", tag: "vps:sinal", nivel: "ok" });
 
+  // IA z.ai: saldo estimado e avisos de recarga (push + WhatsApp pela VPS)
+  const ia = zai.normalizarIa(bruto && bruto.ia);
+  const cfgIa = await zai.lerConfig();
+  const whatsapp = [];
+  if (ia) {
+    const { avisos: avisosIa, avisados } = zai.decidirAvisos(zai.resumo(ia, cfgIa), cfgIa);
+    if (avisosIa.length) {
+      await zai.gravarConfig({ ...cfgIa, avisados });
+      avisos.push(...avisosIa);
+      whatsapp.push(...avisosIa.map((a) => `${a.titulo}\n${a.texto}`));
+    }
+  }
+
   const agora = new Date().toISOString();
-  await gravarJson(ARQ.status, { ...s, checks, recebidoEm: agora });
+  await gravarJson(ARQ.status, { ...s, ia, checks, recebidoEm: agora });
   await gravarJson(ARQ.alertas, { checks: novos, semSinal: false, atualizadoEm: agora });
   const r = await enviarPush(avisos);
-  return json(res, 200, { ok: true, avisos: avisos.length, enviados: r.enviados });
+  return json(res, 200, { ok: true, avisos: avisos.length, enviados: r.enviados, ia_desde: cfgIa.em, whatsapp });
 };

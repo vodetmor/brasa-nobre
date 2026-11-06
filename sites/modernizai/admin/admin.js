@@ -82,7 +82,8 @@ function selo(ok, texto) {
 async function carregar() {
   const r = await api("status");
   if (!r.ok) return;
-  const { status: s, clientes, agora } = r.corpo;
+  const { status: s, clientes, agora, ia } = r.corpo;
+  mostrarIa(ia, agora);
   const checks = (s && s.checks) || [];
   const porId = Object.fromEntries(checks.map((c) => [c.id, c]));
 
@@ -165,6 +166,66 @@ async function carregar() {
   }).join("");
 }
 
+// ---------- saldo da IA (z.ai) ----------
+const dolar = (v) => "US$ " + Number(v || 0).toFixed(2).replace(".", ",");
+const milTokens = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " mi" : Math.round(n / 1000) + " mil");
+const dataHora = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+
+function mostrarIa(ia, agora) {
+  const el = $("ia");
+  if (!ia) { el.innerHTML = `<p class="suave">Sem dados.</p>`; return; }
+  const base = `Último saldo informado: ${dolar(ia.saldoInformado)} em ${esc(dataHora(ia.informadoEm))}`;
+  const acoes = `<div class="ia__acoes"><button class="botao" type="button" id="ia-informar">Informar saldo atual</button>
+    <a class="botao botao--leve" href="https://z.ai/manage-apikey/billing" target="_blank" rel="noopener">Abrir z.ai</a></div>`;
+  if (!ia.temDados || !ia.sincronizado) {
+    el.dataset.nivel = "";
+    el.innerHTML = `<p class="ia__rotulo">${ia.temDados ? "Atualizando a conta…" : "Aguardando a VPS mandar o uso da IA"}</p>
+      <p class="ia__base">${base}</p>${acoes}`;
+    return;
+  }
+  const nivel = ia.estimado < 0.5 ? "erro" : ia.estimado < 1.5 || (ia.diasRestantes != null && ia.diasRestantes < 2) ? "atencao" : "ok";
+  el.dataset.nivel = nivel;
+  const seloIa = `<span class="selo${nivel === "erro" ? " selo--erro" : nivel === "atencao" ? " selo--atencao" : ""}">${nivel === "erro" ? "Recarregar já" : nivel === "atencao" ? "Recarregar logo" : "OK"}</span>`;
+  const dura = ia.diasRestantes == null ? "Sem gasto nas últimas 24h." :
+    ia.diasRestantes < 1 ? `Acaba em menos de 1 dia no ritmo atual (${dolar(ia.porDia)}/dia).` :
+    `Dura ~${Math.floor(ia.diasRestantes)} dia${Math.floor(ia.diasRestantes) === 1 ? "" : "s"} no ritmo atual (${dolar(ia.porDia)}/dia).`;
+  const maxDia = Math.max(0.0001, ...(ia.dias || []).map((d) => d.custo));
+  const dias = (ia.dias || []).length > 1
+    ? `<div class="ia__dias" aria-label="Gasto por dia">${ia.dias.map((d) => `<span data-h="${Math.round((d.custo / maxDia) * 100)}" title="${esc(d.dia.slice(8, 10) + "/" + d.dia.slice(5, 7))}: ${esc(dolar(d.custo))}"></span>`).join("")}</div>
+       <div class="ia__dias-legenda"><span>${esc(ia.dias[0].dia.slice(8, 10) + "/" + ia.dias[0].dia.slice(5, 7))}</span><span>gasto por dia</span><span>hoje</span></div>`
+    : "";
+  el.innerHTML = `<div class="ia__topo"><div><p class="ia__rotulo">Saldo estimado agora</p><p class="ia__valor">${dolar(ia.estimado)}</p></div>${seloIa}</div>
+    <p class="ia__ritmo">${esc(dura)}</p>
+    <p class="ia__base">${base} · gasto desde então ${dolar(ia.gastoDesde)}</p>
+    <div class="ia__numeros">
+      <div><strong>${dolar(ia.hoje.custo)}</strong><span>Hoje · ${ia.hoje.chamadas} chamadas · ${milTokens(ia.hoje.entrada + ia.hoje.saida)} tokens</span></div>
+      <div><strong>${dolar(ia.h24.custo)}</strong><span>Últimas 24h · ${ia.h24.chamadas} chamadas · ${milTokens(ia.h24.entrada + ia.h24.saida)} tokens</span></div>
+    </div>
+    ${(ia.porRobo24h || []).length ? `<ul class="ia__robos">${ia.porRobo24h.map((r) => `<li><span>${esc(r.nome)} (24h)</span><strong>${dolar(r.custo)}</strong></li>`).join("")}</ul>` : ""}
+    ${dias}${acoes}
+    <p class="ia__nota">Estimativa pelos tokens que os robôs gastam (tabela de preço da z.ai). Confira o saldo real na z.ai de vez em quando e informe aqui.</p>`;
+  el.querySelectorAll("[data-h]").forEach((b) => { b.style.height = Math.max(3, Number(b.dataset.h)) + "%"; });
+}
+
+$("ia").addEventListener("click", (e) => {
+  if (e.target.id !== "ia-informar") return;
+  $("ia-form").hidden = false;
+  $("ia-erro").textContent = "";
+  $("ia-saldo").focus();
+});
+$("ia-cancelar").addEventListener("click", () => { $("ia-form").hidden = true; });
+$("ia-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const botao = e.target.querySelector("button[type=submit]");
+  botao.disabled = true;
+  const r = await api("zai", { method: "POST", body: JSON.stringify({ saldo: $("ia-saldo").value }) });
+  botao.disabled = false;
+  if (!r.ok) { $("ia-erro").textContent = r.corpo.erro || "Não deu para salvar."; return; }
+  $("ia-saldo").value = "";
+  $("ia-form").hidden = true;
+  carregar();
+});
+
 // ---------- notificações push ----------
 function chaveBytes(base64) {
   const pad = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -190,7 +251,7 @@ async function prepararPush() {
   $("testar-push").hidden = !ligado;
   $("desligar-push").hidden = !ligado;
   estado.textContent = ligado
-    ? "Ligadas neste celular. Você recebe aviso quando um WhatsApp cair, um robô der erro ou a VPS tiver problema."
+    ? "Ligadas neste celular. Você recebe aviso quando um WhatsApp cair, um robô der erro, a VPS tiver problema ou o saldo da IA estiver acabando."
     : Notification.permission === "denied"
       ? "As notificações foram bloqueadas. Libere nas configurações do navegador/app para este site."
       : "Desligadas neste celular.";

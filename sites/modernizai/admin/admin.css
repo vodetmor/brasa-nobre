@@ -136,3 +136,30 @@ input[type="password"] {
 .demanda--feito .demanda__estado { background: var(--ok-fundo); color: var(--ok); }
 .demanda--andamento .demanda__estado { background: #e8f1fe; color: var(--azul); }
 .demanda--aguardando .demanda__estado { background: var(--atencao-fundo); color: var(--atencao); }
+
+/* saldo da IA */
+.ia__topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ia__valor { font-size: 32px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
+.ia__rotulo { font-size: 13px; color: var(--suave); }
+.ia__ritmo { margin-top: 8px; font-size: 15px; }
+.ia__base { margin-top: 4px; font-size: 13px; color: var(--suave); }
+.ia__numeros { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.ia__numeros div { background: var(--fundo); border-radius: 10px; padding: 10px 12px; }
+.ia__numeros strong { display: block; font-size: 17px; }
+.ia__numeros span { font-size: 12px; color: var(--suave); }
+.ia__robos { list-style: none; margin: 14px 0 0; padding: 0; font-size: 14px; }
+.ia__robos li { display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--linha); }
+.ia__robos li:first-child { border-top: 0; }
+.ia__dias { display: flex; align-items: flex-end; gap: 4px; height: 64px; margin-top: 14px; }
+.ia__dias span { flex: 1; min-height: 2px; background: var(--azul); border-radius: 3px 3px 0 0; opacity: 0.85; }
+.ia__dias-legenda { display: flex; justify-content: space-between; font-size: 11px; color: var(--suave); margin-top: 4px; }
+.ia__acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.ia__acoes a.botao { text-decoration: none; }
+.ia__nota { margin-top: 12px; font-size: 12px; color: var(--suave); }
+.ia[data-nivel="erro"] { border-color: var(--erro); }
+.ia[data-nivel="atencao"] { border-color: var(--atencao); }
+.ia-form { margin-top: 10px; }
+.ia-form label { margin-top: 0; }
+.ia-form input { width: 100%; min-height: 48px; padding: 0 14px; font: inherit; font-size: 16px; border: 1px solid var(--linha); border-radius: 10px; background: var(--branco); color: var(--texto); }
+.ia-form__dica { font-size: 13px; margin-top: 6px; }
+.selo--atencao { background: var(--atencao-fundo); color: var(--atencao); }
