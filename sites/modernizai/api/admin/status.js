@@ -9,8 +9,8 @@ module.exports = async (req, res) => {
   return json(res, 200, {
     agora: new Date().toISOString(),
     status,
-    clientes: clientes.map(({ id, nome, servico, situacao, whatsapp, robo, links }) => ({
-      id, nome, servico, situacao, whatsapp, robo, links,
+    clientes: clientes.map(({ id, nome, servico, situacao, whatsapp, robo, links, demandas }) => ({
+      id, nome, servico, situacao, whatsapp, robo, links, demandas: demandas || [],
     })),
   });
 };

@@ -159,6 +159,7 @@ async function carregar() {
     return `<article class="cliente">
       <div class="cliente__topo"><div><h3>${esc(cl.nome)}</h3><p>${esc(cl.servico)}</p></div>${selo(tudoOk, textoSelo)}</div>
       <p>${esc(cl.situacao)}${wa ? " · WhatsApp: " + esc(wa.detalhe) : ""}</p>
+      ${(cl.demandas || []).length ? `<ul class="demandas">${cl.demandas.map((d) => `<li class="demanda demanda--${esc(d.estado)}"><span class="demanda__estado">${{ feito: "Feito", andamento: "Andamento", aguardando: "Aguardando" }[d.estado] || esc(d.estado)}</span><span>${esc(d.texto)}${d.obs ? ` <em>· ${esc(d.obs)}</em>` : ""}${d.data ? ` <em>· ${esc(d.data)}</em>` : ""}</span></li>`).join("")}</ul>` : ""}
       <div class="cliente__links">${(cl.links || []).map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.nome)}</a>`).join("")}</div>
     </article>`;
   }).join("");
