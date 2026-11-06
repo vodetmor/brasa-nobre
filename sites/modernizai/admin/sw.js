@@ -1,6 +1,6 @@
 // Service worker do Modernizai Admin: guarda a "casca" do app e mostra as notificações.
 // Nunca guarda respostas de /api (status sempre vem fresco).
-const VERSAO = "mz-admin-v5";
+const VERSAO = "mz-admin-v6";
 const CASCA = ["/admin/", "/admin/admin.css", "/admin/admin.js", "/admin/icone-192.png", "/favicon.svg"];
 
 self.addEventListener("install", (e) => {

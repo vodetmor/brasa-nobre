@@ -84,6 +84,7 @@ async function carregar() {
   if (!r.ok) return;
   const { status: s, clientes, agora, ia } = r.corpo;
   mostrarIa(ia, agora);
+  mostrarGroq(ia && ia.groq);
   const checks = (s && s.checks) || [];
   const porId = Object.fromEntries(checks.map((c) => [c.id, c]));
 
@@ -197,13 +198,21 @@ function mostrarIa(ia, agora) {
     ? `<div class="ia__dias" aria-label="Gasto por dia">${ia.dias.map((d) => `<span data-h="${Math.round((d.custo / maxDia) * 100)}" title="${esc(d.dia.slice(8, 10) + "/" + d.dia.slice(5, 7))}: ${esc(dolar(d.custo))}"></span>`).join("")}</div>
        <div class="ia__dias-legenda"><span>${esc(ia.dias[0].dia.slice(8, 10) + "/" + ia.dias[0].dia.slice(5, 7))}</span><span>gasto por dia</span><span>hoje</span></div>`
     : "";
+  const maxHora = Math.max(0.0001, ...(ia.horas || []).map((h) => h.custo));
+  const pico = (ia.horas || []).reduce((a, h) => (!a || h.custo > a.custo ? h : a), null);
+  const horas = (ia.horas || []).length > 1
+    ? `<div class="ia__dias" aria-label="Gasto por hora">${ia.horas.map((h) => `<span data-h="${Math.round((h.custo / maxHora) * 100)}" title="${esc(h.hora.slice(11, 13))}h: ${esc(dolar(h.custo))}"></span>`).join("")}</div>
+       <div class="ia__dias-legenda"><span>${esc(ia.horas[0].hora.slice(11, 13))}h</span><span>gasto por hora (24h)${pico && pico.custo > 0 ? ` · pico ${esc(pico.hora.slice(11, 13))}h, ${esc(dolar(pico.custo))}` : ""}</span><span>agora</span></div>`
+    : "";
   const brl = (ia.cotacao && ia.cotacao.brl) || 5.5;
   const comIof = (usd) => usd * brl * (1 + ((ia.cotacao && ia.cotacao.iof) || 0));
   const mes = ia.mes || { precisa: 0, recarregar: 0 };
   const recarga = `<div class="ia__recarga"><strong>${mes.recarregar > 0 ? `Recarregar ${dolar(mes.recarregar)} para durar 30 dias` : "O saldo cobre 30 dias no ritmo atual"}</strong>
     <span>${mes.recarregar > 0 ? `≈ ${reais(comIof(mes.recarregar))} no cartão (com IOF). ` : ""}Um mês neste ritmo custa ${dolar(mes.precisa)} ≈ ${reais(comIof(mes.precisa))}.</span></div>`;
   // onde é gasto: o modelo diz qual parte do robô chamou a IA
-  const parte = (robo, modelo) => {
+  const PARTES = { atendente: "Atendente respondendo clientes", simulacao: "Simulações de teste", visao: "Ler foto/vídeo (reserva do Groq)", memoria: "Memória do paciente" };
+  const parte = (robo, modelo, p) => {
+    if (p) return PARTES[p] || p;
     if (/v(-|$)/.test(modelo.replace(/^glm-/, ""))) return "Ler foto/vídeo (reserva do Groq)";
     if (robo === "MedicMais" && modelo === "glm-4.5-air") return "Memória do paciente";
     return "Atendente respondendo clientes";
@@ -212,8 +221,8 @@ function mostrarIa(ia, agora) {
   const total24 = linhas.reduce((t, l) => t + l.custo, 0) || 1;
   const maior = linhas[0];
   const tabela = linhas.length
-    ? `${maior && maior.custo > 0 ? `<p class="ia__maior">Onde mais gasta: <strong>${esc(maior.robo)} · ${esc(parte(maior.robo, maior.modelo))}</strong> (${Math.round((maior.custo / total24) * 100)}% nas últimas 24h)</p>` : ""}
-      <table class="ia__tabela"><thead><tr><th>Últimas 24h</th><th>Chamadas</th><th>Custo</th><th>%</th></tr></thead><tbody>${linhas.map((l) => `<tr><td>${esc(l.robo)} · ${esc(parte(l.robo, l.modelo))}<small>${esc(l.modelo === "glm-auto" ? "modelo automático" : l.modelo)} · ${milTokens(l.entrada + l.saida)} tokens · ${l.chamadas ? milTokens((l.entrada + l.saida) / l.chamadas) : 0} por chamada</small></td><td>${l.chamadas}</td><td>${dolar(l.custo)}</td><td>${Math.round((l.custo / total24) * 100)}%</td></tr>`).join("")}</tbody></table>`
+    ? `${maior && maior.custo > 0 ? `<p class="ia__maior">Onde mais gasta: <strong>${esc(maior.robo)} · ${esc(parte(maior.robo, maior.modelo, maior.parte))}</strong> (${Math.round((maior.custo / total24) * 100)}% nas últimas 24h)</p>` : ""}
+      <table class="ia__tabela"><thead><tr><th>Últimas 24h</th><th>Chamadas</th><th>Custo</th><th>%</th></tr></thead><tbody>${linhas.map((l) => `<tr><td>${esc(l.robo)} · ${esc(parte(l.robo, l.modelo, l.parte))}<small>${esc(l.modelo === "glm-auto" ? "modelo automático" : l.modelo)} · ${milTokens(l.entrada + l.saida)} tokens · ${l.chamadas ? milTokens((l.entrada + l.saida) / l.chamadas) : 0} por chamada</small></td><td>${l.chamadas}</td><td>${dolar(l.custo)}</td><td>${Math.round((l.custo / total24) * 100)}%</td></tr>`).join("")}</tbody></table>`
     : "";
   el.innerHTML = `<div class="ia__topo"><div><p class="ia__rotulo">${real ? "Saldo na z.ai" : "Saldo estimado agora"}</p><p class="ia__valor">${dolar(ia.estimado)}</p><p class="ia__rotulo">≈ ${reais(ia.estimado * brl)} · dólar a ${reais(brl)}</p></div>${seloIa}</div>
     <p class="ia__ritmo">${esc(dura)}</p>
@@ -223,9 +232,43 @@ function mostrarIa(ia, agora) {
       <div><strong>${dolar(ia.h24.custo)}</strong><span>Últimas 24h · ${ia.h24.chamadas} chamadas · ${milTokens(ia.h24.entrada + ia.h24.saida)} tokens</span></div>
     </div>
     ${recarga}${tabela}
-    ${dias}${acoes}
+    ${horas}${dias}${acoes}
     <p class="ia__nota">${real ? `Saldo lido da z.ai a cada 5 min. Ritmo ${ia.ritmoFonte === "real" ? "medido pelo gasto real das últimas " + ia.ritmoHoras + " h" : "estimado pelos tokens"}. Divisão por robô pelos tokens de cada um, ajustada ao gasto real.` : "Estimativa pelos tokens que os robôs gastam (tabela de preço da z.ai). Confira o saldo real na z.ai de vez em quando e informe aqui."}</p>`;
   el.querySelectorAll("[data-h]").forEach((b) => { b.style.height = Math.max(3, Number(b.dataset.h)) + "%"; });
+}
+
+// ---------- Groq (grátis) ----------
+const GROQ_TIPOS = { audio: "Áudio (transcrição)", audio_video: "Áudio dos vídeos", foto: "Foto", video: "Vídeo (imagens)", reserva: "Texto reserva (quando a z.ai falha)" };
+const GROQ_MOTIVOS = { limite: "limite do plano grátis", demora: "demorou demais", modelo: "modelo descontinuado", outro: "outro erro" };
+const motivos = (erros) => Object.entries(erros || {}).sort((a, b) => b[1] - a[1]).map(([m, n]) => `${n} ${GROQ_MOTIVOS[m] || m}`).join(", ");
+const pct = (x) => Math.round(x * 100) + "%";
+
+function mostrarGroq(g) {
+  const el = $("groq");
+  if (!g) { el.dataset.nivel = ""; el.innerHTML = `<p class="suave">Sem dados ainda. Aparece assim que a VPS mandar o próximo relatório.</p>`; return; }
+  const h = g.h24;
+  const nivel = g.alerta ? "atencao" : "ok";
+  el.dataset.nivel = nivel;
+  const seloG = g.alerta ? `<span class="selo selo--atencao">Falhando ${pct(g.hoje.taxaFalha)} hoje</span>` : `<span class="selo">OK</span>`;
+  const linhas = h.linhas.length
+    ? `<table class="ia__tabela"><thead><tr><th>Últimas 24h</th><th>Chamadas</th><th>Deu certo</th><th>Falhou</th></tr></thead><tbody>${h.linhas.map((l) => {
+        const falhas = Object.values(l.erros).reduce((t, n) => t + n, 0);
+        const det = [l.tokens ? milTokens(l.tokens) + " tokens" : "", l.semAudio ? l.semAudio + " vídeo" + (l.semAudio > 1 ? "s" : "") + " sem áudio" : "", motivos(l.erros)].filter(Boolean).join(" · ");
+        return `<tr><td>${esc(l.robo)} · ${esc(GROQ_TIPOS[l.tipo] || l.tipo)}${det ? `<small>${esc(det)}</small>` : ""}</td><td>${l.chamadas}</td><td>${l.ok}</td><td>${falhas ? `<strong>${falhas}</strong>` : 0}</td></tr>`;
+      }).join("")}</tbody></table>`
+    : `<p class="ia__base">Nenhuma chamada ao Groq nas últimas 24h.</p>`;
+  const aviso = h.erros.limite
+    ? `<p class="ia__maior">Falhas por <strong>limite do plano grátis</strong> acontecem quando chegam muitas fotos/vídeos seguidos. Quando isso acontece, o robô avisa o cliente que não conseguiu abrir a mídia.</p>`
+    : h.erros.modelo
+    ? `<p class="ia__maior">Um nó do Groq usa um <strong>modelo descontinuado</strong> e falha sempre. Precisa trocar o modelo no robô.</p>`
+    : "";
+  el.innerHTML = `<div class="ia__topo"><div><p class="ia__rotulo">Groq · custo US$ 0,00</p><p class="ia__valor">${g.hoje.chamadas}</p><p class="ia__rotulo">chamadas hoje</p></div>${seloG}</div>
+    <div class="ia__numeros">
+      <div><strong>${h.chamadas}</strong><span>Últimas 24h · ${h.ok} ok · ${h.falhas} falha${h.falhas === 1 ? "" : "s"} (${pct(h.taxaFalha)})</span></div>
+      <div><strong>${g.d7.chamadas}</strong><span>7 dias · ${g.d7.falhas} falha${g.d7.falhas === 1 ? "" : "s"}${g.d7.falhas ? " · " + esc(motivos(g.d7.erros)) : ""}</span></div>
+    </div>
+    ${aviso}${linhas}
+    <p class="ia__nota">O Groq transcreve áudio e lê foto e vídeo de graça, mas tem limite por minuto e por dia. O painel destaca quando mais de 20% das chamadas do dia falham.</p>`;
 }
 
 // ---------- notificações push ----------

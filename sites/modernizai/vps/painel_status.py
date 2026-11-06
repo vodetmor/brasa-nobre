@@ -198,15 +198,71 @@ def _n(v):
         return 0
 
 
-def chamadas_ia(dados, nos):
-    """Lista (modelo, entrada, saída, cache) de uma execução, sem duplicar."""
+def _parte_glm(wf_nome, no_nome, chat):
+    """Qual parte do robô chamou a z.ai (para o "onde gasta" do painel)."""
+    wf = str(wf_nome or "").lower()
+    no = str(no_nome or "").lower()
+    if "tempor" in wf or "temp" in wf or wf.startswith("sim ") or "simula" in wf:
+        return "simulacao"
+    if chat:
+        return "atendente"
+    if "vis" in no or "video" in no or "vídeo" in no or "foto" in no:
+        return "visao"
+    if "memoria" in no or "memória" in no:
+        return "memoria"
+    return no[:30] or "outro"
+
+
+def _groq_categoria(no_nome, url):
+    no = str(no_nome or "").lower()
+    if "reserva" in no:
+        return "reserva"
+    if "whisper" in no or "audio/transcriptions" in url:
+        return "audio_video" if "video" in no or "vídeo" in no else "audio"
+    if "video" in no or "vídeo" in no:
+        return "video"
+    return "foto"
+
+
+def _groq_motivo(erro):
+    m = json.dumps(erro, ensure_ascii=False).lower() if not isinstance(erro, str) else erro.lower()
+    if "spacing your requests" in m or "rate limit" in m or "rate_limit" in m or "429" in m or "too many" in m:
+        return "limite"
+    if "timeout" in m or "timed out" in m or "etimedout" in m or "econnaborted" in m:
+        return "demora"
+    if "model" in m and ("404" in m or "not exist" in m or "decommission" in m or "not found" in m):
+        return "modelo"
+    if "no audio" in m or "sem áudio" in m or "sem audio" in m:
+        return "sem_audio"
+    return "outro"
+
+
+def chamadas_ia(dados, nos, wf_nome=""):
+    """Lista (modelo, entrada, saída, cache, parte) de uma execução, sem duplicar.
+    Chamadas ao Groq (grátis) vêm como modelo "groq:<tipo>" e parte = "ok" ou o motivo da falha."""
     run_data = (((dados or {}).get("resultData") or {}).get("runData")) or {}
     achadas = []
     for nome, runs in run_data.items():
         no = nos.get(nome) or {}
         tipo = no.get("type", "")
+        url = str((no.get("parameters") or {}).get("url") or "").lower()
         for run in runs or []:
-            if tipo.endswith("lmChatOpenAi") or tipo.endswith("lmChatOpenAI"):
+            if tipo.endswith("httpRequest") and "groq.com" in url:
+                cat = "groq:" + _groq_categoria(nome, url)
+                itens = _itens(run, "main")
+                if not itens:
+                    if (run or {}).get("error"):
+                        achadas.append((cat, 0, 0, 0, _groq_motivo((run or {}).get("error"))))
+                    continue
+                for j in itens:
+                    if j.get("error"):
+                        achadas.append((cat, 0, 0, 0, _groq_motivo(j.get("error"))))
+                        continue
+                    u = j.get("usage") or ((j.get("x_groq") or {}).get("usage")) or {}
+                    if not isinstance(u, dict):
+                        u = {}
+                    achadas.append((cat, _n(u.get("prompt_tokens")), _n(u.get("completion_tokens")), 0, "ok"))
+            elif tipo.endswith("lmChatOpenAi") or tipo.endswith("lmChatOpenAI"):
                 modelo = _modelo_param(no.get("parameters"))
                 if modelo.startswith("="):
                     # modelo escolhido por expressão (ex.: nó "Vez"); a credencial é a da z.ai
@@ -216,15 +272,20 @@ def chamadas_ia(dados, nos):
                 for j in _itens(run, "ai_languageModel"):
                     tu = j.get("tokenUsage") or {}
                     if tu:
-                        achadas.append((modelo, _n(tu.get("promptTokens")), _n(tu.get("completionTokens")), 0))
+                        achadas.append((modelo, _n(tu.get("promptTokens")), _n(tu.get("completionTokens")), 0,
+                                        _parte_glm(wf_nome, nome, True)))
             elif tipo.endswith("httpRequest"):
                 for j in _itens(run, "main"):
                     u = j.get("usage")
                     modelo = str(j.get("model") or "").lower()
                     if isinstance(u, dict) and modelo.startswith("glm"):
                         cache = _n(((u.get("prompt_tokens_details") or {}).get("cached_tokens")))
-                        achadas.append((modelo, _n(u.get("prompt_tokens")), _n(u.get("completion_tokens")), cache))
+                        achadas.append((modelo, _n(u.get("prompt_tokens")), _n(u.get("completion_tokens")), cache,
+                                        _parte_glm(wf_nome, nome, False)))
     return achadas
+
+
+IA_VERSAO = 2
 
 
 def ler_estado_ia():
@@ -232,12 +293,15 @@ def ler_estado_ia():
         with open(IA_ESTADO) as f:
             e = json.load(f)
         if isinstance(e, dict):
+            if e.get("versao") != IA_VERSAO:
+                # formato novo (parte do robô + Groq): relê o que o n8n ainda guarda
+                e["ultimo"], e["eventos"], e["versao"] = {}, [], IA_VERSAO
             e.setdefault("ultimo", {})
             e.setdefault("eventos", [])
             return e
     except Exception:
         pass
-    return {"ultimo": {}, "eventos": [], "desde": None}
+    return {"ultimo": {}, "eventos": [], "desde": None, "versao": IA_VERSAO}
 
 
 def coletar_ia(estado):
@@ -269,18 +333,18 @@ def coletar_ia(estado):
                 if not dado or status not in ("success", "error", "crashed", "canceled"):
                     continue
                 if wf not in nos_wf:
-                    row = con.execute("select nodes from workflow_entity where id = ?", (wf,)).fetchone()
+                    row = con.execute("select nodes, name from workflow_entity where id = ?", (wf,)).fetchone()
                     try:
-                        nos_wf[wf] = {n.get("name"): n for n in json.loads(row[0] if row else "[]")}
+                        nos_wf[wf] = ({n.get("name"): n for n in json.loads(row[0] if row else "[]")}, row[1] if row else "")
                     except Exception:
-                        nos_wf[wf] = {}
+                        nos_wf[wf] = ({}, "")
                 try:
-                    chamadas = chamadas_ia(flatted(dado), nos_wf[wf])
+                    chamadas = chamadas_ia(flatted(dado), nos_wf[wf][0], nos_wf[wf][1])
                 except Exception as e:
                     log(f"ia: execução {r['id']}#{eid} ilegível: {e}")
                     continue
-                for modelo, ent, sai, cache in chamadas:
-                    estado["eventos"].append([int(ts), r["id"], modelo, ent, sai, cache])
+                for modelo, ent, sai, cache, parte in chamadas:
+                    estado["eventos"].append([int(ts), r["id"], modelo, ent, sai, cache, parte])
             estado["ultimo"][r["id"]] = ultimo
         finally:
             con.close()
@@ -306,24 +370,32 @@ def resumo_ia(estado):
     hoje = datetime.datetime.now(BRT).strftime("%Y-%m-%d")
     janelas = {"desde": {}, "h24": {}, "d7": {}, "hoje": {}}
     dias = {}
+    horas = {}
     for ev in estado["eventos"]:
         ts = ev[0]
-        chave = ev[1] + "|" + ev[2]  # robô|modelo
+        # robô|modelo|parte (eventos antigos, sem parte, ficam robô|modelo)
+        chave = ev[1] + "|" + ev[2] + ("|" + str(ev[6]) if len(ev) > 6 and ev[6] else "")
+        groq = str(ev[2]).startswith("groq:")
         dia = datetime.datetime.fromtimestamp(ts, BRT).strftime("%Y-%m-%d")
         if desde_ts is not None and ts >= desde_ts:
             _somar(janelas["desde"], chave, ev)
         if ts >= agora - 86400:
             _somar(janelas["h24"], chave, ev)
+            if not groq:
+                hora = datetime.datetime.fromtimestamp(ts, BRT).strftime("%Y-%m-%dT%H")
+                _somar(horas.setdefault(hora, {}), ev[2], ev)
         if ts >= agora - 7 * 86400:
             _somar(janelas["d7"], chave, ev)
         if dia == hoje:
             _somar(janelas["hoje"], chave, ev)
-        _somar(dias.setdefault(dia, {}), ev[2], ev)
+        if not groq:
+            _somar(dias.setdefault(dia, {}), ev[2], ev)
     ultimos = sorted(dias)[-14:]
     return {
         "desde": desde if desde_ts is not None else None,
         "janelas": janelas,
         "dias": [{"dia": d, "modelos": dias[d]} for d in ultimos],
+        "horas": [{"hora": h, "modelos": horas[h]} for h in sorted(horas)[-24:]],
         "primeiro": min((e[0] for e in estado["eventos"]), default=None),
     }
 
