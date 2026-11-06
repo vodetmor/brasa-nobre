@@ -59,7 +59,7 @@ function normalizarIa(b) {
   const limparUso = (u) => ({ entrada: num(u && u.entrada), saida: num(u && u.saida), cache: num(u && u.cache), chamadas: num(u && u.chamadas) });
   const limparMapa = (m) => {
     const out = {};
-    Object.entries(m && typeof m === "object" ? m : {}).slice(0, 40).forEach(([k, u]) => { out[txt(k, 60)] = limparUso(u); });
+    Object.entries(m && typeof m === "object" ? m : {}).slice(0, 120).forEach(([k, u]) => { out[txt(k, 60)] = limparUso(u); });
     return out;
   };
   const j = b.janelas || {};
@@ -67,6 +67,7 @@ function normalizarIa(b) {
     desde: b.desde ? txt(b.desde, 40) : null,
     janelas: { desde: limparMapa(j.desde), h24: limparMapa(j.h24), d7: limparMapa(j.d7), hoje: limparMapa(j.hoje) },
     dias: (Array.isArray(b.dias) ? b.dias : []).slice(-14).map((d) => ({ dia: txt(d && d.dia, 10), modelos: limparMapa(d && d.modelos) })),
+    horas: (Array.isArray(b.horas) ? b.horas : []).slice(-24).map((d) => ({ hora: txt(d && d.hora, 13), modelos: limparMapa(d && d.modelos) })),
     primeiro: b.primeiro ? num(b.primeiro) : null,
     saldoReal: b.saldo_real && typeof b.saldo_real === "object" && Number.isFinite(Number(b.saldo_real.disponivel))
       ? {
@@ -82,11 +83,15 @@ function normalizarIa(b) {
 
 const REAL_VALE_MIN = 30; // saldo real consultado há mais que isso volta para a estimativa
 
-// Soma um mapa "robo|modelo" → uso em custo/tokens.
+// Chamadas ao Groq chegam como modelo "groq:<tipo>": são grátis e têm seção própria.
+const ehGroq = (modelo) => String(modelo || "").startsWith("groq:");
+
+// Soma um mapa "robo|modelo[|parte]" → uso em custo/tokens (só z.ai).
 function somar(mapa) {
   const t = { custo: 0, entrada: 0, saida: 0, chamadas: 0, porRobo: {}, porModelo: {} };
   for (const [chave, u] of Object.entries(mapa || {})) {
     const [robo, modelo] = chave.includes("|") ? chave.split("|") : ["", chave];
+    if (ehGroq(modelo)) continue;
     const c = custo(modelo, u);
     t.custo += c;
     t.entrada += u.entrada;
@@ -135,6 +140,37 @@ function ritmoReal(real, amostras) {
 }
 
 // Junta saldo informado + uso da VPS num resumo para a tela e para os alertas.
+// Groq: chamadas por robô e tipo, quantas deram certo e por que falharam.
+const GROQ_FALHA_AVISO = 0.2; // acima de 20% de falha no dia, o painel destaca
+function resumoGroq(ia) {
+  const agrupar = (mapa) => {
+    const g = {};
+    for (const [chave, u] of Object.entries(mapa || {})) {
+      const [robo, modelo, resultado] = chave.split("|");
+      if (!ehGroq(modelo)) continue;
+      const k = robo + "|" + modelo.slice(5);
+      const l = g[k] || (g[k] = { robo: NOMES_ROBO[robo] || robo, tipo: modelo.slice(5), chamadas: 0, ok: 0, semAudio: 0, erros: {}, tokens: 0 });
+      l.chamadas += u.chamadas;
+      l.tokens += u.entrada + u.saida;
+      if (!resultado || resultado === "ok") l.ok += u.chamadas;
+      else if (resultado === "sem_audio") l.semAudio += u.chamadas;
+      else l.erros[resultado] = (l.erros[resultado] || 0) + u.chamadas;
+    }
+    const linhas = Object.values(g).sort((a, b) => b.chamadas - a.chamadas);
+    const tot = linhas.reduce((t, l) => {
+      t.chamadas += l.chamadas; t.ok += l.ok; t.tokens += l.tokens;
+      for (const [m, n] of Object.entries(l.erros)) { t.falhas += n; t.erros[m] = (t.erros[m] || 0) + n; }
+      return t;
+    }, { chamadas: 0, ok: 0, falhas: 0, tokens: 0, erros: {} });
+    tot.taxaFalha = tot.chamadas ? tot.falhas / tot.chamadas : 0;
+    return { linhas, ...tot };
+  };
+  const hoje = agrupar(ia.janelas.hoje);
+  const h24 = agrupar(ia.janelas.h24);
+  const d7 = agrupar(ia.janelas.d7);
+  return { hoje, h24, d7: { chamadas: d7.chamadas, falhas: d7.falhas, taxaFalha: d7.taxaFalha, erros: d7.erros }, alerta: hoje.chamadas >= 5 && hoje.taxaFalha > GROQ_FALHA_AVISO };
+}
+
 function resumo(ia, cfg) {
   const base = { saldoInformado: cfg.saldo, informadoEm: cfg.em, temDados: !!ia };
   if (!ia) return base;
@@ -172,11 +208,13 @@ function resumo(ia, cfg) {
     })(),
     porRobo24h: Object.entries(h24.porRobo).map(([id, c]) => ({ id, nome: NOMES_ROBO[id] || id, custo: c * fator })).sort((a, b) => b.custo - a.custo),
     porModelo24h: Object.entries(h24.porModelo).map(([modelo, c]) => ({ modelo, custo: c * fator })).sort((a, b) => b.custo - a.custo),
-    porRoboModelo24h: Object.entries(ia.janelas.h24).map(([chave, u]) => {
-      const [robo, modelo] = chave.split("|");
-      return { robo: NOMES_ROBO[robo] || robo, modelo, chamadas: u.chamadas, entrada: u.entrada, saida: u.saida, custo: custo(modelo, u) * fator };
+    porRoboModelo24h: Object.entries(ia.janelas.h24).filter(([chave]) => !ehGroq(chave.split("|")[1])).map(([chave, u]) => {
+      const [robo, modelo, parte] = chave.split("|");
+      return { robo: NOMES_ROBO[robo] || robo, modelo, parte: parte || null, chamadas: u.chamadas, entrada: u.entrada, saida: u.saida, custo: custo(modelo, u) * fator };
     }).sort((a, b) => b.custo - a.custo),
     dias: ia.dias.map((d) => ({ dia: d.dia, custo: somar(d.modelos).custo * fator })),
+    horas: (ia.horas || []).map((h) => ({ hora: h.hora, custo: somar(h.modelos).custo * fator })),
+    groq: resumoGroq(ia),
   };
 }
 
