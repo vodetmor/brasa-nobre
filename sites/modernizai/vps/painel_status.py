@@ -208,6 +208,9 @@ def chamadas_ia(dados, nos):
         for run in runs or []:
             if tipo.endswith("lmChatOpenAi") or tipo.endswith("lmChatOpenAI"):
                 modelo = _modelo_param(no.get("parameters"))
+                if modelo.startswith("="):
+                    # modelo escolhido por expressão (ex.: nó "Vez"); a credencial é a da z.ai
+                    modelo = "glm-auto"
                 if not modelo.startswith("glm"):
                     continue
                 for j in _itens(run, "ai_languageModel"):

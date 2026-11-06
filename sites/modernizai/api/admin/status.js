@@ -8,6 +8,8 @@ module.exports = async (req, res) => {
   if (!logado(req)) return json(res, 401, { erro: "login" });
   const [status, cfgIa] = await Promise.all([lerJson(ARQ.status, null), zai.lerConfig()]);
   const ia = zai.resumo(status && status.ia, cfgIa);
+  const cot = await zai.cotacao();
+  ia.cotacao = { brl: cot.brl, fonte: cot.fonte, iof: zai.IOF };
   if (status) delete status.ia;
   return json(res, 200, {
     agora: new Date().toISOString(),
