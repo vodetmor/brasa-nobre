@@ -179,12 +179,11 @@ function mostrarIa(ia, agora) {
   const base = real
     ? `Saldo real da conta, consultado ${haQuanto(real.consultadoEm, agora)} · recarregado ${dolar(real.recarregado + real.bonus)} · gasto total ${dolar(real.gastoTotal)}`
     : `Estimativa: último saldo informado ${dolar(ia.saldoInformado)} em ${esc(dataHora(ia.informadoEm))}`;
-  const acoes = `<div class="ia__acoes">${real ? "" : `<button class="botao" type="button" id="ia-informar">Informar saldo atual</button>`}
-    <a class="botao${real ? "" : " botao--leve"}" href="https://z.ai/manage-apikey/billing" target="_blank" rel="noopener">Recarregar na z.ai</a></div>`;
-  if (!ia.temDados || !ia.sincronizado) {
+  const acoes = `<div class="ia__acoes"><a class="botao" href="https://z.ai/manage-apikey/billing" target="_blank" rel="noopener">Recarregar na z.ai</a></div>`;
+  if (!real) {
     el.dataset.nivel = "";
-    el.innerHTML = `<p class="ia__rotulo">${ia.temDados ? "Atualizando a conta…" : "Aguardando a VPS mandar o uso da IA"}</p>
-      <p class="ia__base">${base}</p>${acoes}`;
+    el.innerHTML = `<p class="ia__rotulo">Saldo da z.ai</p><p class="ia__valor">—</p>
+      <p class="ia__base">${ia.temDados ? "Esperando a próxima leitura do saldo (a VPS consulta a z.ai a cada 5 min)." : "O painel não está recebendo os dados da VPS agora. Assim que voltar, o saldo aparece aqui sozinho."}</p>${acoes}`;
     return;
   }
   const nivel = ia.estimado < 0.5 ? "erro" : ia.estimado < 1.5 || (ia.diasRestantes != null && ia.diasRestantes < 2) ? "atencao" : "ok";
@@ -218,25 +217,6 @@ function mostrarIa(ia, agora) {
     <p class="ia__nota">${real ? `Saldo lido da z.ai a cada 5 min. Ritmo ${ia.ritmoFonte === "real" ? "medido pelo gasto real das últimas " + ia.ritmoHoras + " h" : "estimado pelos tokens"}. Divisão por robô pelos tokens de cada um, ajustada ao gasto real.` : "Estimativa pelos tokens que os robôs gastam (tabela de preço da z.ai). Confira o saldo real na z.ai de vez em quando e informe aqui."}</p>`;
   el.querySelectorAll("[data-h]").forEach((b) => { b.style.height = Math.max(3, Number(b.dataset.h)) + "%"; });
 }
-
-$("ia").addEventListener("click", (e) => {
-  if (e.target.id !== "ia-informar") return;
-  $("ia-form").hidden = false;
-  $("ia-erro").textContent = "";
-  $("ia-saldo").focus();
-});
-$("ia-cancelar").addEventListener("click", () => { $("ia-form").hidden = true; });
-$("ia-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const botao = e.target.querySelector("button[type=submit]");
-  botao.disabled = true;
-  const r = await api("zai", { method: "POST", body: JSON.stringify({ saldo: $("ia-saldo").value }) });
-  botao.disabled = false;
-  if (!r.ok) { $("ia-erro").textContent = r.corpo.erro || "Não deu para salvar."; return; }
-  $("ia-saldo").value = "";
-  $("ia-form").hidden = true;
-  carregar();
-});
 
 // ---------- notificações push ----------
 function chaveBytes(base64) {
