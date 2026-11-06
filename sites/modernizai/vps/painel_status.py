@@ -325,12 +325,17 @@ def resumo_ia(estado):
     }
 
 
-def ia():
+def ia(cfg=None):
     estado = ler_estado_ia()
     try:
         coletar_ia(estado)
     except Exception as e:
         log(f"ia: falha coletando: {e!r}")
+    saldo = None
+    try:
+        saldo = saldo_zai(estado, cfg or {})
+    except Exception as e:
+        log(f"ia: falha no saldo: {type(e).__name__}")
     try:
         tmp = IA_ESTADO + ".tmp"
         with open(tmp, "w") as f:
@@ -338,7 +343,70 @@ def ia():
         os.replace(tmp, IA_ESTADO)
     except Exception as e:
         log(f"ia: não gravou estado: {e!r}")
-    return estado, resumo_ia(estado)
+    res = resumo_ia(estado)
+    res["saldo_real"] = saldo
+    return estado, res
+
+
+# Saldo real da conta z.ai. Endpoint da própria z.ai que aceita a chave de API
+# (testado em 06/11/2026: devolve balance, availableBalance, rechargeAmount,
+# totalSpendAmount). A chave é lida do .env dos robôs só aqui dentro e só vai
+# para api.z.ai; nunca entra no relatório nem no log. Consulta a cada 5 min.
+ZAI_SALDO_URL = "https://api.z.ai/api/biz/account/query-customer-account-report"
+ZAI_ENVS = ["/opt/robos/.env", "/srv/migracao/dados/.env", "/srv/migracao/projeto/.env"]
+ZAI_INTERVALO = 300
+
+
+def _chave_zai(cfg):
+    import re
+    padrao = re.compile(r"^[A-Z0-9_]*(ZAI|GLM|ZHIPU)[A-Z0-9_]*=(.*)$", re.I)
+    for arq in cfg.get("zai_envs") or ZAI_ENVS:
+        try:
+            with open(arq) as f:
+                for linha in f:
+                    m = padrao.match(linha.strip())
+                    if m:
+                        v = m.group(2).strip().strip("\"'").strip()
+                        if v:
+                            return v
+        except OSError:
+            continue
+    return None
+
+
+def saldo_zai(estado, cfg):
+    agora = time.time()
+    ultimo = estado.get("saldo") or {}
+    if agora - (ultimo.get("ts") or 0) < ZAI_INTERVALO:
+        return ultimo.get("dados")
+    estado["saldo"] = {"ts": agora, "dados": ultimo.get("dados")}
+    chave = _chave_zai(cfg)
+    if not chave:
+        log("ia: chave da z.ai não encontrada nos .env")
+        return ultimo.get("dados")
+    try:
+        req = urllib.request.Request(ZAI_SALDO_URL, headers={
+            "Authorization": "Bearer " + chave, "Accept": "application/json",
+            "User-Agent": "modernizai-painel-vps/1"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            d = json.loads(r.read() or b"{}")
+        dd = d.get("data") or {}
+        if not d.get("success") or dd.get("availableBalance") is None:
+            log(f"ia: z.ai respondeu sem saldo (code {d.get('code')})")
+            return ultimo.get("dados")
+        dados = {
+            "disponivel": float(dd.get("availableBalance") or 0),
+            "saldo": float(dd.get("balance") or 0),
+            "recarregado": float(dd.get("rechargeAmount") or 0),
+            "bonus": float(dd.get("giveAmount") or 0),
+            "gastoTotal": float(dd.get("totalSpendAmount") or 0),
+            "consultadoEm": datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        }
+        estado["saldo"]["dados"] = dados
+        return dados
+    except Exception as e:
+        log(f"ia: falha consultando saldo z.ai: {type(e).__name__}")
+        return ultimo.get("dados")
 
 
 def guardar_desde(estado, desde):
@@ -404,12 +472,15 @@ def relatorio(resumo_ia_atual=None):
 
 
 def main():
-    estado_ia, res_ia = ia()
+    try:
+        cfg = json.load(open(CONFIG))
+    except Exception:
+        cfg = {}
+    estado_ia, res_ia = ia(cfg)
     dados = relatorio(res_ia)
     if "--mostrar" in sys.argv:
         print(json.dumps(dados, ensure_ascii=False, indent=2))
         return
-    cfg = json.load(open(CONFIG))
     req = urllib.request.Request(
         cfg["url"], data=json.dumps(dados).encode(), method="POST",
         headers={"Content-Type": "application/json", "x-painel-chave": cfg["chave"],

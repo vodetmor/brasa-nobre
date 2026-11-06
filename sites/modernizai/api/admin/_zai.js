@@ -1,7 +1,7 @@
 // Saldo da IA z.ai (GLM) usada por todos os robôs.
-// A z.ai não devolve o saldo pela chave de API, então o painel faz a conta:
-//   saldo estimado = último saldo informado − custo dos tokens gastos desde então.
-// Os tokens vêm da VPS (lidos das execuções do n8n). Preço em US$ por 1 milhão de tokens,
+// Saldo REAL: a VPS consulta a z.ai a cada 5 min com a chave dos robôs (campo ia.saldo_real).
+// Reserva, se a consulta falhar: saldo estimado = último saldo informado − custo dos tokens
+// gastos desde então. Os tokens vêm da VPS (lidos das execuções do n8n) e dão o ritmo de gasto. Preço em US$ por 1 milhão de tokens,
 // tabela pública da z.ai (conferir em https://docs.z.ai/guides/overview/pricing se mudar).
 const { lerJson, gravarJson } = require("./_lib");
 
@@ -60,8 +60,19 @@ function normalizarIa(b) {
     janelas: { desde: limparMapa(j.desde), h24: limparMapa(j.h24), d7: limparMapa(j.d7), hoje: limparMapa(j.hoje) },
     dias: (Array.isArray(b.dias) ? b.dias : []).slice(-14).map((d) => ({ dia: txt(d && d.dia, 10), modelos: limparMapa(d && d.modelos) })),
     primeiro: b.primeiro ? num(b.primeiro) : null,
+    saldoReal: b.saldo_real && typeof b.saldo_real === "object" && Number.isFinite(Number(b.saldo_real.disponivel))
+      ? {
+          disponivel: num(b.saldo_real.disponivel),
+          recarregado: num(b.saldo_real.recarregado),
+          bonus: num(b.saldo_real.bonus),
+          gastoTotal: num(b.saldo_real.gastoTotal),
+          consultadoEm: txt(b.saldo_real.consultadoEm, 40),
+        }
+      : null,
   };
 }
+
+const REAL_VALE_MIN = 30; // saldo real consultado há mais que isso volta para a estimativa
 
 // Soma um mapa "robo|modelo" → uso em custo/tokens.
 function somar(mapa) {
@@ -96,10 +107,13 @@ function resumo(ia, cfg) {
   // ritmo: média dos dias com dado (até 7), para não subestimar quando a contagem começou há pouco
   const diasComDado = ia.primeiro ? Math.min(7, Math.max(1, (Date.now() / 1000 - ia.primeiro) / 86400)) : 1;
   const porDia = Math.max(h24.custo, d7.custo / diasComDado);
-  const estimado = sincronizado ? Math.max(0, cfg.saldo - desde.custo) : null;
+  const real = ia.saldoReal && Date.now() - Date.parse(ia.saldoReal.consultadoEm) < REAL_VALE_MIN * 60000 ? ia.saldoReal : null;
+  const estimado = real ? real.disponivel : sincronizado ? Math.max(0, cfg.saldo - desde.custo) : null;
   return {
     ...base,
-    sincronizado,
+    fonte: real ? "zai" : "estimativa",
+    real,
+    sincronizado: real ? true : sincronizado,
     gastoDesde: sincronizado ? desde.custo : null,
     estimado,
     porDia,
@@ -116,19 +130,24 @@ const dolar = (v) => "US$ " + Number(v || 0).toFixed(2).replace(".", ",");
 
 // Decide os avisos novos. Devolve {avisos, avisados} (avisados é gravado de volta no zai.json).
 function decidirAvisos(r, cfg) {
-  const avisados = { ...(cfg.avisados || {}) };
+  let avisados = { ...(cfg.avisados || {}) };
+  // Recarga detectada pelo total recarregado na z.ai: libera os avisos de novo.
+  if (r.real && r.real.recarregado > (cfg.recarregado || 0) + 0.001) {
+    if (cfg.recarregado != null) avisados = {};
+    avisados._recarregado = r.real.recarregado;
+  }
   const avisos = [];
   if (r.estimado == null) return { avisos, avisados };
   const ritmo = r.diasRestantes != null ? ` No ritmo atual (${dolar(r.porDia)}/dia) dura ~${r.diasRestantes < 1 ? "menos de 1 dia" : Math.floor(r.diasRestantes) + " dia(s)"}.` : "";
   for (const n of NIVEIS) {
     if (r.estimado < n.abaixoDe && !avisados[n.id]) {
       avisados[n.id] = new Date().toISOString();
-      avisos.push({ titulo: n.titulo, texto: `Saldo estimado ${dolar(r.estimado)} na z.ai.${ritmo} Recarregue em z.ai → Billing e atualize o saldo no painel.`, tag: "zai:" + n.id, nivel: "erro" });
+      avisos.push({ titulo: n.titulo, texto: `Saldo ${r.real ? "" : "estimado "}${dolar(r.estimado)} na z.ai.${ritmo} Recarregue em z.ai → Billing.`, tag: "zai:" + n.id, nivel: "erro" });
     }
   }
   if (!avisos.length && r.diasRestantes != null && r.diasRestantes < DIAS_AVISO && !avisados.ritmo) {
     avisados.ritmo = new Date().toISOString();
-    avisos.push({ titulo: "🟡 Saldo da IA acaba em breve", texto: `Saldo estimado ${dolar(r.estimado)}.${ritmo} Vale recarregar.`, tag: "zai:ritmo", nivel: "erro" });
+    avisos.push({ titulo: "🟡 Saldo da IA acaba em breve", texto: `Saldo ${r.real ? "" : "estimado "}${dolar(r.estimado)} na z.ai.${ritmo} Vale recarregar.`, tag: "zai:ritmo", nivel: "erro" });
   }
   return { avisos, avisados };
 }
