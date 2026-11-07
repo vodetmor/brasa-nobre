@@ -108,6 +108,7 @@ Avulso é só quando ele pede o item sem falar em jantinha ou prato ("só um esp
 20. "Marquim", "Marquinho" ou "Marcos" é o dono da casa, não é prato nem item do cardápio. Se o cliente falar dele pelo nome (recado, conversa pessoal), use pedir_humano (motivo outro) e responda só uma frase curta.
 21. OBJEÇÕES: conduza para fechar em 1 ou 2 linhas, sem enrolar e sem inventar. "Tá caro": sem desconto nem promessa; diga o que vem no prato e ofereça UMA opção mais em conta que exista no CARDÁPIO. "Demora?": só o PRAZO PADRÃO (nunca outro número). "Vou pensar": agradeça, deixe a porta aberta e faça UMA pergunta de fechamento ("Quer que eu já deixe anotado?"); não insista de novo. Troca de item ANTES do resumo: ajuste e dê o novo total; DEPOIS de registrado: pedir_humano (alterar_cancelar).
 22. NUNCA ALUCINE NEM CONFUNDA: pedido, preço, endereço e nome saem SÓ do CARDÁPIO, das INFORMAÇÕES DA CASA, da FICHA e dos PEDIDOS EM ANDAMENTO DESTE cliente, nunca de memória nem de outro cliente. Antes de dizer que não há pedido, olhe PEDIDOS EM ANDAMENTO; para o total de um pedido, use o valor de lá. Se a informação não estiver nesses lugares, diga que vai confirmar com a equipe (pedir_humano, motivo duvida), em vez de chutar. Quantidades, trocas e observações: repita exatamente o que o cliente pediu.
+23. FOTOS E DÚVIDA SIMPLES: as fotos de enviar_cardapio mostram exatamente o CARDÁPIO abaixo. "O que tem na foto?", "tem Coca zero?", "quanto é X?" você responde pelo CARDÁPIO, sem pedir_humano. pedir_humano só para reclamação, alterar/cancelar pedido, pessoa pedindo atendente ou algo que você realmente não sabe. NUNCA escreva "vou perguntar pra equipe e já volto" nem prometa retorno: ao passar para a equipe diga "A equipe vai te responder por aqui".
 
 COMO A CASA COSTUMA RESPONDER (exemplos de tom, não copie palavra por palavra)
 - "tem marmita?" -> "Tem sim! O prato feito sai R$ 20, você monta: arroz, feijão, carne e acompanhamento. Quer montar o seu?"
@@ -164,13 +165,26 @@ const CARDAPIO_SABADO_TEXTO = [
   'HOJE É SÁBADO: a casa só vende espetos, jantinha, feijoada e bebidas (única fonte de itens e preços hoje; qualquer outro prato do cardápio normal NÃO existe hoje).',
   'Espetos R$ 14: alcatra, contra filé, kafta, peito de frango, frango com bacon, meio da asa, coração, lombo suíno, camarão, queijo coalho, linguiça. Queijo provolone e pão de alho R$ 13.',
   'Jantinha completa R$ 22 (arroz branco, mandioca, feijão tropeiro e vinagrete). Jantinha sem espeto R$ 13.',
-  'FEIJOADA R$ 27,00 (a foto do cardápio não mostra a feijoada: avise por texto). Acompanha couve, arroz branco, torresmo, farofa e vinagrete. Sai de duas formas: TUDO INDIVIDUAL em marmitas separadas, ou TUDO JUNTO na marmita redonda. Ao pedir feijoada, pergunte qual forma o cliente quer e registre no pedido (obs. do item: "individual em marmitas separadas" ou "tudo junto na marmita redonda"). Nunca registre feijoada sem a forma.',
+  'FEIJOADA R$ 27,00 (a foto do cardápio não mostra a feijoada: avise por texto). Acompanha couve, arroz branco, torresmo, farofa e vinagrete. Sai de duas formas: "Individual" (tudo em marmitas separadas) ou "Tudo junto" (na marmita redonda). Ao pedir feijoada, pergunte qual forma o cliente quer e registre com escolhas {"Forma":"Individual"} ou {"Forma":"Tudo junto"}. Nunca registre feijoada sem a forma. Jantinha completa: o cliente escolhe 1 espeto (escolhas {"Espeto":"..."}).',
   'Bebidas: água s/ gás 3,50; água c/ gás 4,50; refrigerante lata 6,50; coca lata 310ml 6,50; coca zero lata 6,50; sprite lata 6,50; fanta uva lata 6,50; fanta laranja lata 6,50; guaraná 1L 9,50; guaraná 350ml zero 6,50; guaraná 350ml normal 6,50; coca 600ml 8,50; coca 600ml zero 8,50; coca 2L 14,50; coca 2L zero 14,50; guaraná 2L zero 14,00; guaraná 2L normal 14,00; monster 13,00; red bull 13,00; heineken long 330ml 10,00; stela pure gold 11,00; michelob 11,00; stpaten lata 350ml 7,00; antarctica palito 269ml 5,00; corona long 11,00; suco natural 8,00; suco del valle lata 8,00; água tônica 6,50; pepis black 6,50.',
   'REGRA DE SÁBADO: na primeira resposta e sempre que pedirem cardápio, mande as fotos do cardápio de sábado e da feijoada (enviar_cardapio), diga numa linha que hoje tem também feijoada R$ 27 e pergunte "Qual vai ser o pedido?". Não liste o cardápio normal nem ofereça prato feito ou marmita; se pedirem, diga que hoje é só espetos, jantinha e feijoada.',
 ].join('\n');
 function ehSabado() {
   return new Intl.DateTimeFormat('en-US', { timeZone: config.timezone, weekday: 'short' }).format(new Date()) === 'Sat';
 }
+// Itens que o registrar_pedido aceita aos sábados (o cardápio cadastrado no painel é o de dias úteis).
+const ESPETOS_SAB = ['Alcatra', 'Contra filé', 'Kafta', 'Peito de frango', 'Frango com bacon', 'Meio da asa', 'Coração', 'Lombo suíno', 'Camarão', 'Queijo coalho', 'Linguiça'];
+const BEBIDAS_SAB = [['Água s/ gás', 350], ['Água c/ gás', 450], ['Refrigerante lata', 650], ['Coca lata 310ml', 650], ['Coca zero lata', 650], ['Sprite lata', 650], ['Fanta uva lata', 650], ['Fanta laranja lata', 650],
+  ['Guaraná 1L', 950], ['Guaraná 350ml zero', 650], ['Guaraná 350ml normal', 650], ['Coca 600ml', 850], ['Coca 600ml zero', 850], ['Coca 2L', 1450], ['Coca 2L zero', 1450], ['Guaraná 2L zero', 1400],
+  ['Guaraná 2L normal', 1400], ['Monster', 1300], ['Red Bull', 1300], ['Heineken long 330ml', 1000], ['Stela Pure Gold', 1100], ['Michelob', 1100], ['Spaten lata 350ml', 700],
+  ['Antarctica palito 269ml', 500], ['Corona long', 1100], ['Suco natural', 800], ['Suco Del Valle lata', 800], ['Água tônica', 650], ['Pepsi Black', 650]];
+const PRODUTOS_SABADO = [
+  ...ESPETOS_SAB.map(name => ({ name, price_cents: 1400, options: '' })),
+  { name: 'Queijo provolone', price_cents: 1300, options: '' }, { name: 'Pão de alho', price_cents: 1300, options: '' },
+  { name: 'Jantinha completa', price_cents: 2200, options: 'Espeto: ' + ESPETOS_SAB.join(', ') }, { name: 'Jantinha sem espeto', price_cents: 1300, options: '' },
+  { name: 'Feijoada', price_cents: 2700, options: 'Forma: Individual, Tudo junto' },
+  ...BEBIDAS_SAB.map(([name, price_cents]) => ({ name, price_cents, options: '' })),
+];
 const cardapioSabado = r => r.slug === 'central-do-espeto' && ehSabado();
 
 // O que vai junto com o prompt: restaurante, cardápio, informações da casa, cliente, pedidos e histórico.
@@ -417,9 +431,11 @@ export async function botHuman(r, body) {
   if (reason === 'reclamacao') await addComplaint(r, phone, body.assunto);
   const c = await get('SELECT name FROM wa_contacts WHERE restaurant_id = ? AND phone = ?', r.id, phone);
   await alertOwner(r, `🔔 ${c?.name || phone} precisa de alguém da equipe no WhatsApp (${reason.replace(/_/g, ' ')}${body.assunto ? `: ${clip(body.assunto, 60)}` : ''}).`);
+  // dúvida simples só avisa o dono: o robô continua atendendo (pausar deixava o cliente sem resposta)
+  if (reason === 'duvida') return { resultado: 'OK: a equipe foi avisada. Diga em uma frase "A equipe vai te responder por aqui" (sem prometer que volta) e continue atendendo o que você já sabe.' };
   const { changes } = await run(`UPDATE wa_contacts SET needs_human = 1, human_reason = ?, updated_at = datetime('now')
     WHERE restaurant_id = ? AND phone = ?`, reason, r.id, phone);
-  return { resultado: changes ? 'OK: a equipe foi avisada e vai continuar a conversa por aqui. Diga isso ao cliente em uma frase.' : 'ERRO: contato não encontrado' };
+  return { resultado: changes ? 'OK: a equipe foi avisada e vai continuar a conversa por aqui. Diga "A equipe vai te responder por aqui" em uma frase, sem prometer que você volta.' : 'ERRO: contato não encontrado' };
 }
 
 // ---------- robô: registrar pedido ----------
@@ -445,7 +461,7 @@ export async function botOrder(r, body) {
     AND created_at >= datetime('now', '-20 minutes') ORDER BY id DESC LIMIT 1`, r.id, phone);
   if (aberto) return { resultado: `ERRO: este cliente já tem o pedido nº ${aberto.number} registrado há poucos minutos. NÃO registre outro. Se ele quer mudar ou corrigir algo, use pedir_humano (motivo alterar_cancelar) e diga em uma frase que a equipe ajusta o pedido nº ${aberto.number}.` };
 
-  const { products } = await menuFor(r.id);
+  const products = cardapioSabado(r) ? PRODUTOS_SABADO : (await menuFor(r.id)).products;
   const problems = [];
   const lines = [];
   for (const it of items.slice(0, 30)) {
