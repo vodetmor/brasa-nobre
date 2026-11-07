@@ -111,6 +111,7 @@ Avulso é só quando ele pede o item sem falar em jantinha ou prato ("só um esp
 23. FOTOS E DÚVIDA SIMPLES: as fotos de enviar_cardapio mostram exatamente o CARDÁPIO abaixo. "O que tem na foto?", "tem Coca zero?", "quanto é X?" você responde pelo CARDÁPIO, sem pedir_humano. pedir_humano só para reclamação, alterar/cancelar pedido, pessoa pedindo atendente ou algo que você realmente não sabe. NUNCA escreva "vou perguntar pra equipe e já volto" nem prometa retorno: ao passar para a equipe diga "A equipe vai te responder por aqui".
 24. ESPETOS NO ALMOÇO: os espetos saem o dia todo, inclusive na hora do almoço, todos os dias de funcionamento. Se o CARDÁPIO ou as INFORMAÇÕES disserem que espetos só começam às 18h, isso está desatualizado: ignore e NUNCA diga a um cliente que espeto só sai à noite.
 25. ENDEREÇO: peça só quadra e conjunto/casa (ou o endereço que o cliente já deu). NUNCA peça ponto de referência, mesmo que o ROTEIRO ou as REGRAS EXTRAS mandem.
+26. NUNCA presuma: não invente forma de pagamento, bebida, quantidade nem endereço que o cliente não disse. Do endereço antigo use só quadra e conjunto/casa; nunca repita observações como "ref.:" ou nomes de outra pessoa. Só pergunte a variante da bebida (normal ou zero) se o cliente pediu a bebida sem dizer qual; senão não pergunte. Uma resposta só por mensagem: nunca recomece a conversa com "Oi, <nome>!" se já houve resposta sua nas ÚLTIMAS MENSAGENS.
 
 COMO A CASA COSTUMA RESPONDER (exemplos de tom, não copie palavra por palavra)
 - "tem marmita?" -> "Tem sim! O prato feito sai R$ 20, você monta: arroz, feijão, carne e acompanhamento. Quer montar o seu?"
@@ -199,7 +200,7 @@ async function contextFor(r, contact, history, orders, past = null) {
   const comeco = !history.some(m => m.direction === 'out');
   const ficha = past && past.total ? `Já fez ${past.total} pedido${past.total > 1 ? 's' : ''} pelo WhatsApp. ÚLTIMO PEDIDO: ${past.ultimo}. ` +
     (comeco ? `É CLIENTE DA CASA: nesta primeira resposta (se ele ainda não disse o que quer), cumprimente pelo primeiro nome e ofereça repetir em uma linha como PERGUNTA, com o total pelo cardápio de hoje, sem mandar o cardápio. Nunca trate o último pedido como pedido de hoje antes de ele dizer que quer: se ele só cumprimentou, ofereça e espere. Ex.: "Oi, Maria! Vai ser o de sempre? 1 prato feito de cupim com tropeiro e purê, entrega no mesmo endereço, no Pix: R$ 20,00". ` : '') +
-    'Endereço: se for entrega e ele não disser outro, use o do último pedido sem perguntar de novo (só aparece no resumo). Pagamento: se ele não disser, ofereça o mesmo do último pedido.' : 'Nenhum pedido anterior pelo WhatsApp.';
+    'Endereço: se for entrega e ele não disser outro, use o do último pedido sem perguntar de novo (só aparece no resumo). Pagamento: NUNCA suponha; se ele não disse, pergunte "Pix, cartão ou dinheiro?" (o do último pedido só vale se ele pedir "o de sempre").' : 'Nenhum pedido anterior pelo WhatsApp.';
   const fixo = [
     `RESTAURANTE: ${r.name}. Endereço: ${r.address || '(não informado)'}.` + (r.instagram ? ` Instagram: ${r.instagram}.` : ''),
     r.accepting_orders ? 'Pedidos: abertos.' : 'Pedidos: FECHADOS agora (o restaurante não está recebendo pedidos). Não registre pedido; diga isso com gentileza.',
@@ -337,7 +338,7 @@ export async function botTurn(r, body) {
   const lastOrder = pastRows[0];
   const past = lastOrder ? { total: pastRows.length, nome: lastOrder.customer_name || '', ultimo: [
     JSON.parse(lastOrder.items || '[]').map(i => `${i.qty}x ${i.name}${i.choices ? ` (${i.choices})` : ''}${i.note ? ` [obs.: ${i.note}]` : ''}`).join(', '),
-    lastOrder.mode === 'entrega' ? `entrega em ${lastOrder.address}` : lastOrder.mode === 'local' ? 'comer no local' : 'retirada',
+    lastOrder.mode === 'entrega' ? `entrega em ${String(lastOrder.address || '').replace(/[,;.\s]*\b(ref(er[eê]ncia)?|pr[oó]ximo|perto)\b.*$/i, '').trim()}` : lastOrder.mode === 'local' ? 'comer no local' : 'retirada',
     PAYMENTS[lastOrder.payment] ? `pagamento ${PAYMENTS[lastOrder.payment]}` : '',
     lastOrder.note ? `obs.: ${lastOrder.note}` : '',
     `em ${String(lastOrder.created_at).slice(8, 10)}/${String(lastOrder.created_at).slice(5, 7)}`,
@@ -353,6 +354,16 @@ export async function botTurn(r, body) {
     ORDER BY id DESC LIMIT 6`, r.id, phone)).map(m => m.text);
   return { responder: true, texto: fresh.map(m => m.text).join('\n'), prompt: buildPrompt(r, contexto), modelo: botSettings(r).modelo, cardapio_imagem: cardapioSabado(r) ? (config.publicUrl || 'https://brasa-nobre.vercel.app') + CARDAPIO_SABADO : '',
     cardapio_imagens: cardapioSabado(r) ? [CARDAPIO_SABADO, FEIJOADA_SABADO].map(u => (config.publicUrl || 'https://brasa-nobre.vercel.app') + u) : [], restaurante: r.name, ja_conversou: !!recent, recentes };
+}
+
+// O n8n chama isto logo antes de enviar: ainda é a vez desta mensagem? (evita resposta dupla quando o cliente manda duas seguidas)
+export async function botStillTurn(r, body) {
+  const phone = cleanPhone(body.telefone);
+  const id = Number(body.id) || 0;
+  const last = await get(`SELECT MAX(id) AS id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'in'`, r.id, phone);
+  if (Number(last?.id) !== id) return { enviar: false, motivo: 'mensagem_mais_nova' };
+  const out = await get(`SELECT id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'out' AND origin = 'robo' AND id > ?`, r.id, phone, id);
+  return out ? { enviar: false, motivo: 'ja_respondido' } : { enviar: true };
 }
 
 // Mensagem que saiu do celular do dono (WhatsApp dele, não o robô): registra e pausa o robô nesse cliente.
