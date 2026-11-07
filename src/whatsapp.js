@@ -338,7 +338,7 @@ export async function botTurn(r, body) {
   const lastOrder = pastRows[0];
   const past = lastOrder ? { total: pastRows.length, nome: lastOrder.customer_name || '', ultimo: [
     JSON.parse(lastOrder.items || '[]').map(i => `${i.qty}x ${i.name}${i.choices ? ` (${i.choices})` : ''}${i.note ? ` [obs.: ${i.note}]` : ''}`).join(', '),
-    lastOrder.mode === 'entrega' ? `entrega em ${String(lastOrder.address || '').replace(/[,;.\s]*\b(ref(er[eê]ncia)?\.?|pr[oó]ximo|perto)\b[:\s].*$/i, '').trim()}` : lastOrder.mode === 'local' ? 'comer no local' : 'retirada',
+    lastOrder.mode === 'entrega' ? `entrega em ${String(lastOrder.address || '').replace(/[,;.\s]*\b(ref(er[eê]ncia)?|pr[oó]ximo|perto)\b.*$/i, '').trim()}` : lastOrder.mode === 'local' ? 'comer no local' : 'retirada',
     PAYMENTS[lastOrder.payment] ? `pagamento ${PAYMENTS[lastOrder.payment]}` : '',
     lastOrder.note ? `obs.: ${lastOrder.note}` : '',
     `em ${String(lastOrder.created_at).slice(8, 10)}/${String(lastOrder.created_at).slice(5, 7)}`,
