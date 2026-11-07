@@ -159,13 +159,14 @@ function prazoLinhas(r) {
 
 // Aos sábados a Central do Espeto só vende o cardápio de sábado (foto abaixo): nada de pratos do cardápio normal.
 const CARDAPIO_SABADO = '/assets/img/cardapio-sabado.jpg';
+const FEIJOADA_SABADO = '/assets/img/feijoada-sabado.jpg';
 const CARDAPIO_SABADO_TEXTO = [
   'HOJE É SÁBADO: a casa só vende espetos, jantinha, feijoada e bebidas (única fonte de itens e preços hoje; qualquer outro prato do cardápio normal NÃO existe hoje).',
   'Espetos R$ 14: alcatra, contra filé, kafta, peito de frango, frango com bacon, meio da asa, coração, lombo suíno, camarão, queijo coalho, linguiça. Queijo provolone e pão de alho R$ 13.',
   'Jantinha completa R$ 22 (arroz branco, mandioca, feijão tropeiro e vinagrete). Jantinha sem espeto R$ 13.',
   'FEIJOADA R$ 27,00 (a foto do cardápio não mostra a feijoada: avise por texto). Acompanha couve, arroz branco, torresmo, farofa e vinagrete. Sai de duas formas: TUDO INDIVIDUAL em marmitas separadas, ou TUDO JUNTO na marmita redonda. Ao pedir feijoada, pergunte qual forma o cliente quer e registre no pedido (obs. do item: "individual em marmitas separadas" ou "tudo junto na marmita redonda"). Nunca registre feijoada sem a forma.',
   'Bebidas: água s/ gás 3,50; água c/ gás 4,50; refrigerante lata 6,50; coca lata 310ml 6,50; coca zero lata 6,50; sprite lata 6,50; fanta uva lata 6,50; fanta laranja lata 6,50; guaraná 1L 9,50; guaraná 350ml zero 6,50; guaraná 350ml normal 6,50; coca 600ml 8,50; coca 600ml zero 8,50; coca 2L 14,50; coca 2L zero 14,50; guaraná 2L zero 14,00; guaraná 2L normal 14,00; monster 13,00; red bull 13,00; heineken long 330ml 10,00; stela pure gold 11,00; michelob 11,00; stpaten lata 350ml 7,00; antarctica palito 269ml 5,00; corona long 11,00; suco natural 8,00; suco del valle lata 8,00; água tônica 6,50; pepis black 6,50.',
-  'REGRA DE SÁBADO: na primeira resposta e sempre que pedirem cardápio, mande a foto do cardápio de sábado (enviar_cardapio), diga numa linha que hoje tem também feijoada R$ 27 e pergunte "Qual vai ser o pedido?". Não liste o cardápio normal nem ofereça prato feito ou marmita; se pedirem, diga que hoje é só espetos, jantinha e feijoada.',
+  'REGRA DE SÁBADO: na primeira resposta e sempre que pedirem cardápio, mande as fotos do cardápio de sábado e da feijoada (enviar_cardapio), diga numa linha que hoje tem também feijoada R$ 27 e pergunte "Qual vai ser o pedido?". Não liste o cardápio normal nem ofereça prato feito ou marmita; se pedirem, diga que hoje é só espetos, jantinha e feijoada.',
 ].join('\n');
 function ehSabado() {
   return new Intl.DateTimeFormat('en-US', { timeZone: config.timezone, weekday: 'short' }).format(new Date()) === 'Sat';
@@ -333,7 +334,8 @@ export async function botTurn(r, body) {
   const recent = await get(`SELECT id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'out' AND created_at >= datetime('now', '-12 hours') LIMIT 1`, r.id, phone);
   const recentes = (await all(`SELECT text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND origin = 'robo' AND created_at >= datetime('now', '-30 minutes')
     ORDER BY id DESC LIMIT 6`, r.id, phone)).map(m => m.text);
-  return { responder: true, texto: fresh.map(m => m.text).join('\n'), prompt: buildPrompt(r, contexto), modelo: botSettings(r).modelo, cardapio_imagem: cardapioSabado(r) ? (config.publicUrl || 'https://brasa-nobre.vercel.app') + CARDAPIO_SABADO : '', restaurante: r.name, ja_conversou: !!recent, recentes };
+  return { responder: true, texto: fresh.map(m => m.text).join('\n'), prompt: buildPrompt(r, contexto), modelo: botSettings(r).modelo, cardapio_imagem: cardapioSabado(r) ? (config.publicUrl || 'https://brasa-nobre.vercel.app') + CARDAPIO_SABADO : '',
+    cardapio_imagens: cardapioSabado(r) ? [CARDAPIO_SABADO, FEIJOADA_SABADO].map(u => (config.publicUrl || 'https://brasa-nobre.vercel.app') + u) : [], restaurante: r.name, ja_conversou: !!recent, recentes };
 }
 
 // Mensagem que saiu do celular do dono (WhatsApp dele, não o robô): registra e pausa o robô nesse cliente.
