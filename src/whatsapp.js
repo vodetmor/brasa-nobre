@@ -167,6 +167,7 @@ const CARDAPIO_SABADO_TEXTO = [
   'Jantinha completa R$ 22 (arroz branco, mandioca, feijão tropeiro e vinagrete). Jantinha sem espeto R$ 13.',
   'FEIJOADA R$ 27,00 (a foto do cardápio não mostra a feijoada: avise por texto). Acompanha couve, arroz branco, torresmo, farofa e vinagrete. Sai de duas formas: "Individual" (tudo em marmitas separadas) ou "Tudo junto" (na marmita redonda). Ao pedir feijoada, pergunte qual forma o cliente quer e registre com escolhas {"Forma":"Individual"} ou {"Forma":"Tudo junto"}. Nunca registre feijoada sem a forma. Jantinha completa: o cliente escolhe 1 espeto (escolhas {"Espeto":"..."}).',
   'Bebidas: água s/ gás 3,50; água c/ gás 4,50; refrigerante lata 6,50; coca lata 310ml 6,50; coca zero lata 6,50; sprite lata 6,50; fanta uva lata 6,50; fanta laranja lata 6,50; guaraná 1L 9,50; guaraná 350ml zero 6,50; guaraná 350ml normal 6,50; coca 600ml 8,50; coca 600ml zero 8,50; coca 2L 14,50; coca 2L zero 14,50; guaraná 2L zero 14,00; guaraná 2L normal 14,00; monster 13,00; red bull 13,00; heineken long 330ml 10,00; stela pure gold 11,00; michelob 11,00; stpaten lata 350ml 7,00; antarctica palito 269ml 5,00; corona long 11,00; suco natural 8,00; suco del valle lata 8,00; água tônica 6,50; pepis black 6,50.',
+  'HORÁRIO DE HOJE (sábado): atendemos até as 17h, sem separar almoço e jantar. Ignore qualquer horário diferente ("almoço a partir das 11h", "espetos a partir das 18h") e NUNCA cite esses horários. Não existe prato feito hoje. Depois das 17h diga que hoje o atendimento já encerrou e que amanhã a casa volta.',
   'REGRA DE SÁBADO: na primeira resposta e sempre que pedirem cardápio, mande as fotos do cardápio de sábado e da feijoada (enviar_cardapio), diga numa linha que hoje tem também feijoada R$ 27 e pergunte "Qual vai ser o pedido?". Não liste o cardápio normal nem ofereça prato feito ou marmita; se pedirem, diga que hoje é só espetos, jantinha e feijoada.',
 ].join('\n');
 function ehSabado() {
@@ -205,7 +206,7 @@ async function contextFor(r, contact, history, orders, past = null) {
     cardapioSabado(r) ? CARDAPIO_SABADO_TEXTO : await menuText(r.id),
     '',
     'INFORMAÇÕES DA CASA (escritas pela equipe; o que não estiver aqui você não sabe):',
-    clip(r.wa_info, 3000) || '(a equipe ainda não preencheu: horário, entrega, taxa e Pix você não sabe)',
+    (cardapioSabado(r) ? clip(String(r.wa_info || '').split(/\r?\n/).filter(l => !/almo[cç]o|jantar|janta|hor[aá]rio|\d\s*h\b|\bpf\b|prato feito/i.test(l)).join('\n'), 3000) : clip(r.wa_info, 3000)) || '(a equipe ainda não preencheu: horário, entrega, taxa e Pix você não sabe)',
     ...prazoLinhas(r),
   ].join('\n');
   const variavel = [
