@@ -157,6 +157,20 @@ function prazoLinhas(r) {
   return l.length ? ['', 'PRAZOS PADRÃO (estimativas que você pode informar; em dia cheio a equipe avisa):', ...l] : [];
 }
 
+// Aos sábados a Central do Espeto só vende o cardápio de sábado (foto abaixo): nada de pratos do cardápio normal.
+const CARDAPIO_SABADO = '/assets/img/cardapio-sabado.jpg';
+const CARDAPIO_SABADO_TEXTO = [
+  'HOJE É SÁBADO: a casa só vende o CARDÁPIO DE SÁBADO (única fonte de itens e preços hoje; qualquer prato do cardápio normal NÃO existe hoje).',
+  'Espetos R$ 14: alcatra, contra filé, kafta, peito de frango, frango com bacon, meio da asa, coração, lombo suíno, camarão, queijo coalho, linguiça. Queijo provolone e pão de alho R$ 13.',
+  'Jantinha completa R$ 22 (arroz branco, mandioca, feijão tropeiro e vinagrete). Jantinha sem espeto R$ 13.',
+  'Bebidas: água s/ gás 3,50; água c/ gás 4,50; refrigerante lata 6,50; coca lata 310ml 6,50; coca zero lata 6,50; sprite lata 6,50; fanta uva lata 6,50; fanta laranja lata 6,50; guaraná 1L 9,50; guaraná 350ml zero 6,50; guaraná 350ml normal 6,50; coca 600ml 8,50; coca 600ml zero 8,50; coca 2L 14,50; coca 2L zero 14,50; guaraná 2L zero 14,00; guaraná 2L normal 14,00; monster 13,00; red bull 13,00; heineken long 330ml 10,00; stela pure gold 11,00; michelob 11,00; stpaten lata 350ml 7,00; antarctica palito 269ml 5,00; corona long 11,00; suco natural 8,00; suco del valle lata 8,00; água tônica 6,50; pepis black 6,50.',
+  'REGRA DE SÁBADO: na primeira resposta e sempre que pedirem cardápio, mande SÓ a foto do cardápio de sábado (enviar_cardapio) e pergunte "Qual vai ser o pedido?". Não liste o cardápio normal nem ofereça prato feito, marmita ou feijoada; se pedirem, diga que aos sábados é só o cardápio da foto.',
+].join('\n');
+function ehSabado() {
+  return new Intl.DateTimeFormat('en-US', { timeZone: config.timezone, weekday: 'short' }).format(new Date()) === 'Sat';
+}
+const cardapioSabado = r => r.slug === 'central-do-espeto' && ehSabado();
+
 // O que vai junto com o prompt: restaurante, cardápio, informações da casa, cliente, pedidos e histórico.
 async function contextFor(r, contact, history, orders, past = null) {
   const who = { cliente: 'CLIENTE', robo: 'VOCÊ', equipe: 'EQUIPE (pessoa da casa)' };
@@ -172,7 +186,7 @@ async function contextFor(r, contact, history, orders, past = null) {
     r.accepting_orders ? 'Pedidos: abertos.' : 'Pedidos: FECHADOS agora (o restaurante não está recebendo pedidos). Não registre pedido; diga isso com gentileza.',
     '',
     'CARDÁPIO (a única fonte de pratos e preços):',
-    await menuText(r.id),
+    cardapioSabado(r) ? CARDAPIO_SABADO_TEXTO : await menuText(r.id),
     '',
     'INFORMAÇÕES DA CASA (escritas pela equipe; o que não estiver aqui você não sabe):',
     clip(r.wa_info, 3000) || '(a equipe ainda não preencheu: horário, entrega, taxa e Pix você não sabe)',
@@ -318,7 +332,7 @@ export async function botTurn(r, body) {
   const recent = await get(`SELECT id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'out' AND created_at >= datetime('now', '-12 hours') LIMIT 1`, r.id, phone);
   const recentes = (await all(`SELECT text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND origin = 'robo' AND created_at >= datetime('now', '-30 minutes')
     ORDER BY id DESC LIMIT 6`, r.id, phone)).map(m => m.text);
-  return { responder: true, texto: fresh.map(m => m.text).join('\n'), prompt: buildPrompt(r, contexto), modelo: botSettings(r).modelo, restaurante: r.name, ja_conversou: !!recent, recentes };
+  return { responder: true, texto: fresh.map(m => m.text).join('\n'), prompt: buildPrompt(r, contexto), modelo: botSettings(r).modelo, cardapio_imagem: cardapioSabado(r) ? (config.publicUrl || 'https://brasa-nobre.vercel.app') + CARDAPIO_SABADO : '', restaurante: r.name, ja_conversou: !!recent, recentes };
 }
 
 // Mensagem que saiu do celular do dono (WhatsApp dele, não o robô): registra e pausa o robô nesse cliente.
