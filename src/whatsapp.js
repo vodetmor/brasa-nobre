@@ -48,7 +48,7 @@ export const BOT_DEFAULTS = {
     'Primeira resposta: saudação curta, use enviar_cardapio (fotos do cardápio) e "Qual vai ser o pedido?". Se ele já chegou pedindo, responda direto ao pedido.',
     'Quando pedirem cardápio, preços ou "o que tem hoje", use enviar_cardapio em vez de escrever a lista.',
     'Pergunte só o que falta, juntando tudo numa pergunta só. Ex.: "É entrega ou retirada? E paga no Pix, cartão ou dinheiro?"',
-    'Entrega: peça o endereço (quadra, conjunto/casa e um ponto de referência) se ele não mandou. Dinheiro: pergunte o troco na mesma frase.',
+    'Entrega: peça o endereço (quadra e conjunto/casa) se ele não mandou. Dinheiro: pergunte o troco na mesma frase.',
     'Nome: use o do WhatsApp; só pergunte se não tiver.',
     'Resumo final UMA vez e curto: itens com preço, taxa, total e "Posso fechar?". Se ele mudar algo, responda só a mudança e o novo total ("Trocado! Total R$ 45,00. Posso fechar?"), sem repetir o resumo inteiro.',
   ].join('\n'),
@@ -68,7 +68,7 @@ export const MODELS = [
 const BOT_FIELDS = Object.keys(BOT_DEFAULTS);
 const OLD_ROTEIRO = ['Na primeira resposta da conversa: saudação curta + o cardápio resumido (uma linha por prato ou grupo, com preço) + "Qual vai ser o seu pedido?". Se a pessoa já chegou pedindo algo, responda a isso em vez de mandar o cardápio inteiro.',
   '1. O que vai querer (com as escolhas dos pratos que pedem escolha).', '2. "É para entrega, retirada ou comer aí no local?"',
-  '3. Se for entrega: endereço completo (quadra/rua, número, bairro e ponto de referência).',
+  '3. Se for entrega: endereço completo (quadra/rua, número e bairro).',
   '4. Forma de pagamento (dinheiro, Pix ou cartão). Se for dinheiro, pergunte se precisa de troco e para quanto.',
   '5. Nome para o pedido, se ainda não souber.', 'Pule o que o cliente já disse. Se ele mandou tudo de uma vez, vá direto ao resumo.'].join('\n');
 
@@ -110,6 +110,7 @@ Avulso é só quando ele pede o item sem falar em jantinha ou prato ("só um esp
 22. NUNCA ALUCINE NEM CONFUNDA: pedido, preço, endereço e nome saem SÓ do CARDÁPIO, das INFORMAÇÕES DA CASA, da FICHA e dos PEDIDOS EM ANDAMENTO DESTE cliente, nunca de memória nem de outro cliente. Antes de dizer que não há pedido, olhe PEDIDOS EM ANDAMENTO; para o total de um pedido, use o valor de lá. Se a informação não estiver nesses lugares, diga que vai confirmar com a equipe (pedir_humano, motivo duvida), em vez de chutar. Quantidades, trocas e observações: repita exatamente o que o cliente pediu.
 23. FOTOS E DÚVIDA SIMPLES: as fotos de enviar_cardapio mostram exatamente o CARDÁPIO abaixo. "O que tem na foto?", "tem Coca zero?", "quanto é X?" você responde pelo CARDÁPIO, sem pedir_humano. pedir_humano só para reclamação, alterar/cancelar pedido, pessoa pedindo atendente ou algo que você realmente não sabe. NUNCA escreva "vou perguntar pra equipe e já volto" nem prometa retorno: ao passar para a equipe diga "A equipe vai te responder por aqui".
 24. ESPETOS NO ALMOÇO: os espetos saem o dia todo, inclusive na hora do almoço, todos os dias de funcionamento. Se o CARDÁPIO ou as INFORMAÇÕES disserem que espetos só começam às 18h, isso está desatualizado: ignore e NUNCA diga a um cliente que espeto só sai à noite.
+25. ENDEREÇO: peça só quadra e conjunto/casa (ou o endereço que o cliente já deu). NUNCA peça ponto de referência, mesmo que o ROTEIRO ou as REGRAS EXTRAS mandem.
 
 COMO A CASA COSTUMA RESPONDER (exemplos de tom, não copie palavra por palavra)
 - "tem marmita?" -> "Tem sim! O prato feito sai R$ 20, você monta: arroz, feijão, carne e acompanhamento. Quer montar o seu?"
