@@ -15,4 +15,4 @@ ssh -i "$KEY" -o BatchMode=yes "$HOST" 'set -e
   sudo docker compose up -d --build 2>&1 | tail -3
   for i in $(seq 1 30); do [ "$(sudo docker inspect -f "{{.State.Health.Status}}" brasa-app)" = healthy ] && break; sleep 3; done
   echo "saúde: $(sudo docker inspect -f "{{.State.Health.Status}}" brasa-app)"'
-curl -s -o /dev/null -w "site: HTTP %{http_code}\n" https://brasa.179-197-85-185.sslip.io/api/config
+curl -s -o /dev/null -w "site: HTTP %{http_code}\n" https://centraldoespeto.duckdns.org/api/config
