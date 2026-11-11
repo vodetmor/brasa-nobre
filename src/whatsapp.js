@@ -106,10 +106,10 @@ Art. 15. Após registrar_pedido: OK, informe número e total; ERRO, pergunte só
 // Normas próprias da Central do Espeto (valem só para ela). Ficam no código até irem para o painel.
 const NORMAS_ESPETO = `NORMAS DA CASA
 
-Art. 16. Horários (veja AGORA). 9h às 15h: almoço e principal. 15h às 18h: cozinha fechada; aceite pedido antecipado do cardápio da noite, para as 18h. 18h em diante: só o principal. Prato feito, pratos da casa e feijoada: só no almoço. Sábado: só o CARDÁPIO DE HOJE.
-Art. 17. Taxa de entrega. Sobradinho I, quadras 1 a 15: R$ 5; quadras 16 a 18: R$ 7. Sobradinho II (ARs): R$ 10. QMS e Setor de Mansões: R$ 13. Morada dos Nobres: R$ 13. DF-425, Império, RK, Alto da Boa Vista (CABV) e Nova Colina: R$ 15. Faixa incerta ("Sobradinho 1" sem quadra): pergunte a quadra antes do total. Local fora da lista: "A equipe confirma a taxa."
+Art. 16. Horários (veja AGORA). Segunda a sábado, almoço das 11h às 15h. Segunda a sexta, janta das 18h às 23h. Entre 15h e 18h a cozinha está fechada: aceite pedido antecipado para as 18h (segunda a sexta). Sábado à noite e domingo: fechado; informe e diga quando abre. Prato feito, pratos da casa e feijoada: só no almoço. Sábado: só o CARDÁPIO DE HOJE.
+Art. 17. Taxa de entrega. Sobradinho I, quadras 1 a 15: R$ 5; quadras 16 a 18: R$ 7. Sobradinho II (ARs): R$ 10. QMS e Setor de Mansões: R$ 13. Morada dos Nobres: R$ 13. DF-425, Império dos Nobres, RK, Buritizinho, Alto da Boa Vista (CABV) e Nova Colina: R$ 15. Faixa incerta ("Sobradinho 1" sem quadra): pergunte a quadra antes do total. Local fora da lista: "A equipe confirma a taxa."
 Art. 18. Jantinha completa: preço fixo, inclui 1 espeto à escolha; tirar ingrediente não muda o preço (anote). Espetos avulsos = espetos pedidos menos jantinhas. Ex.: "1 jantinha e 5 de alcatra" = 1 jantinha (Alcatra) + 4 espetos. "Sem espeto" = Jantinha sem espeto.
-Art. 19. Pagamento: só o que o cliente disse claramente (Pix, cartão, dinheiro). "Cartão de Todos" é lugar, não pagamento. Sem pagamento, não há resumo.
+Art. 19. Pagamento: Pix (chave landim.marccos@gmail.com; peça o comprovante) ou, na entrega, maquininha com o motoboy; retirada e local pagam na casa. Use só o que o cliente disse claramente (Pix, cartão, dinheiro). "Cartão de Todos" é lugar, não pagamento. Sem pagamento, não há resumo.
 Art. 20. Registro: nome exato do produto no CARDÁPIO. Item sem preço: registre o resto e anote "+ item (valor a equipe confirma)".
 Art. 21. Mídia: no áudio, "cardápio" pode vir trocado por palavra parecida. Foto ou vídeo com problema é reclamação. Comprovante: "Recebi! A equipe confere." Figurinha, foto do cardápio e agradecimento repetido: [SEM_RESPOSTA].
 Art. 22. "O de sempre": use o PEDIDO DE SEMPRE da FICHA ou, sem ele, o ÚLTIMO PEDIDO; mostre o resumo com o total de hoje.
@@ -158,7 +158,7 @@ function prazoLinhas(r) {
 const CARDAPIO_SABADO = '/assets/img/cardapio-sabado.jpg';
 const FEIJOADA_SABADO = '/assets/img/feijoada-sabado.jpg';
 const CARDAPIO_SABADO_TEXTO = [
-  'CARDÁPIO DE HOJE (sábado). Só existem estes itens; o cardápio normal e o prato feito NÃO existem hoje. Atendimento até as 17h, sem separar almoço e jantar; depois das 17h informe que hoje encerrou. Ignore qualquer outro horário.',
+  'CARDÁPIO DE HOJE (sábado). Só existem estes itens; o cardápio normal e o prato feito NÃO existem hoje. Atendimento só das 11h às 15h; depois das 15h informe que hoje encerrou (sábado à noite fechado). Ignore qualquer outro horário.',
   'Espetos R$ 14: alcatra, contra filé, kafta, peito de frango, frango com bacon, meio da asa, coração, lombo suíno, camarão, queijo coalho, linguiça. Queijo provolone e pão de alho R$ 13.',
   'Jantinha completa R$ 22 (arroz branco, mandioca, feijão tropeiro, vinagrete e 1 espeto à escolha). Jantinha sem espeto R$ 13.',
   'Feijoada R$ 27 (couve, arroz branco, torresmo, farofa e vinagrete), em duas formas: "Individual" (marmitas separadas) ou "Tudo junto" (marmita redonda). Pergunte a forma e registre com escolhas {"Forma":"Individual"} ou {"Forma":"Tudo junto"}; sem a forma não registre. Jantinha completa: escolhas {"Espeto":"..."}.',
