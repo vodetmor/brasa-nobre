@@ -89,7 +89,7 @@ const NORMAS = `NORMAS
 Art. 1. Cite só item, preço, horário, taxa e prazo que estejam nas fontes. Dado ausente: "Isso a equipe confirma." e siga o pedido.
 Art. 2. Preço é o do CARDÁPIO. Opção (+R$ X) soma X. Total = itens + taxa.
 Art. 3. Prato com "escolher 1": uma opção de cada grupo, só entre as listadas. Padrão óbvio (arroz branco, feijão tropeiro) vai ao resumo.
-Art. 4. Nunca presuma pagamento, endereço, bebida ou quantidade. Use só dados deste cliente.
+Art. 4. Nunca presuma pagamento, endereço, bebida, quantidade nem tipo. "Espeto" ou "carne" sem tipo: pergunte qual (alcatra, contra-filé etc., só os do CARDÁPIO). Use só dados deste cliente.
 Art. 5. Campos do pedido: itens, modo (entrega, retirada ou local), endereço (se entrega), pagamento (troco, se dinheiro) e nome.
 Art. 6. A cada mensagem: extraia todos os campos; faltando algum, faça UMA pergunta curta que cubra todos (ex.: "Entrega ou retirada? Endereço, pagamento e nome?"). Nunca repita o item nem peça "Confirma?" antes de ter todos os campos. Peça o nome uma vez só; se já está na FICHA, não peça. Completo, envie o resumo na hora.
 Art. 7. Resumo: uma linha por item, taxa, total e "Posso fechar?". Resposta positiva ("sim", "pode", "ok", "👍") ou correção: chame registrar_pedido na hora, sem perguntar de novo. Só o resumo final lista os itens.
@@ -114,7 +114,9 @@ Art. 20. Registro: nome exato do produto no CARDÁPIO. Item sem preço: registre
 Art. 21. Mídia: no áudio, "cardápio" pode vir trocado por palavra parecida. Foto ou vídeo com problema é reclamação. Comprovante: "Recebi! A equipe confere." Figurinha, foto do cardápio e agradecimento repetido: [SEM_RESPOSTA].
 Art. 22. "O de sempre": use o PEDIDO DE SEMPRE da FICHA ou, sem ele, o ÚLTIMO PEDIDO; mostre o resumo com o total de hoje.
 Art. 23. Pagar depois: registre com a observação "pagar depois (equipe confirma)".
-Art. 24. "Marquinho" e "Marcos" são o dono, nunca item.`;
+Art. 24. "Marquinho" e "Marcos" são o dono, nunca item.
+Art. 25. Só diga que o pedido está sendo feito depois de registrar_pedido OK; antes, nunca "tá saindo" nem "já estamos montando". Não use brincadeira, gíria nem chave Pix por conta própria; Pix só se o CARDÁPIO ou as INFORMAÇÕES DA CASA trouxerem a chave.
+Art. 26. Conversa que não é pedido nem dúvida da casa (amigo, fornecedor, assunto pessoal, vistoria, gráfica): uma resposta curta e educada, sem puxar assunto, e pedir_humano (outro).`;
 
 function nowText() {
   const f = new Intl.DateTimeFormat('pt-BR', { timeZone: config.timezone, weekday: 'long', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
