@@ -321,6 +321,15 @@ export async function botTurn(r, body) {
   const since = lastOut?.created_at || '';
   const fresh = await all(`SELECT text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'in' AND created_at >= ?
     AND created_at >= datetime('now', '-120 minutes') ORDER BY created_at, id`, r.id, phone, since);
+  // Se uma resposta foi gravada DEPOIS desta mensagem (cliente respondeu rápido enquanto o robô ainda mandava as partes da resposta
+  // anterior, ou voltou o eco do WhatsApp), a janela "desde a última resposta" fica vazia e a IA recebia texto vazio
+  // (z.ai: 400 "The prompt parameter was not received normally" -> caía no modelo reserva, que chama a equipe). Usa a própria mensagem do turno.
+  let texto = fresh.map(m => m.text).join('\n');
+  if (!texto.trim()) {
+    const mine = await get(`SELECT text FROM wa_messages WHERE id = ? AND restaurant_id = ? AND phone = ? AND direction = 'in'`, id, r.id, phone);
+    texto = String(mine?.text || '');
+  }
+  if (!texto.trim()) return { responder: false, motivo: 'sem_texto' }; // nunca manda texto vazio para a IA
   // só a conversa atual (últimas 6 h): o que foi falado dias atrás não é continuado; o último pedido já vai na FICHA
   const history = (await all(`SELECT direction, origin, text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND created_at <= ?
     AND created_at >= datetime('now', '-6 hours') ORDER BY created_at DESC, id DESC LIMIT 12`, r.id, phone, since || '0'));
@@ -343,7 +352,7 @@ export async function botTurn(r, body) {
   const recent = await get(`SELECT id FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND direction = 'out' AND created_at >= datetime('now', '-12 hours') LIMIT 1`, r.id, phone);
   const recentes = (await all(`SELECT text FROM wa_messages WHERE restaurant_id = ? AND phone = ? AND origin = 'robo' AND created_at >= datetime('now', '-30 minutes')
     ORDER BY id DESC LIMIT 6`, r.id, phone)).map(m => m.text);
-  return { responder: true, texto: fresh.map(m => m.text).join('\n'), prompt: buildPrompt(r, contexto), modelo: botSettings(r).modelo, cardapio_imagem: cardapioSabado(r) ? (config.publicUrl || 'https://brasa-nobre.vercel.app') + CARDAPIO_SABADO : '',
+  return { responder: true, texto, prompt: buildPrompt(r, contexto), modelo: botSettings(r).modelo, cardapio_imagem: cardapioSabado(r) ? (config.publicUrl || 'https://brasa-nobre.vercel.app') + CARDAPIO_SABADO : '',
     cardapio_imagens: cardapioSabado(r) ? [CARDAPIO_SABADO, FEIJOADA_SABADO].map(u => (config.publicUrl || 'https://brasa-nobre.vercel.app') + u) : [], restaurante: r.name, ja_conversou: !!recent, recentes };
 }
 
