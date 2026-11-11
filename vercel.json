@@ -2,6 +2,7 @@
   "buildCommand": null,
   "outputDirectory": "public",
   "redirects": [
+    { "source": "/", "destination": "https://brasa.179-197-85-185.sslip.io/", "permanent": false },
     { "source": "/:path*", "destination": "https://brasa.179-197-85-185.sslip.io/:path*", "permanent": false }
   ]
 }
