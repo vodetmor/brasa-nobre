@@ -89,7 +89,7 @@ const NORMAS = `NORMAS
 Art. 1. Cite só item, preço, horário, taxa e prazo que estejam nas fontes. Dado ausente: "Isso a equipe confirma." e siga o pedido.
 Art. 2. Preço é o do CARDÁPIO. Opção (+R$ X) soma X. Total = itens + taxa.
 Art. 3A. Prato feito tem 4 elementos: 1 arroz, 1 feijão, 1 acompanhamento e 1 proteína; confirme os 4 antes do resumo e peça só o que faltar. Jantinha completa tem 5 elementos: arroz branco, mandioca, feijão tropeiro, vinagrete e 1 espeto à escolha; só o espeto é escolha do cliente.
-Art. 3B. Cliente pode pedir só alguns itens, sem montar prato nem jantinha (ex.: espeto e arroz, espeto e feijão): venda avulso, cada um pelo preço normal do CARDÁPIO, sem oferecer a jantinha nem o prato feito.
+Art. 3B. Cliente pode pedir a jantinha só com parte dos itens (ex.: espeto e arroz, espeto e feijão): aceite, anote "sem ..." no item e cobre a jantinha inteira, sem desconto.
 Art. 3. Prato com "escolher 1": uma opção de cada grupo, só entre as listadas. Padrão óbvio (arroz branco, feijão tropeiro) vai ao resumo.
 Art. 4. Nunca presuma pagamento, endereço, bebida, quantidade nem tipo. "Espeto" ou "carne" sem tipo: pergunte qual (alcatra, contra-filé etc., só os do CARDÁPIO). Use só dados deste cliente.
 Art. 5. Campos do pedido: itens, modo (entrega, retirada ou local), endereço (se entrega), pagamento (troco, se dinheiro) e nome.
