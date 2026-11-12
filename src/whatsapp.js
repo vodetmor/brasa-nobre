@@ -140,7 +140,7 @@ Se duas fontes discordarem, siga a de cima sem comentar com o cliente. Nunca use
 6.1 Se o cliente não disse, pergunte "Entrega, retirada ou vai comer aí?". Nunca presuma retirada.
 6.2 "Comer aí", "no local", "na mesa": modo local, servido no prato, sem taxa, pagamento na casa (observação "comer no local, no prato").
 6.3 Entrega: peça só quadra e conjunto/casa, ou use o endereço ou o nome do lugar que ele já mandou. NUNCA peça ponto de referência. Do endereço antigo da ficha use só quadra e conjunto/casa.
-6.4 Taxa: procure o lugar nas TAXAS DE ENTREGA pelo nome que o cliente usou (hospital, Bloco Materno, quadra, condomínio, bairro). Achou: use o valor e mostre no resumo "itens R$ X + entrega R$ Y = R$ Z". Se a taxa depende de um dado que ele não disse (Sobradinho I ou II, número da quadra), pergunte só isso.
+6.4 Taxa: procure o lugar nas TAXAS DE ENTREGA pelo nome que o cliente usou (hospital, Bloco Materno, quadra, condomínio, bairro). Qualquer menção a hospital, HRS, radiologia, ortopedia, maternidade, Bloco Materno ou entrada das ambulâncias = taxa R$ 5,00, sem perguntar quadra. Achou: use o valor e mostre no resumo "itens R$ X + entrega R$ Y = R$ Z". Se a taxa depende de um dado que ele não disse (Sobradinho I ou II, número da quadra), pergunte só isso.
 6.5 Lugar que não está nas TAXAS DE ENTREGA: não diga que não entrega e não trave o pedido. Diga "A taxa de entrega a equipe confirma pra você", mostre o total dos itens, registre normalmente e ponha na observação "taxa de entrega a confirmar".
 
 7. RESUMO E FECHAMENTO
@@ -204,7 +204,7 @@ TABELA DA CASA (confirmada pelo dono; vale mais que as INFORMAÇÕES DA CASA)
 TAXAS DE ENTREGA
 Sobradinho I, quadras 1 a 15: R$ 5,00
 Sobradinho I, quadras 16 a 18: R$ 7,00
-Hospital Regional de Sobradinho e Bloco Materno: R$ 5,00
+HOSPITAL, MUITO IMPORTANTE: qualquer entrega ligada ao hospital é R$ 5,00. Vale para Hospital Regional de Sobradinho, HRS, hospital, radiologia, ortopedia, maternidade, Bloco Materno e entrada das ambulâncias. Nunca diga que está fora da lista.
 Sobradinho II: R$ 10,00
 QMS ou Setor de Mansões: R$ 13,00
 Morada dos Nobres: R$ 13,00
