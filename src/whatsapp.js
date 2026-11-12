@@ -559,6 +559,21 @@ export async function botHuman(r, body) {
 // ---------- robô: registrar pedido ----------
 // itens: [{ produto, quantidade, escolhas, observacao }] (ou o mesmo em texto JSON). escolhas: objeto { Arroz: "Arroz branco" }
 // ou texto "Arroz branco, Feijão tropeiro, ...". Devolve sempre 200 com "resultado", para a IA explicar o problema ao cliente.
+// Taxa de entrega calculada no servidor (o robô errava ou esquecia; 12/11 o ticket saiu sem taxa).
+// Tabela confirmada pelo dono em 11/11. Sem match: null (equipe confirma).
+export function taxaEntrega(endereco) {
+  const t = norm(endereco || '');
+  if (!t) return null;
+  if (/hospital|\bhrs\b|radiolog|ortoped|matern|bloco materno|ambulanc/.test(t)) return 500;
+  if (/mansoes|\bqms\b|morada dos nobres/.test(t)) return 1300;
+  if (/alto da boa vista|\bcabv\b|df ?425|nova colina|imperio|\brk\b|buritizinho/.test(t)) return 1500;
+  if (/sobradinho (2|ii)\b|\bar ?\d/.test(t)) return 1000;
+  if (/cartorio|academia|\bgym\b|fisioterap|clinica|escola|\bloja\b|shopping|embalage|mercado|farmacia|igreja/.test(t)) return 500;
+  const q = t.match(/\b(?:qd|qda|quadra|q)\.? ?(\d{1,2})\b/);
+  if (q) { const n = Number(q[1]); if (n >= 1 && n <= 15) return 500; if (n <= 18) return 700; }
+  return null;
+}
+
 export async function botOrder(r, body) {
   const phone = cleanPhone(body.telefone);
   if (!r.accepting_orders) return { resultado: 'ERRO: o restaurante não está recebendo pedidos agora. Avise o cliente.' };
@@ -618,7 +633,15 @@ export async function botOrder(r, body) {
   }
   if (problems.length) return { resultado: `ERRO: pedido NÃO registrado. Resolva com o cliente: ${problems.join(' ')}` };
 
+  // taxa de entrega entra como linha do pedido: soma no total e sai no ticket da cozinha
+  let taxa = null;
+  if (mode === 'entrega') {
+    const dada = Math.round(Number(String(body.taxa_entrega ?? body.taxa ?? '').replace(',', '.')) * 100);
+    taxa = dada > 0 && dada <= 5000 ? dada : taxaEntrega(address);
+    if (taxa) lines.push({ name: 'Taxa de entrega', qty: 1, unit_price_cents: taxa, choices: '', note: '' });
+  }
   const total = lines.reduce((s, l) => s + l.unit_price_cents * l.qty, 0);
+  if (mode === 'entrega' && !taxa) body.observacao = [clip(body.observacao, 260), 'taxa de entrega a confirmar'].filter(Boolean).join(' · ');
   const order = await tx(async () => {
     // numeração do dia por canal (pedido do Ribeiro, 06/11): mesa 1+, retirada 101+, entrega 201+.
     // "Comer no local" pelo WhatsApp entra na faixa da retirada (é pedido de balcão).
@@ -640,8 +663,8 @@ export async function botOrder(r, body) {
   } catch (e) { console.error('WhatsApp: pedido não foi para a cozinha', e.message); }
   await alertOwner(r, `🛵 Pedido novo pelo WhatsApp: nº ${order.number}, ${name}, ${brl(total)} (${mode}). ${naCozinha ? 'Já foi para a cozinha.' : 'Confira no painel: não entrou na cozinha.'}`);
   const resumo = lines.map(l => `${l.qty}x ${l.name}${l.choices ? ` (${l.choices.split('; ').map(c => c.slice(c.indexOf(': ') + 2)).join(', ')})` : ''} ${brl(l.unit_price_cents * l.qty)}`).join('; ');
-  return { resultado: `OK: pedido nº ${order.number} registrado. Itens: ${resumo}. Total dos itens: ${brl(total)}` +
-    `${mode === 'entrega' ? ' (sem a taxa de entrega: se ela estiver nas INFORMAÇÕES DA CASA para o bairro, some ao falar o total; senão, diga que a equipe confirma)' : ''}. Pagamento: ${PAYMENTS[payment]}. ` +
+  return { resultado: `OK: pedido nº ${order.number} registrado. Itens: ${resumo}. Total: ${brl(total)}` +
+    `${mode === 'entrega' ? (taxa ? ' (já com a taxa de entrega)' : ' (sem a taxa de entrega: diga que a taxa a equipe confirma)') : ''}. Pagamento: ${PAYMENTS[payment]}. ` +
     (naCozinha ? 'O pedido JÁ ESTÁ CONFIRMADO e foi para a cozinha. Diga ao cliente o número do pedido, o resumo e o total, e que já está sendo preparado (avisamos por aqui quando sair para entrega ou ficar pronto).'
       : 'Diga ao cliente o número do pedido, o resumo e o total, e que a equipe confirma por aqui em instantes.') };
 }
