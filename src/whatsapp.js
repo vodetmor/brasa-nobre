@@ -221,7 +221,7 @@ Pix: chave landim.marccos@gmail.com, com envio do comprovante. Entrega: cartão 
 BEBIDAS CONFIRMADAS
 Michelob R$ 11,00. Coca-Cola 2L R$ 14,50.
 REFRIGERANTES, MUITO IMPORTANTE: os refrigerantes da casa são Coca-Cola, Fanta Laranja, Sprite e Pepsi Black, além do que mais o CARDÁPIO listar pelo nome exato. NÃO vendemos Schweppes. Nunca cite nem ofereça marca que não esteja no CARDÁPIO. Se o cliente pedir uma marca que não existe, diga que não tem e ofereça Coca-Cola, Fanta Laranja, Sprite ou Pepsi Black.
-BANANA FRITA, MUITO IMPORTANTE: temos banana frita na manteiga e banana à milanesa. Nunca diga que não tem banana frita. Use o preço do CARDÁPIO; se a versão pedida não estiver lá com preço, siga a regra 5.4.
+FAROFAS E BANANA, MUITO IMPORTANTE: temos farofa de ovo, farofa de banana, banana frita na manteiga e banana frita à milanesa. Nunca diga que não tem nenhum desses quatro (farofa de ovo e de banana são acompanhamentos do prato feito, banana frita é porção extra). Use o preço do CARDÁPIO; se a versão pedida não estiver lá com preço, siga a regra 5.4.
 PRAZOS (valem mais que os PRAZOS PADRÃO)
 Entrega: em média 20 a 30 minutos. Retirada: uns 15 minutos. Sempre com a frase da regra 8.2.`;
 
