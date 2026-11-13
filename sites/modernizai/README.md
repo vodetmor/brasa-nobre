@@ -1,6 +1,7 @@
 # Site Modernizai + painel admin
 
-HTML/CSS/JS puro. Publicado na Vercel (projeto `modernizai`) pela nuvem via conector Vercel.
+HTML/CSS/JS puro. Roda na VPS Hostinger (container `mz-admin`, `server.js` + `Dockerfile`, sem build), atrás do Caddy:
+https://modernizai.179-197-85-185.sslip.io (painel em `/admin/`). Sem Vercel.
 - Número do WhatsApp: `js/site.js`, constante `WHATSAPP` (vazia = botões levam para #contato).
 - Fotos da equipe: trocar o `<span>`/`<small>` dentro de `.pessoa__foto` por `<img src="img/ruan.webp" alt="Ruan" loading="lazy">`.
 - Nomes/cargos: seção `#equipe` do index.html.
@@ -10,19 +11,19 @@ HTML/CSS/JS puro. Publicado na Vercel (projeto `modernizai`) pela nuvem via cone
 App instalável (PWA) com login, status dos WhatsApps, robôs, VPS, clientes e notificações push.
 
 ```
-VPS (cron, 1/min)  --POST HTTPS-->  /api/admin/ingest  --> Neon (Postgres: status, inscrições, alertas, saldo da IA)
+VPS (cron, 1/min)  --POST HTTPS-->  /api/admin/ingest  --> arquivos JSON em /dados (volume): status, inscrições, alertas, saldo da IA
                                                        --> push para os celulares inscritos
 celular (/admin)   --cookie-->      /api/admin/status, /api/admin/push
-GitHub Actions (10 min) -->         /api/admin/vigia   --> push "VPS sem sinal" se parou de chegar relatório
+server.js (5 min)  -->              vigia              --> push "VPS sem sinal" se parou de chegar relatório
 ```
 
 - `admin/` tela (index, css, js, manifest, service worker, ícones). Nenhum segredo no navegador.
 - `api/admin/` funções: `login`, `status`, `push`, `ingest`, `vigia`. Regras de alerta em `_regras.js`
   (problema só vira alerta depois de 2 relatórios seguidos; avisa de novo quando volta).
   Clientes mostrados em `_clientes.js`.
-- `vps/painel_status.py` script da VPS (só leitura, stdlib). Não vai para a Vercel (`.vercelignore`).
-- Variáveis na Vercel: `ADMIN_SENHA`, `ADMIN_SEGREDO`, `PAINEL_CHAVE_VPS`, `VAPID_PUBLICA`, `VAPID_PRIVADA`,
-  `DATABASE_URL` (criada pelo Neon ligado ao projeto; tabela `admin_kv`, criada sozinha).
+- `vps/painel_status.py` script da VPS (só leitura, stdlib). Não entra no container.
+- Variáveis em `/opt/mz-admin/.env` na VPS (nunca no Git): `ADMIN_SENHA`, `ADMIN_SEGREDO`, `PAINEL_CHAVE_VPS`,
+  `VAPID_PUBLICA`, `VAPID_PRIVADA`. Dados em `ADMIN_DADOS=/dados` (volume `mz-admin-dados`).
 - iPhone: push só funciona com o app instalado (Compartilhar → Adicionar à Tela de Início), iOS 16.4+.
 
 ### Saldo da IA (z.ai)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Relatório da VPS para o painel admin da Modernizai (https://modernizai-df.vercel.app/admin).
+"""Relatório da VPS para o painel admin da Modernizai (https://modernizai.179-197-85-185.sslip.io/admin).
 
 SÓ LEITURA: não reinicia, não desconecta e não muda nada. Única escrita para
 fora: quando o painel pede, manda um aviso de texto (ex.: saldo da IA acabando)
@@ -9,7 +9,7 @@ manda por HTTPS (saída) para /api/admin/ingest. Nenhuma porta nova é aberta.
 
 Instalação (como claudenuvem):
   mkdir -p ~/painel && cp painel_status.py ~/painel/
-  echo '{"url":"https://modernizai-df.vercel.app/api/admin/ingest","chave":"COLE_A_CHAVE","whatsapp_destino":"55DDNUMERO"}' > ~/painel/config.json
+  echo '{"url":"https://modernizai.179-197-85-185.sslip.io/api/admin/ingest","chave":"COLE_A_CHAVE","whatsapp_destino":"55DDNUMERO"}' > ~/painel/config.json
   chmod 600 ~/painel/config.json
   sudo -n /usr/bin/python3 ~/painel/painel_status.py --mostrar   # só mostra, não envia
   (crontab -l; echo '* * * * * sudo -n /usr/bin/python3 /home/claudenuvem/painel/painel_status.py >/dev/null 2>&1') | crontab -

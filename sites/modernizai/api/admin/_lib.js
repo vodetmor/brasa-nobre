@@ -1,10 +1,11 @@
 // Peças comuns do painel admin (só no servidor; nada daqui vai para o navegador).
-// Variáveis de ambiente (Vercel → projeto modernizai):
+// Variáveis de ambiente (arquivo .env na VPS, nunca no Git):
 //   ADMIN_SENHA            senha do login do painel
 //   ADMIN_SEGREDO          segredo para assinar o cookie de sessão
 //   PAINEL_CHAVE_VPS       chave que a VPS manda no POST /api/admin/ingest
 //   VAPID_PUBLICA / VAPID_PRIVADA   chaves das notificações push
-//   DATABASE_URL           criada pela Vercel ao ligar o Neon (guarda status, alertas, inscrições e saldo da IA)
+//   ADMIN_DADOS            pasta onde ficam os dados (status, alertas, inscrições e saldo da IA) em arquivos JSON.
+//                          É o padrão na VPS (volume do Docker). Sem ela, usa o Postgres de DATABASE_URL.
 const crypto = require("crypto");
 
 const COOKIE = "mz_admin";
@@ -102,7 +103,21 @@ function banco() {
   return _pronta.then(() => _pool);
 }
 
+// Na VPS os dados ficam em arquivos (um JSON por chave) dentro de ADMIN_DADOS.
+const fs = require("fs");
+const path = require("path");
+const PASTA = process.env.ADMIN_DADOS || "";
+const arquivo = (chave) => path.join(PASTA, chave.replace(/[^a-z0-9.]+/gi, "_"));
+
 async function lerJson(caminho, padrao) {
+  if (PASTA) {
+    try {
+      return JSON.parse(await fs.promises.readFile(arquivo(caminho), "utf8"));
+    } catch (e) {
+      if (e.code !== "ENOENT") console.error("lerJson", caminho, e.message);
+      return padrao;
+    }
+  }
   try {
     const pool = await banco();
     const r = await pool.query("select valor from admin_kv where chave = $1", [caminho]);
@@ -114,6 +129,13 @@ async function lerJson(caminho, padrao) {
 }
 
 async function gravarJson(caminho, dados) {
+  if (PASTA) {
+    // grava num temporário e troca de uma vez, para nunca deixar arquivo pela metade
+    const tmp = arquivo(caminho) + "." + process.pid + "." + crypto.randomBytes(4).toString("hex") + ".tmp";
+    await fs.promises.writeFile(tmp, JSON.stringify(dados));
+    await fs.promises.rename(tmp, arquivo(caminho));
+    return;
+  }
   const pool = await banco();
   await pool.query(
     "insert into admin_kv (chave, valor, atualizado) values ($1, $2::jsonb, now()) on conflict (chave) do update set valor = excluded.valor, atualizado = now()",
