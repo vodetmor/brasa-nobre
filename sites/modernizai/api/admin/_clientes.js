@@ -34,7 +34,7 @@ module.exports = [
     robo: "medicmais",
     links: [
       { nome: "Site", url: "https://medicmais-sobradinho-site.vercel.app" },
-      { nome: "Painel do robô", url: "https://medic-mais.vercel.app" },
+      { nome: "Painel do robô", url: "https://painel.179-197-85-185.sslip.io/app/" },
     ],
   },
 ];
