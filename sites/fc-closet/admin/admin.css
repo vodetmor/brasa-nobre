@@ -1,0 +1,88 @@
+/* Painel da loja · FC Closet (simples, grande, feito para o celular) */
+:root{--vinho:#3A0A12;--vinho2:#6B3A42;--rose:#B08A86;--nude:#E8D6CC;--creme:#F6EDE7;--linha:#E3D1C8;--suave:#7A6465;--erro:#A8323F;--ok:#4C7A55;
+--titulo:"Cormorant Garamond",Georgia,serif;--texto:Jost,system-ui,-apple-system,"Segoe UI",sans-serif}
+@font-face{font-family:"Cormorant Garamond";font-style:normal;font-weight:300 500;font-display:swap;src:url("../fonts/cormorant.woff2") format("woff2")}
+@font-face{font-family:"Jost";font-style:normal;font-weight:300 500;font-display:swap;src:url("../fonts/jost.woff2") format("woff2")}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:400 16px/1.5 var(--texto);background:var(--creme);color:var(--vinho);-webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--vinho2);outline-offset:2px}
+
+.btn{min-height:50px;padding:0 24px;background:var(--vinho);color:var(--creme);border:1px solid var(--vinho);font-weight:500;letter-spacing:.06em}
+.btn:hover{background:var(--vinho2);border-color:var(--vinho2)}
+.btn-l{min-height:50px;padding:0 22px;background:transparent;border:1px solid var(--vinho);font-weight:500}
+.btn-l:hover{background:var(--vinho);color:var(--creme)}
+.btn-p{min-height:44px;padding:0 16px;border:1px solid var(--linha);background:#fff;font-size:15px}
+.btn-p:hover{border-color:var(--vinho)}
+.btn-p.perigo{color:var(--erro)}
+.btn-p.perigo:hover{border-color:var(--erro)}
+
+/* entrar */
+.entrar{min-height:100svh;display:grid;place-items:center;padding:20px;background:var(--vinho)}
+.entrar-caixa{width:min(420px,100%);background:var(--creme);padding:34px 28px;display:grid;gap:14px;text-align:center}
+.entrar-caixa img{margin:0 auto;filter:none;background:var(--vinho);padding:14px 22px;width:170px;height:auto}
+.entrar-caixa h1{font:400 34px/1.1 var(--titulo)}
+.entrar-caixa p{color:var(--suave)}
+.entrar-caixa label{display:grid;gap:6px;text-align:left;font-weight:500}
+.entrar-caixa input{height:52px;padding:0 14px;border:1px solid var(--linha);background:#fff}
+.dica{font-size:14px}.dica b{color:var(--vinho)}
+.voltar{color:var(--vinho2);font-size:14px;text-decoration:underline;text-underline-offset:3px}
+.erro{color:var(--erro);font-size:14px}
+
+/* barra */
+.barra{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:14px;background:var(--vinho);color:var(--creme);padding:10px 16px}
+.barra img{height:46px;width:auto}
+.barra-t{flex:1;display:grid;line-height:1.2}.barra-t b{font:400 20px/1.1 var(--titulo)}.barra-t span{font-size:13px;color:#D9C2BA}
+.barra-link{background:none;border:0;color:var(--creme);font-size:14px;text-decoration:underline;text-underline-offset:3px;min-height:44px;padding:0 6px}
+
+.conteudo{max-width:900px;margin:0 auto;padding:20px 16px 60px}
+.resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.resumo div{background:#fff;border:1px solid var(--linha);padding:14px 10px;text-align:center}
+.resumo b{display:block;font:400 34px/1 var(--titulo)}
+.resumo span{font-size:13px;color:var(--suave);letter-spacing:.08em;text-transform:uppercase}
+.acoes{display:flex;gap:10px;flex-wrap:wrap}
+.acoes .btn{flex:1 1 200px}
+.aviso-demo{margin:14px 0 20px;font-size:14px;color:var(--suave);background:var(--nude);padding:10px 14px}
+
+.lista{list-style:none;display:grid;gap:12px}
+.item{display:grid;grid-template-columns:84px 1fr;gap:14px;background:#fff;border:1px solid var(--linha);padding:12px}
+.item img{width:84px;height:112px;object-fit:cover;object-position:50% 20%;background:var(--nude)}
+.item.off img{opacity:.5}
+.item h3{font:400 21px/1.15 var(--titulo)}
+.item .meta{font-size:14px;color:var(--suave);margin:2px 0 8px}
+.etq{display:inline-block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;background:var(--nude);margin-right:6px}
+.etq.ok{background:#DCEBDD;color:#2E5A38}.etq.no{background:#F3D9DC;color:var(--erro)}
+.item-acoes{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--linha);padding-top:10px}
+.item-acoes button{flex:1 1 auto}
+.vazio{text-align:center;color:var(--suave);padding:40px 0}
+
+/* formulário */
+.folha{position:fixed;inset:0;z-index:30;display:grid;place-items:center}
+.folha-fundo{position:absolute;inset:0;background:rgba(58,10,18,.5)}
+.folha-caixa{position:relative;width:min(560px,100%);max-height:100svh;overflow:auto;background:var(--creme);padding:20px 18px 24px;display:grid;gap:16px}
+.folha-topo{display:flex;justify-content:space-between;align-items:center}
+.folha-topo h2{font:400 30px/1 var(--titulo)}
+.x{width:44px;height:44px;border:0;background:none;font-size:30px;line-height:1}
+.campo{display:grid;gap:6px}
+.rot{font-weight:500;font-size:14px;letter-spacing:.06em;text-transform:uppercase}
+.campo input,.campo select,.campo textarea{border:1px solid var(--linha);background:#fff;padding:0 12px;min-height:50px;width:100%}
+.campo textarea{padding:10px 12px;min-height:90px;resize:vertical}
+.duas{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ajuda{font-size:13px;color:var(--suave)}
+.fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.foto-t{position:relative;aspect-ratio:3/4;border:0;padding:0;background:var(--nude);overflow:hidden}
+.foto-t img{width:100%;height:100%;object-fit:cover}
+.foto-t::after{content:"×";position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;background:rgba(58,10,18,.85);color:#fff;font-size:18px;line-height:26px;text-align:center}
+.foto-t.capa::before{content:"Capa";position:absolute;left:4px;bottom:4px;z-index:1;background:var(--vinho);color:#fff;font-size:11px;padding:2px 6px;letter-spacing:.08em}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-width:52px;min-height:46px;padding:0 14px;border:1px solid var(--linha);background:#fff;font-weight:500}
+.chip[aria-pressed="true"]{background:var(--vinho);color:var(--creme);border-color:var(--vinho)}
+.chk{display:flex;align-items:center;gap:12px;min-height:44px}
+.chk input{width:24px;height:24px;accent-color:var(--vinho)}
+.folha-fim{display:flex;gap:10px}.folha-fim>*{flex:1}
+
+.toast{position:fixed;left:50%;bottom:24px;z-index:50;transform:translate(-50%,20px);background:var(--vinho);color:var(--creme);padding:13px 20px;opacity:0;pointer-events:none;transition:.25s;max-width:calc(100% - 32px);text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media(min-width:700px){.item{grid-template-columns:96px 1fr auto}.item img{width:96px;height:128px}.item-acoes{grid-column:auto;border:0;padding:0;flex-direction:column;justify-content:center}.folha-caixa{max-height:92svh}}

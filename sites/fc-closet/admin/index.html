@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Painel da loja · FC Closet</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#3A0A12">
+  <link rel="icon" href="../img/favicon.png" type="image/png">
+  <link rel="stylesheet" href="admin.css?v=1">
+</head>
+<body>
+
+<!-- ENTRAR -->
+<main class="entrar" id="telaEntrar">
+  <form class="entrar-caixa" id="formEntrar" autocomplete="off">
+    <img src="../img/logo-creme.png" alt="FC Closet" width="150" height="107">
+    <h1>Painel da loja</h1>
+    <p>Aqui você adiciona, edita e tira peças do site.</p>
+    <label>Senha <input type="password" id="senha" placeholder="Digite a senha" autofocus></label>
+    <p class="erro" id="erroSenha" hidden>Senha incorreta.</p>
+    <button class="btn" type="submit">Entrar</button>
+    <p class="dica">Demonstração: a senha é <b>closet2026</b></p>
+    <a class="voltar" href="../index.html">← Voltar ao site</a>
+  </form>
+</main>
+
+<!-- PAINEL -->
+<div id="painel" hidden>
+  <header class="barra">
+    <img src="../img/logo-creme.png" alt="FC Closet" width="64" height="46">
+    <div class="barra-t"><b>Painel da loja</b><span>Olá, Fernanda</span></div>
+    <a class="barra-link" href="../index.html" target="_blank" rel="noopener">Ver o site</a>
+    <button class="barra-link" id="sair">Sair</button>
+  </header>
+
+  <main class="conteudo">
+    <div class="resumo">
+      <div><b id="nTotal">0</b><span>peças</span></div>
+      <div><b id="nOn">0</b><span>à venda</span></div>
+      <div><b id="nOff">0</b><span>esgotadas</span></div>
+    </div>
+
+    <div class="acoes">
+      <button class="btn" id="novo">+ Nova peça</button>
+      <button class="btn-l" id="restaurar">Restaurar peças de exemplo</button>
+    </div>
+    <p class="aviso-demo">Modo demonstração: as mudanças ficam salvas neste aparelho e aparecem na hora no site. Abra o site em outra aba para ver.</p>
+
+    <ul class="lista" id="lista"></ul>
+    <p class="vazio" id="vazio" hidden>Nenhuma peça cadastrada. Toque em “+ Nova peça”.</p>
+  </main>
+</div>
+
+<!-- FORMULÁRIO -->
+<div class="folha" id="folha" hidden role="dialog" aria-modal="true" aria-labelledby="folhaT">
+  <div class="folha-fundo" data-fechar></div>
+  <form class="folha-caixa" id="form">
+    <div class="folha-topo"><h2 id="folhaT">Nova peça</h2><button type="button" class="x" data-fechar aria-label="Fechar">×</button></div>
+
+    <div class="campo">
+      <span class="rot">Fotos</span>
+      <div class="fotos" id="fotos"></div>
+      <input type="file" id="arquivo" accept="image/*" multiple hidden>
+      <button type="button" class="btn-l" id="addFoto">+ Adicionar fotos</button>
+      <p class="ajuda">A primeira foto é a capa. Toque na foto para removê-la.</p>
+    </div>
+
+    <label class="campo"><span class="rot">Nome da peça</span><input id="fNome" required maxlength="60" placeholder="Ex.: Vestido Longo Vinho"></label>
+
+    <div class="duas">
+      <label class="campo"><span class="rot">Preço (R$)</span><input id="fPreco" inputmode="decimal" placeholder="289,90"></label>
+      <label class="campo"><span class="rot">Categoria</span>
+        <select id="fCat"></select>
+      </label>
+    </div>
+    <label class="campo" id="campoNovaCat" hidden><span class="rot">Nome da nova categoria</span><input id="fNovaCat" maxlength="24" placeholder="Ex.: Conjuntos"></label>
+
+    <div class="campo">
+      <span class="rot">Tamanhos disponíveis</span>
+      <div class="chips" id="fTam"></div>
+    </div>
+
+    <label class="campo"><span class="rot">Descrição</span><textarea id="fDesc" rows="3" maxlength="300" placeholder="Tecido, caimento, ocasião..."></textarea></label>
+
+    <label class="chk"><input type="checkbox" id="fNovo"><span>Mostrar em “Novidades”</span></label>
+    <label class="chk"><input type="checkbox" id="fDisp" checked><span>Disponível para venda</span></label>
+
+    <p class="erro" id="erroForm" hidden></p>
+    <div class="folha-fim">
+      <button type="button" class="btn-l" data-fechar>Cancelar</button>
+      <button type="submit" class="btn">Salvar peça</button>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="../js/dados.js?v=1"></script>
+<script src="admin.js?v=1"></script>
+</body>
+</html>
