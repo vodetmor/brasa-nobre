@@ -135,10 +135,11 @@
     $("#lista").innerHTML = produtos.map((p, i) => `<li class="item${!p.disponivel || !p.visivel ? " off" : ""}" data-id="${esc(p.id)}">
       ${p.fotos[0] ? `<img src="${esc(fotoA(p.fotos[0]))}" alt="">` : '<span class="sem">Sem foto</span>'}
       <div><h3>${esc(p.nome)}</h3>
-        <p class="meta">${preco(p.preco)} · ${esc(p.categoria)}${p.tamanhos.length ? " · " + esc(p.tamanhos.join(", ")) : ""}</p>
+        <p class="meta">${preco(p.preco)} · ${esc(p.categoria)}${p.tamanhos.length ? " · " + esc(p.tamanhos.join(", ")) : ""}${p.modelo ? " · modelo " + esc(p.modelo) : ""}</p>
         <span class="etq ${p.disponivel ? "ok" : "no"}">${p.disponivel ? "À venda" : "Esgotado"}</span>${p.novidade ? '<span class="etq">Novidade</span>' : ""}${p.visivel ? "" : '<span class="etq no">Escondida</span>'}</div>
       <div class="item-acoes">
         <button class="btn-p" data-a="editar">Editar</button>
+        <button class="btn-p" data-a="cor">+ Outra cor</button>
         <button class="btn-p" data-a="disp">${p.disponivel ? "Marcar esgotado" : "Voltar a vender"}</button>
         <button class="btn-p" data-a="ver">${p.visivel ? "Esconder" : "Mostrar no site"}</button>
         <button class="btn-p" data-a="sobe" aria-label="Subir ${esc(p.nome)}"${i === 0 ? " disabled" : ""}>↑</button>
@@ -152,6 +153,7 @@
     if (!p) return;
     const url = x => "produtos?id=eq." + x.id, a = b.dataset.a;
     if (a === "editar") abre(p);
+    if (a === "cor") abre(null, p);
     if (a === "disp") faz(() => grava(url(p), "PATCH", { disponivel: !p.disponivel }), p.disponivel ? "Peça marcada como esgotada" : "Peça voltou para a venda");
     if (a === "ver") faz(() => grava(url(p), "PATCH", { visivel: !p.visivel }), p.visivel ? "Peça escondida do site" : "Peça aparecendo no site");
     if (a === "sobe" || a === "desce") faz(() => move(produtos, i, a === "sobe" ? -1 : 1, url));
@@ -205,11 +207,21 @@
   /* ---------- formulário da peça ---------- */
   const folha = $("#folha"), selCat = $("#fCat");
   let editando = null, fotos = [], tams = new Set(), salvando = false;
+  /* "+ Outra cor": peça de origem e se o nome ainda é o sugerido */
+  let origem = null, nomeLivre = false;
+  const semCor = p => { const cor = p.categoria.toLowerCase(), limpo = p.nome.split(/\s+/).filter(x => x.toLowerCase() !== cor).join(" "); return limpo || p.nome; };
+  function sugereNome() {
+    if (!origem || !nomeLivre) return;
+    const cor = selCat.value === "__nova" ? $("#fNovaCat").value.trim() : selCat.value;
+    $("#fNome").value = `${semCor(origem)} ${cor}`.trim().slice(0, 60);
+  }
+  $("#fNome").addEventListener("input", () => { nomeLivre = false; });
+  $("#fNovaCat").addEventListener("input", sugereNome);
   function opcoesCat(sel) {
     selCat.innerHTML = cats.map(c => `<option value="${esc(c.nome)}"${c.nome === sel ? " selected" : ""}>${esc(c.nome)}</option>`).join("") + '<option value="__nova">+ Nova categoria…</option>';
     $("#campoNovaCat").hidden = selCat.value !== "__nova";
   }
-  selCat.addEventListener("change", () => { $("#campoNovaCat").hidden = selCat.value !== "__nova"; if (selCat.value === "__nova") $("#fNovaCat").focus(); });
+  selCat.addEventListener("change", () => { $("#campoNovaCat").hidden = selCat.value !== "__nova"; if (selCat.value === "__nova") $("#fNovaCat").focus(); sugereNome(); });
   function chipsTam() {
     const todos = [...TAMANHOS, ...[...tams].filter(t => !TAMANHOS.includes(t))];
     $("#fTam").innerHTML = todos.map(t => `<button type="button" class="chip" data-t="${esc(t)}" aria-pressed="${tams.has(t)}">${esc(t)}</button>`).join("");
@@ -235,14 +247,25 @@
     e.target.value = ""; miniaturas();
   });
 
-  function abre(p) {
-    editando = p || null;
-    $("#folhaT").textContent = p ? "Editar peça" : "Nova peça";
+  function abre(p, base) {
+    editando = p || null; origem = base || null; nomeLivre = !!base;
+    $("#folhaT").textContent = p ? "Editar peça" : base ? "Outra cor" : "Nova peça";
+    $("#ajudaCor").hidden = !base;
     fotos = p ? p.fotos.map(ref => ({ ref })) : []; tams = new Set(p ? p.tamanhos : []);
     $("#fNome").value = p ? p.nome : ""; $("#fPreco").value = p && p.preco > 0 ? Number(p.preco).toFixed(2).replace(".", ",") : "";
     $("#fDesc").value = p ? p.descricao : ""; $("#fOutroTam").value = "";
     $("#fNovo").checked = p ? p.novidade : true; $("#fDisp").checked = p ? p.disponivel : true; $("#fVisivel").checked = p ? p.visivel : true;
     opcoesCat(p ? p.categoria : cats[0] && cats[0].nome); $("#fNovaCat").value = "";
+    $("#fModelo").value = p ? p.modelo || "" : "";
+    $("#listaModelos").innerHTML = [...new Set(produtos.map(x => x.modelo).filter(Boolean))].map(m => `<option value="${esc(m)}"></option>`).join("");
+    if (base) {
+      tams = new Set(base.tamanhos);
+      $("#fPreco").value = base.preco > 0 ? Number(base.preco).toFixed(2).replace(".", ",") : "";
+      $("#fDesc").value = base.descricao;
+      $("#fModelo").value = base.modelo || semCor(base).slice(0, 40);
+      selCat.insertAdjacentHTML("afterbegin", '<option value="" disabled>Escolha a cor…</option>'); selCat.value = ""; $("#campoNovaCat").hidden = true;
+      sugereNome();
+    }
     erroEm("#erroForm"); chipsTam(); miniaturas();
     folha.hidden = false; document.body.style.overflow = "hidden"; $(".folha-caixa", folha).scrollTop = 0;
   }
@@ -264,6 +287,9 @@
     if (!fotos.length) return erro("Adicione pelo menos uma foto.");
     const valor = lePreco($("#fPreco").value); if (Number.isNaN(valor)) return erro("Confira o preço. Exemplo: 289,90");
     let cat = selCat.value, criaCat = false;
+    if (!cat) return erro("Escolha a categoria da cor nova.");
+    const modelo = $("#fModelo").value.trim();
+    if (origem && !modelo) return erro("Escreva o nome do modelo para juntar as cores.");
     if (cat === "__nova") {
       cat = $("#fNovaCat").value.trim(); if (!cat) return erro("Escreva o nome da nova categoria.");
       const ja = cats.find(c => c.nome.toLowerCase() === cat.toLowerCase()); if (ja) cat = ja.nome; else criaCat = true;
@@ -276,9 +302,13 @@
       for (const f of fotos) if (!f.ref) { botao.textContent = `Enviando foto ${++n} de ${novas}…`; f.ref = await envia(f.file); enviadas.push(f); }
       botao.textContent = "Salvando…";
       if (criaCat) { await grava("categorias", "POST", { nome: cat, ordem: cats.length + 1 }); cats.push({ nome: cat, ordem: cats.length + 1 }); opcoesCat(cat); }
-      const dados = { nome, categoria: cat, preco: valor, fotos: fotos.map(f => f.ref), tamanhos: [...TAMANHOS.filter(t => tams.has(t)), ...[...tams].filter(t => !TAMANHOS.includes(t))], descricao: $("#fDesc").value.trim(), novidade: $("#fNovo").checked, disponivel: $("#fDisp").checked, visivel: $("#fVisivel").checked };
+      const dados = { nome, modelo, categoria: cat, preco: valor, fotos: fotos.map(f => f.ref), tamanhos: [...TAMANHOS.filter(t => tams.has(t)), ...[...tams].filter(t => !TAMANHOS.includes(t))], descricao: $("#fDesc").value.trim(), novidade: $("#fNovo").checked, disponivel: $("#fDisp").checked, visivel: $("#fVisivel").checked };
       await grava(era ? "produtos?id=eq." + era.id : "produtos", era ? "PATCH" : "POST", dados);
-      salvando = false; fecha();
+      const de = origem; salvando = false; fecha();
+      if (de && (de.modelo || "") !== modelo) {
+        try { await grava("produtos?id=eq." + de.id, "PATCH", { modelo }); }
+        catch (x) { toast(`Cor salva. Falta escrever o modelo "${modelo}" na peça ${de.nome}.`); }
+      }
       await limpaFotos(antigas);
       await faz(async () => {}, era ? "Peça atualizada no site" : "Peça adicionada ao site");
     } catch (x) {

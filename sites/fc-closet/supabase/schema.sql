@@ -46,7 +46,8 @@ create table public.produtos (
   disponivel boolean not null default true,
   visivel boolean not null default true,
   ordem int not null default 0,
-  criado_em timestamptz not null default now()
+  criado_em timestamptz not null default now(),
+  modelo text not null default '' check (char_length(modelo) <= 40)
 );
 create index produtos_categoria_idx on public.produtos (categoria);
 

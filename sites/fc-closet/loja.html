@@ -14,7 +14,7 @@
   <link rel="preload" href="fonts/jost.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/cormorant-italic.woff2" as="font" type="font/woff2" crossorigin>
   
-  <link rel="stylesheet" href="css/estilo.css?v=5">
+  <link rel="stylesheet" href="css/estilo.css?v=6">
 </head>
 <body data-pagina="loja">
 
@@ -95,6 +95,10 @@
       <p class="sobretitulo" data-mp-cat></p>
       <h3 id="mpNome" data-mp-nome></h3>
       <p class="mp-preco" data-mp-preco></p>
+      <div class="mp-cores" data-mp-cores hidden>
+        <p class="mp-cores-rot">Cor: <span data-mp-cor></span></p>
+        <div class="mp-cores-lista" data-mp-cores-lista></div>
+      </div>
       <p class="mp-desc" data-mp-desc></p>
       <fieldset class="mp-tamanhos" data-mp-tamanhos>
         <legend>Tamanho</legend>
@@ -122,6 +126,6 @@
 </aside>
 <div class="toast" data-toast role="status" aria-live="polite"></div>
 <script src="js/dados.js?v=4"></script>
-<script src="js/site.js?v=5" defer></script>
+<script src="js/site.js?v=6" defer></script>
 </body>
 </html>

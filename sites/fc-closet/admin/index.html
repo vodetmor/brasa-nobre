@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#3A0A12">
   <link rel="icon" href="../img/favicon.png" type="image/png">
-  <link rel="stylesheet" href="admin.css?v=2">
+  <link rel="stylesheet" href="admin.css?v=3">
 </head>
 <body>
 
@@ -100,6 +100,7 @@
   <div class="folha-fundo" data-fechar></div>
   <form class="folha-caixa" id="form" novalidate>
     <div class="folha-topo"><h2 id="folhaT">Nova peça</h2><button type="button" class="x" data-fechar aria-label="Fechar">×</button></div>
+    <p class="ajuda" id="ajudaCor" hidden>Escolha a categoria da cor nova, adicione as fotos e confira a descrição. Preço e tamanhos já vieram copiados.</p>
 
     <div class="campo">
       <span class="rot">Fotos</span>
@@ -116,6 +117,9 @@
       <label class="campo"><span class="rot">Categoria</span><select id="fCat"></select></label>
     </div>
     <label class="campo" id="campoNovaCat" hidden><span class="rot">Nome da nova categoria</span><input id="fNovaCat" maxlength="24" placeholder="Ex.: Conjuntos"></label>
+    <label class="campo"><span class="rot">Modelo (junta as cores)</span><input id="fModelo" maxlength="40" list="listaModelos" placeholder="Ex.: Júlia" autocomplete="off"></label>
+    <datalist id="listaModelos"></datalist>
+    <p class="ajuda">Peças com o mesmo modelo aparecem juntas no site, para a cliente trocar de cor. Deixe vazio se o vestido tem uma cor só.</p>
 
     <div class="campo">
       <span class="rot">Tamanhos disponíveis</span>
@@ -148,6 +152,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="../js/dados.js?v=4"></script>
-<script src="admin.js?v=2"></script>
+<script src="admin.js?v=3"></script>
 </body>
 </html>

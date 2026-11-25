@@ -178,9 +178,19 @@ function iniciar(DADOS) {
     if (s) vaiPara(posicao() + Number(s.dataset.mpPasso));
     if (d) vaiPara(Number(d.dataset.mpIr));
   });
-  function abreProduto(id, semHistorico) {
+  /* as cores de um mesmo vestido são as peças com o mesmo "modelo" no painel */
+  const chaveModelo = p => (p.modelo || "").trim().toLocaleLowerCase("pt-BR");
+  function cores(p) {
+    const k = chaveModelo(p), lista = k ? PRODUTOS.filter(x => chaveModelo(x) === k) : [], box = $("[data-mp-cores]", modal);
+    box.hidden = lista.length < 2;
+    $("[data-mp-cor]", modal).textContent = p.categoria;
+    $("[data-mp-cores-lista]", modal).innerHTML = box.hidden ? "" : lista.map(x => `<button type="button" data-mp-outra="${esc(x.id)}" aria-pressed="${x.id === p.id}"${x.disponivel === false ? ' class="esgotada"' : ""} aria-label="${esc(x.nome)}${x.disponivel === false ? " (esgotado)" : ""}" title="${esc(x.categoria)}">${x.fotos[0] ? `<img src="${foto(x.fotos[0], "s")}" alt="">` : vazia()}</button>`).join("");
+  }
+
+  function abreProduto(id, semHistorico, troca) {
     const p = porId[id]; if (!p) return;
-    atual = p; tam = null; ultimo = document.activeElement;
+    const tamAntes = troca ? tam : null;
+    atual = p; tam = null; if (!troca) ultimo = document.activeElement;
     $("[data-mp-fotos]", modal).innerHTML = p.fotos.length ? p.fotos.map((f, i) => `<img ${srcCheia(f)} alt="${esc(p.nome)}${i ? `, foto ${i + 1}` : ""}">`).join("") : vazia();
     pontos.innerHTML = p.fotos.length > 1 ? p.fotos.map((f, i) => `<button type="button" data-mp-ir="${i}" aria-label="Ver foto ${i + 1}"></button>`).join("") : "";
     $$(".mp-seta", modal).forEach(b => { b.hidden = p.fotos.length < 2; });
@@ -191,12 +201,19 @@ function iniciar(DADOS) {
     const box = $("[data-mp-tamanhos]", modal); box.hidden = !(p.tamanhos || []).length;
     $("[data-mp-lista]", modal).innerHTML = (p.tamanhos || []).map(t => `<button class="tamanho" data-tam="${esc(t)}" aria-pressed="false">${esc(t)}</button>`).join("");
     $("[data-mp-erro]", modal).hidden = true;
+    if (tamAntes && (p.tamanhos || []).includes(tamAntes)) { tam = tamAntes; $$("[data-tam]", modal).forEach(b => b.setAttribute("aria-pressed", b.dataset.tam === tam)); }
+    cores(p);
     const add = $("[data-mp-add]", modal);
     add.disabled = p.disponivel === false; add.textContent = p.disponivel === false ? "Esgotado" : "Adicionar à sacola";
     const w = $("[data-mp-whats]", modal); w.dataset.whats = `Olá! Tenho interesse em "${p.nome}". Pode me passar mais detalhes?\n${linkPeca(p.id)}`; w.href = linkWhats(w.dataset.whats); w.target = "_blank";
     modal.hidden = false; document.body.style.overflow = "hidden"; $(".fechar", modal).focus();
     galeria.scrollLeft = 0; marca();
-    if (!semHistorico) { const u = new URL(location.href); u.searchParams.set("peca", p.id); abreCamada("produto", u.href); }
+    if (troca) {
+      /* troca de cor: mesma janela, só muda o endereço (o "voltar" continua fechando) */
+      const u = new URL(location.href); u.searchParams.set("peca", p.id); history.replaceState(history.state, "", u.href);
+      [modal, $(".modal-caixa", modal), $(".mp-info", modal)].forEach(el => el.scrollTo({ top: 0, behavior: "smooth" }));
+      const b = $('[data-mp-outra][aria-pressed="true"]', modal); if (b) b.focus({ preventScroll: true });
+    } else if (!semHistorico) { const u = new URL(location.href); u.searchParams.set("peca", p.id); abreCamada("produto", u.href); }
   }
   const fechaProduto = (peloVoltar) => {
     if (modal.hidden) return;
@@ -221,6 +238,7 @@ function iniciar(DADOS) {
   document.addEventListener("click", e => {
     const ab = e.target.closest("[data-abrir]"); if (ab) { abreProduto(ab.dataset.abrir); return; }
     if (e.target.closest("[data-fechar]")) fechaProduto();
+    const outra = e.target.closest("[data-mp-outra]"); if (outra) { if (outra.dataset.mpOutra !== atual.id) abreProduto(outra.dataset.mpOutra, true, true); return; }
     const t = e.target.closest("[data-tam]");
     if (t) { tam = t.dataset.tam; $$("[data-tam]", modal).forEach(b => b.setAttribute("aria-pressed", b === t)); $("[data-mp-erro]", modal).hidden = true; }
   });
