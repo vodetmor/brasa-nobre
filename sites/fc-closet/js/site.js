@@ -60,6 +60,8 @@ function iniciar(DADOS) {
   menuBtn.addEventListener("click", () => {
     const a = menu.classList.toggle("aberto"); menuBtn.setAttribute("aria-expanded", a);
   });
+  const fechaMenu = () => { menu.classList.remove("aberto"); menuBtn.setAttribute("aria-expanded", "false"); };
+  document.addEventListener("click", e => { if (menu.classList.contains("aberto") && (e.target.closest("#menu a") || !e.target.closest("#menu, #menuBtn"))) fechaMenu(); });
   const ajustaTopo = () => document.documentElement.style.setProperty("--altura-topo", $("#topo").offsetHeight - 1 + "px");
   ajustaTopo(); addEventListener("resize", ajustaTopo);
 
@@ -118,6 +120,11 @@ function iniciar(DADOS) {
     desenha();
   }
 
+  /* o botão "voltar" do celular fecha a peça ou a sacola, sem sair do site */
+  const abreCamada = (nome, url) => history.pushState({ fc: nome }, "", url);
+  const fechaCamada = () => { if (history.state && history.state.fc) history.back(); };
+  const linkPeca = id => { const u = new URL("loja.html", location.href); u.searchParams.set("peca", id); return u.href; };
+
   /* sacola */
   const CH = "fc-sacola-v1"; let sacola = [];
   try { sacola = JSON.parse(localStorage.getItem(CH)) || []; } catch (e) {}
@@ -136,8 +143,8 @@ function iniciar(DADOS) {
     conta();
   }
   let focoS = null;
-  const abreSacola = () => { toastEl.classList.remove("visivel"); focoS = document.activeElement; desenhaSacola(); sacolaEl.hidden = false; document.body.style.overflow = "hidden"; $(".sacola-topo .fechar").focus(); };
-  const fechaSacola = () => { sacolaEl.hidden = true; document.body.style.overflow = ""; if (focoS && document.contains(focoS)) focoS.focus(); };
+  const abreSacola = () => { toastEl.classList.remove("visivel"); focoS = document.activeElement; desenhaSacola(); sacolaEl.hidden = false; document.body.style.overflow = "hidden"; $(".sacola-topo .fechar").focus(); abreCamada("sacola", location.href); };
+  const fechaSacola = (peloVoltar) => { if (sacolaEl.hidden) return; if (peloVoltar !== true) fechaCamada(); sacolaEl.hidden = true; document.body.style.overflow = ""; if (focoS && document.contains(focoS)) focoS.focus(); };
   document.addEventListener("click", e => {
     if (e.target.closest("[data-abrir-sacola]")) abreSacola();
     if (e.target.closest("[data-fechar-sacola]")) fechaSacola();
@@ -171,7 +178,7 @@ function iniciar(DADOS) {
     if (s) vaiPara(posicao() + Number(s.dataset.mpPasso));
     if (d) vaiPara(Number(d.dataset.mpIr));
   });
-  function abreProduto(id) {
+  function abreProduto(id, semHistorico) {
     const p = porId[id]; if (!p) return;
     atual = p; tam = null; ultimo = document.activeElement;
     $("[data-mp-fotos]", modal).innerHTML = p.fotos.length ? p.fotos.map((f, i) => `<img ${srcCheia(f)} alt="${esc(p.nome)}${i ? `, foto ${i + 1}` : ""}">`).join("") : vazia();
@@ -186,11 +193,31 @@ function iniciar(DADOS) {
     $("[data-mp-erro]", modal).hidden = true;
     const add = $("[data-mp-add]", modal);
     add.disabled = p.disponivel === false; add.textContent = p.disponivel === false ? "Esgotado" : "Adicionar à sacola";
-    const w = $("[data-mp-whats]", modal); w.dataset.whats = `Olá! Tenho interesse em "${p.nome}". Pode me passar mais detalhes?`; w.href = linkWhats(w.dataset.whats); w.target = "_blank";
+    const w = $("[data-mp-whats]", modal); w.dataset.whats = `Olá! Tenho interesse em "${p.nome}". Pode me passar mais detalhes?\n${linkPeca(p.id)}`; w.href = linkWhats(w.dataset.whats); w.target = "_blank";
     modal.hidden = false; document.body.style.overflow = "hidden"; $(".fechar", modal).focus();
     galeria.scrollLeft = 0; marca();
+    if (!semHistorico) { const u = new URL(location.href); u.searchParams.set("peca", p.id); abreCamada("produto", u.href); }
   }
-  const fechaProduto = () => { modal.hidden = true; document.body.style.overflow = ""; if (ultimo) ultimo.focus(); };
+  const fechaProduto = (peloVoltar) => {
+    if (modal.hidden) return;
+    modal.hidden = true; document.body.style.overflow = ""; if (ultimo) ultimo.focus();
+    if (peloVoltar === true) return;
+    if (history.state && history.state.fc) history.back();
+    else { const u = new URL(location.href); u.searchParams.delete("peca"); history.replaceState(null, "", u.href); }
+  };
+  addEventListener("popstate", () => {
+    const camada = history.state && history.state.fc, peca = new URLSearchParams(location.search).get("peca");
+    if (camada !== "produto") fechaProduto(true);
+    if (camada !== "sacola") fechaSacola(true);
+    if (camada === "produto" && modal.hidden && porId[peca]) abreProduto(peca, true);
+  });
+  $("[data-mp-share]", modal).addEventListener("click", async () => {
+    const url = linkPeca(atual.id);
+    try {
+      if (navigator.share) await navigator.share({ title: `${atual.nome} · FC Closet`, url });
+      else { await navigator.clipboard.writeText(url); toast("Link da peça copiado"); }
+    } catch (e) { if (e.name !== "AbortError") toast("Não consegui compartilhar. Copie o endereço da página."); }
+  });
   document.addEventListener("click", e => {
     const ab = e.target.closest("[data-abrir]"); if (ab) { abreProduto(ab.dataset.abrir); return; }
     if (e.target.closest("[data-fechar]")) fechaProduto();
@@ -223,6 +250,10 @@ function iniciar(DADOS) {
     $$(".categoria, .sobre-foto, .sobre-txt, .passo, .insta-grade a, [data-grade='novidades'] .produto").forEach((el, i) => { el.classList.add("revelar"); el.style.transitionDelay = (i % 4) * 80 + "ms"; io.observe(el); });
   }
   conta();
+
+  /* link direto para uma peça (compartilhado) */
+  const pedida = new URLSearchParams(location.search).get("peca");
+  if (pedida) { if (porId[pedida]) abreProduto(pedida, true); else toast("Essa peça não está mais no site."); }
 }
 
 /* carrega a loja e monta a página */
