@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" href="img/icone-192.png">
   <link rel="preload" href="fonts/jost.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/cormorant-italic.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="css/estilo.css?v=3">
+  <link rel="stylesheet" href="css/estilo.css?v=4">
 </head>
 <body data-pagina="home">
 
@@ -120,7 +120,12 @@
   <div class="modal-fundo" data-fechar></div>
   <div class="modal-caixa">
     <button class="fechar" data-fechar aria-label="Fechar (Esc)">×</button>
-    <div class="mp-fotos" data-mp-fotos></div>
+    <div class="mp-galeria">
+      <div class="mp-fotos" data-mp-fotos></div>
+      <button type="button" class="mp-seta ant" data-mp-passo="-1" aria-label="Foto anterior">‹</button>
+      <button type="button" class="mp-seta prox" data-mp-passo="1" aria-label="Próxima foto">›</button>
+      <div class="mp-pontos" data-mp-pontos></div>
+    </div>
     <div class="mp-info">
       <p class="sobretitulo" data-mp-cat></p>
       <h3 id="mpNome" data-mp-nome></h3>
@@ -151,6 +156,6 @@
 </aside>
 <div class="toast" data-toast role="status" aria-live="polite"></div>
 <script src="js/dados.js?v=4"></script>
-<script src="js/site.js?v=3" defer></script>
+<script src="js/site.js?v=4" defer></script>
 </body>
 </html>

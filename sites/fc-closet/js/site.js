@@ -155,10 +155,28 @@ function iniciar(DADOS) {
 
   /* modal */
   const modal = $("#modalProduto"); let atual = null, tam = null, ultimo = null;
+  /* galeria: setas, pontinhos e arrastar com o dedo */
+  const galeria = $("[data-mp-fotos]", modal), pontos = $("[data-mp-pontos]", modal);
+  const posicao = () => Math.round(galeria.scrollLeft / (galeria.clientWidth || 1));
+  function marca() {
+    const i = posicao();
+    Array.from(pontos.children).forEach((b, n) => b.setAttribute("aria-current", n === i));
+    $(".mp-seta.ant", modal).disabled = i <= 0;
+    $(".mp-seta.prox", modal).disabled = i >= pontos.children.length - 1;
+  }
+  const vaiPara = i => galeria.scrollTo({ left: i * galeria.clientWidth, behavior: "smooth" });
+  galeria.addEventListener("scroll", marca, { passive: true });
+  modal.addEventListener("click", e => {
+    const s = e.target.closest("[data-mp-passo]"), d = e.target.closest("[data-mp-ir]");
+    if (s) vaiPara(posicao() + Number(s.dataset.mpPasso));
+    if (d) vaiPara(Number(d.dataset.mpIr));
+  });
   function abreProduto(id) {
     const p = porId[id]; if (!p) return;
     atual = p; tam = null; ultimo = document.activeElement;
     $("[data-mp-fotos]", modal).innerHTML = p.fotos.length ? p.fotos.map((f, i) => `<img ${srcCheia(f)} alt="${esc(p.nome)}${i ? `, foto ${i + 1}` : ""}">`).join("") : vazia();
+    pontos.innerHTML = p.fotos.length > 1 ? p.fotos.map((f, i) => `<button type="button" data-mp-ir="${i}" aria-label="Ver foto ${i + 1}"></button>`).join("") : "";
+    $$(".mp-seta", modal).forEach(b => { b.hidden = p.fotos.length < 2; });
     $("[data-mp-cat]", modal).textContent = p.categoria;
     $("[data-mp-nome]", modal).textContent = p.nome;
     $("[data-mp-preco]", modal).textContent = preco(p.preco);
@@ -170,6 +188,7 @@ function iniciar(DADOS) {
     add.disabled = p.disponivel === false; add.textContent = p.disponivel === false ? "Esgotado" : "Adicionar à sacola";
     const w = $("[data-mp-whats]", modal); w.dataset.whats = `Olá! Tenho interesse em "${p.nome}". Pode me passar mais detalhes?`; w.href = linkWhats(w.dataset.whats); w.target = "_blank";
     modal.hidden = false; document.body.style.overflow = "hidden"; $(".fechar", modal).focus();
+    galeria.scrollLeft = 0; marca();
   }
   const fechaProduto = () => { modal.hidden = true; document.body.style.overflow = ""; if (ultimo) ultimo.focus(); };
   document.addEventListener("click", e => {
@@ -194,6 +213,7 @@ function iniciar(DADOS) {
       else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
       return;
     }
+    if (!modal.hidden && (e.key === "ArrowLeft" || e.key === "ArrowRight") && !e.target.closest("input, select")) vaiPara(posicao() + (e.key === "ArrowLeft" ? -1 : 1));
     if (e.key === "Escape") { if (!modal.hidden) fechaProduto(); else if (!sacolaEl.hidden) fechaSacola(); }
   });
 
