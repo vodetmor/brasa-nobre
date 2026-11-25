@@ -253,7 +253,7 @@
     $("#ajudaCor").hidden = !base;
     fotos = p ? p.fotos.map(ref => ({ ref })) : []; tams = new Set(p ? p.tamanhos : []);
     $("#fNome").value = p ? p.nome : ""; $("#fPreco").value = p && p.preco > 0 ? Number(p.preco).toFixed(2).replace(".", ",") : "";
-    $("#fDesc").value = p ? p.descricao : ""; $("#fOutroTam").value = "";
+    $("#fDesc").value = p ? p.descricao : ""; $("#fDetalhes").value = p ? p.detalhes || "" : ""; $("#fOutroTam").value = "";
     $("#fNovo").checked = p ? p.novidade : true; $("#fDisp").checked = p ? p.disponivel : true; $("#fVisivel").checked = p ? p.visivel : true;
     opcoesCat(p ? p.categoria : cats[0] && cats[0].nome); $("#fNovaCat").value = "";
     $("#fModelo").value = p ? p.modelo || "" : "";
@@ -261,7 +261,7 @@
     if (base) {
       tams = new Set(base.tamanhos);
       $("#fPreco").value = base.preco > 0 ? Number(base.preco).toFixed(2).replace(".", ",") : "";
-      $("#fDesc").value = base.descricao;
+      $("#fDesc").value = base.descricao; $("#fDetalhes").value = base.detalhes || "";
       $("#fModelo").value = base.modelo || semCor(base).slice(0, 40);
       selCat.insertAdjacentHTML("afterbegin", '<option value="" disabled>Escolha a cor…</option>'); selCat.value = ""; $("#campoNovaCat").hidden = true;
       sugereNome();
@@ -302,7 +302,7 @@
       for (const f of fotos) if (!f.ref) { botao.textContent = `Enviando foto ${++n} de ${novas}…`; f.ref = await envia(f.file); enviadas.push(f); }
       botao.textContent = "Salvando…";
       if (criaCat) { await grava("categorias", "POST", { nome: cat, ordem: cats.length + 1 }); cats.push({ nome: cat, ordem: cats.length + 1 }); opcoesCat(cat); }
-      const dados = { nome, modelo, categoria: cat, preco: valor, fotos: fotos.map(f => f.ref), tamanhos: [...TAMANHOS.filter(t => tams.has(t)), ...[...tams].filter(t => !TAMANHOS.includes(t))], descricao: $("#fDesc").value.trim(), novidade: $("#fNovo").checked, disponivel: $("#fDisp").checked, visivel: $("#fVisivel").checked };
+      const dados = { nome, modelo, categoria: cat, preco: valor, fotos: fotos.map(f => f.ref), tamanhos: [...TAMANHOS.filter(t => tams.has(t)), ...[...tams].filter(t => !TAMANHOS.includes(t))], descricao: $("#fDesc").value.trim(), detalhes: $("#fDetalhes").value.trim(), novidade: $("#fNovo").checked, disponivel: $("#fDisp").checked, visivel: $("#fVisivel").checked };
       await grava(era ? "produtos?id=eq." + era.id : "produtos", era ? "PATCH" : "POST", dados);
       const de = origem; salvando = false; fecha();
       if (de && (de.modelo || "") !== modelo) {
@@ -341,7 +341,7 @@
   });
 
   /* ---------- dados da loja ---------- */
-  const CAMPOS = { lWhats: "whatsapp", lInsta: "instagram", lAviso: "aviso", lSobretitulo: "hero_sobretitulo", lTitulo: "hero_titulo", lSobre: "sobre_texto" };
+  const CAMPOS = { lWhats: "whatsapp", lInsta: "instagram", lAviso: "aviso", lSobretitulo: "hero_sobretitulo", lTitulo: "hero_titulo", lSobre: "sobre_texto", lParcelas: "parcelas", lPagamento: "pagamento", lEntrega: "entrega", lTrocas: "trocas", lMedidas: "guia_medidas" };
   let alvoFoto = null;
   function preencheLoja() {
     for (const [id, c] of Object.entries(CAMPOS)) $("#" + id).value = loja[c] || "";
@@ -388,6 +388,7 @@
     e.preventDefault(); erroEm("#erroLoja");
     const d = {}; for (const [id, c] of Object.entries(CAMPOS)) d[c] = $("#" + id).value.trim();
     d.whatsapp = d.whatsapp.replace(/\D/g, "");
+    d.parcelas = Number(d.parcelas) || 0;
     if (d.whatsapp.length === 10 || d.whatsapp.length === 11) d.whatsapp = "55" + d.whatsapp;
     if (d.whatsapp.length < 12 || d.whatsapp.length > 13) return erroEm("#erroLoja", "Confira o WhatsApp: DDD e número. Ex.: 61 99999-9999");
     if (d.instagram && !/^https:\/\//.test(d.instagram)) return erroEm("#erroLoja", "O link do Instagram precisa começar com https://");

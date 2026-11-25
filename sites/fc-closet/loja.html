@@ -14,7 +14,7 @@
   <link rel="preload" href="fonts/jost.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/cormorant-italic.woff2" as="font" type="font/woff2" crossorigin>
   
-  <link rel="stylesheet" href="css/estilo.css?v=6">
+  <link rel="stylesheet" href="css/estilo.css?v=8">
 </head>
 <body data-pagina="loja">
 
@@ -48,6 +48,8 @@
   <div class="filtros" role="toolbar" aria-label="Filtrar por categoria">
     <div class="filtros-cats" data-filtros></div>
     <div class="filtros-direita">
+      <label class="busca"><span class="sr">Buscar peça</span><input type="search" data-busca placeholder="Buscar" autocomplete="off" enterkeyhint="search"></label>
+      <label class="ordenar filtro-tam" hidden><span class="sr">Filtrar por tamanho</span><select data-tamanho></select></label>
       <span class="filtros-qtd" data-qtd></span>
       <label class="ordenar"><span class="sr">Ordenar</span>
         <select data-ordenar>
@@ -95,6 +97,7 @@
       <p class="sobretitulo" data-mp-cat></p>
       <h3 id="mpNome" data-mp-nome></h3>
       <p class="mp-preco" data-mp-preco></p>
+      <p class="mp-parcelas" data-mp-parcelas hidden></p>
       <div class="mp-cores" data-mp-cores hidden>
         <p class="mp-cores-rot">Cor: <span data-mp-cor></span></p>
         <div class="mp-cores-lista" data-mp-cores-lista></div>
@@ -108,6 +111,12 @@
       <button class="botao botao-cheio" data-mp-add>Adicionar à sacola</button>
       <a class="link-linha mp-whats" href="#" data-mp-whats>Tirar dúvidas no WhatsApp</a>
       <button type="button" class="link-linha mp-whats" data-mp-share>Compartilhar peça</button>
+      <button type="button" class="link-linha mp-whats" data-mp-fav aria-pressed="false">♡ Salvar nos favoritos</button>
+      <div class="mp-dobras" data-mp-dobras></div>
+      <div class="mp-mais" data-mp-mais hidden>
+        <p class="mp-cores-rot">Você também pode gostar</p>
+        <div class="mp-mais-lista" data-mp-mais-lista></div>
+      </div>
     </div>
   </div>
 </div>
@@ -126,6 +135,6 @@
 </aside>
 <div class="toast" data-toast role="status" aria-live="polite"></div>
 <script src="js/dados.js?v=4"></script>
-<script src="js/site.js?v=6" defer></script>
+<script src="js/site.js?v=8" defer></script>
 </body>
 </html>

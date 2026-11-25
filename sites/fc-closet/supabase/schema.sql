@@ -26,7 +26,12 @@ create table public.loja (
   hero_foto_1 text not null default '',
   hero_foto_2 text not null default '',
   sobre_texto text not null default '',
-  sobre_foto text not null default ''
+  sobre_foto text not null default '',
+  parcelas int not null default 0 check (parcelas between 0 and 12),
+  guia_medidas text not null default '' check (char_length(guia_medidas) <= 1200),
+  pagamento text not null default '' check (char_length(pagamento) <= 600),
+  entrega text not null default '' check (char_length(entrega) <= 600),
+  trocas text not null default '' check (char_length(trocas) <= 900)
 );
 
 create table public.categorias (
@@ -47,7 +52,8 @@ create table public.produtos (
   visivel boolean not null default true,
   ordem int not null default 0,
   criado_em timestamptz not null default now(),
-  modelo text not null default '' check (char_length(modelo) <= 40)
+  modelo text not null default '' check (char_length(modelo) <= 40),
+  detalhes text not null default '' check (char_length(detalhes) <= 800)
 );
 create index produtos_categoria_idx on public.produtos (categoria);
 

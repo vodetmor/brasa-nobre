@@ -65,14 +65,69 @@ function iniciar(DADOS) {
   const ajustaTopo = () => document.documentElement.style.setProperty("--altura-topo", $("#topo").offsetHeight - 1 + "px");
   ajustaTopo(); addEventListener("resize", ajustaTopo);
 
+  /* favoritos: ficam guardados no aparelho da cliente */
+  const CHF = "fc-fav-v1"; let favs = new Set();
+  try { favs = new Set(JSON.parse(localStorage.getItem(CHF)) || []); } catch (e) {}
+  favs = new Set([...favs].filter(id => porId[id]));
+  const coracao = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.2A4.1 4.1 0 0 1 12 7.4a4.1 4.1 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20Z"/></svg>';
+  let aoFavoritar = () => {};
+  function favorita(id) {
+    const tinha = favs.delete(id); if (!tinha) favs.add(id);
+    try { localStorage.setItem(CHF, JSON.stringify([...favs])); } catch (e) {}
+    $$("[data-fav]").forEach(b => { if (b.dataset.fav === id) b.setAttribute("aria-pressed", !tinha); });
+    aoFavoritar();
+  }
+
+  /* um cartão por modelo: as cores (peças com o mesmo "modelo") passam sozinhas */
+  const chaveModelo = p => (p.modelo || "").trim().toLocaleLowerCase("pt-BR");
+  function agrupa(lista) {
+    const grupos = new Map();
+    lista.forEach(p => { const k = chaveModelo(p) || p.id; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(p); });
+    return [...grupos.values()];
+  }
+  const nomeModelo = p => p.nome.split(/\s+/).filter(x => x.toLocaleLowerCase("pt-BR") !== p.categoria.toLocaleLowerCase("pt-BR")).join(" ") || p.nome;
+  const selo = p => p.disponivel === false ? '<span class="selo esg">Esgotado</span>' : p.novidade ? '<span class="selo">Novo</span>' : "";
+  function cartaoCores(g) {
+    const p = g[0], midia = g.map((x, i) => x.fotos && x.fotos[0] ? `<img class="cor-img${i ? "" : " ativa"}" ${srcGrade(x.fotos[0])} alt="${esc(x.nome)}" loading="lazy" decoding="async">` : vazia().replace('class="', `class="cor-img${i ? "" : " ativa"} `)).join("");
+    return `<article class="produto produto-cores${p.disponivel === false ? " esgotado" : ""}" data-grupo="${esc(g.map(x => x.id).join(","))}" data-i="0">
+      <div class="produto-midia">
+        <button class="produto-foto" data-abrir="${esc(p.id)}" aria-label="Ver ${esc(p.nome)}"><span data-selo>${selo(p)}</span>${midia}</button>
+        <button type="button" class="produto-fav" data-fav="${esc(p.id)}" aria-pressed="${favs.has(p.id)}" aria-label="Favoritar ${esc(p.nome)}">${coracao}</button>
+        <button class="produto-add" data-abrir="${esc(p.id)}" aria-label="Escolher tamanho de ${esc(p.nome)}">Escolher</button>
+      </div>
+      <button class="produto-link" data-abrir="${esc(p.id)}" tabindex="-1"><span class="produto-nome">${esc(nomeModelo(p))}</span><span class="produto-preco">${preco(p.preco)}</span><span class="produto-tons"><span class="tons-pontos" aria-hidden="true">${g.map((x, i) => `<i${i ? "" : ' class="ativa"'}></i>`).join("")}</span><span data-tom>${esc(p.categoria)}</span> · ${g.length} cores</span></button>
+    </article>`;
+  }
+  function passaCor(art) {
+    const ids = art.dataset.grupo.split(","), i = (Number(art.dataset.i) + 1) % ids.length, p = porId[ids[i]];
+    art.dataset.i = i; art.classList.toggle("esgotado", p.disponivel === false);
+    $$(".cor-img", art).forEach((el, n) => el.classList.toggle("ativa", n === i));
+    $$(".tons-pontos i", art).forEach((el, n) => el.classList.toggle("ativa", n === i));
+    $$("[data-abrir]", art).forEach(b => { b.dataset.abrir = p.id; });
+    $(".produto-foto", art).setAttribute("aria-label", `Ver ${p.nome}`);
+    $(".produto-add", art).setAttribute("aria-label", `Escolher tamanho de ${p.nome}`);
+    const f = $("[data-fav]", art); f.dataset.fav = p.id; f.setAttribute("aria-pressed", favs.has(p.id)); f.setAttribute("aria-label", `Favoritar ${p.nome}`);
+    $("[data-selo]", art).innerHTML = selo(p); $(".produto-preco", art).textContent = preco(p.preco); $("[data-tom]", art).textContent = p.categoria;
+  }
+  /* para quem pediu menos movimento no aparelho, o cartão fica parado */
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setInterval(() => {
+    if (document.hidden || $$(".modal, .sacola").some(el => !el.hidden)) return;
+    $$(".produto-cores").forEach(art => {
+      const r = art.getBoundingClientRect();
+      if (r.bottom > 0 && r.top < innerHeight && !art.querySelector(":focus-visible") && !(matchMedia("(hover: hover)").matches && art.matches(":hover"))) passaCor(art);
+    });
+  }, 2600);
+
   /* cartão de produto */
-  function cartao(p) {
+  function cartao(g) {
+    if (g.length > 1) return cartaoCores(g);
+    const p = g[0];
     const f = p.fotos || [];
     const midia = f.length ? `<img ${srcGrade(f[0])} alt="${esc(p.nome)}" loading="lazy" decoding="async">` + (f[1] ? `<img class="foto-2" ${srcGrade(f[1])} alt="" loading="lazy" decoding="async">` : "") : vazia();
-    const selo = p.disponivel === false ? '<span class="selo esg">Esgotado</span>' : p.novidade ? '<span class="selo">Novo</span>' : "";
     return `<article class="produto${p.disponivel === false ? " esgotado" : ""}">
       <div class="produto-midia">
-        <button class="produto-foto" data-abrir="${esc(p.id)}" aria-label="Ver ${esc(p.nome)}">${selo}${midia}</button>
+        <button class="produto-foto" data-abrir="${esc(p.id)}" aria-label="Ver ${esc(p.nome)}">${selo(p)}${midia}</button>
+        <button type="button" class="produto-fav" data-fav="${esc(p.id)}" aria-pressed="${favs.has(p.id)}" aria-label="Favoritar ${esc(p.nome)}">${coracao}</button>
         <button class="produto-add" data-abrir="${esc(p.id)}" aria-label="Escolher tamanho de ${esc(p.nome)}">Escolher</button>
       </div>
       <button class="produto-link" data-abrir="${esc(p.id)}" tabindex="-1"><span class="produto-nome">${esc(p.nome)}</span><span class="produto-preco">${preco(p.preco)}</span></button>
@@ -88,27 +143,39 @@ function iniciar(DADOS) {
   }
   $$('[data-grade="novidades"]').forEach(g => {
     const l = PRODUTOS.filter(p => p.novidade); const lim = +g.dataset.limite || 8;
-    g.innerHTML = (l.length ? l : PRODUTOS).slice(0, lim).map(cartao).join("");
+    g.innerHTML = agrupa(l.length ? l : PRODUTOS).slice(0, lim).map(cartao).join("");
   });
 
   /* loja */
   const gradeLoja = $('[data-grade="todas"]');
   if (gradeLoja) {
     let cat = new URLSearchParams(location.search).get("cat") || "todas";
-    if (cat !== "todas" && cat !== "novidades" && !CATS.includes(cat)) cat = "todas";
+    if (!["todas", "novidades", "favoritos"].includes(cat) && !CATS.includes(cat)) cat = "todas";
+    let busca = "", tamF = "";
+    const plano = s => String(s || "").toLocaleLowerCase("pt-BR").normalize("NFD").replace(/\p{M}/gu, "");
+    const selTam = $("[data-tamanho]"), TAMS = ["PP", "P", "M", "G", "GG"], posTam = t => (TAMS.indexOf(t) + 1) || 99;
+    const tamanhos = [...new Set(PRODUTOS.flatMap(p => p.tamanhos || []))].sort((a, b) => posTam(a) - posTam(b) || a.localeCompare(b, "pt-BR", { numeric: true }));
+    selTam.innerHTML = '<option value="">Tamanho</option>' + tamanhos.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
+    selTam.closest("label").hidden = !tamanhos.length;
+    const textoVazio = $("p", $("[data-vazio]")), textoPadrao = textoVazio.textContent;
     let ordem = "padrao";
     const filtros = $("[data-filtros]"), qtd = $("[data-qtd]"), titulo = $("[data-loja-titulo]"), vazio = $("[data-vazio]");
-    filtros.innerHTML = ["todas", "novidades", ...CATS].map(c => `<button class="filtro" data-cat="${esc(c)}" aria-pressed="false">${c === "todas" ? "Todas" : esc(c === "novidades" ? "Novidades" : c)}</button>`).join("");
+    const rotulo = c => ({ todas: "Todas", novidades: "Novidades", favoritos: "♡ Favoritos" })[c] || c;
+    filtros.innerHTML = ["todas", "novidades", ...CATS, "favoritos"].map(c => `<button class="filtro" data-cat="${esc(c)}" aria-pressed="false">${esc(rotulo(c))}</button>`).join("");
     const desenha = () => {
-      let l = cat === "todas" ? PRODUTOS.slice() : cat === "novidades" ? PRODUTOS.filter(p => p.novidade) : PRODUTOS.filter(p => p.categoria === cat);
+      let l = cat === "todas" ? PRODUTOS.slice() : cat === "novidades" ? PRODUTOS.filter(p => p.novidade) : cat === "favoritos" ? PRODUTOS.filter(p => favs.has(p.id)) : PRODUTOS.filter(p => p.categoria === cat);
+      const termos = plano(busca).split(/\s+/).filter(Boolean);
+      if (termos.length) l = l.filter(p => { const t = plano(`${p.nome} ${p.categoria} ${p.modelo || ""} ${p.descricao || ""}`); return termos.every(x => t.includes(x)); });
+      if (tamF) l = l.filter(p => p.disponivel !== false && (p.tamanhos || []).includes(tamF));
+      textoVazio.textContent = busca.trim() || tamF ? "Nada encontrado com esse filtro. Tente outra busca ou chame a Fernanda." : cat === "favoritos" ? "Toque no coração de uma peça para guardar aqui." : textoPadrao;
       if (ordem === "az") l.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
       if (ordem === "novidades") l.sort((a, b) => (b.novidade ? 1 : 0) - (a.novidade ? 1 : 0));
       if (ordem === "menor") l.sort((a, b) => a.preco - b.preco);
       if (ordem === "maior") l.sort((a, b) => b.preco - a.preco);
-      gradeLoja.classList.remove("entrando"); gradeLoja.innerHTML = l.map(cartao).join(""); void gradeLoja.offsetWidth; gradeLoja.classList.add("entrando");
+      gradeLoja.classList.remove("entrando"); const grupos = agrupa(l); gradeLoja.innerHTML = grupos.map(cartao).join(""); void gradeLoja.offsetWidth; gradeLoja.classList.add("entrando");
       vazio.hidden = l.length > 0;
-      qtd.textContent = l.length === 1 ? "1 peça" : l.length ? `${l.length} peças` : "";
-      titulo.textContent = cat === "todas" ? "Todas as peças" : cat === "novidades" ? "Novidades" : cat;
+      qtd.textContent = grupos.length === 1 ? "1 modelo" : grupos.length ? `${grupos.length} modelos` : "";
+      titulo.textContent = cat === "todas" ? "Todas as peças" : cat === "novidades" ? "Novidades" : cat === "favoritos" ? "Favoritos" : cat;
       document.title = `${titulo.textContent} · FC Closet`;
       $$(".filtro", filtros).forEach(b => b.setAttribute("aria-pressed", b.dataset.cat === cat));
       const at = $(`.filtro[aria-pressed="true"]`, filtros); if (at) filtros.scrollLeft = at.offsetLeft - (filtros.clientWidth - at.offsetWidth) / 2;
@@ -116,6 +183,9 @@ function iniciar(DADOS) {
     };
     filtros.addEventListener("click", e => { const b = e.target.closest(".filtro"); if (!b) return; cat = b.dataset.cat; history.replaceState(null, "", "loja.html" + (cat === "todas" ? "" : "?cat=" + encodeURIComponent(cat))); desenha(); });
     $("[data-ordenar]").addEventListener("change", e => { ordem = e.target.value; desenha(); });
+    $("[data-busca]").addEventListener("input", e => { busca = e.target.value; desenha(); });
+    selTam.addEventListener("change", e => { tamF = e.target.value; desenha(); });
+    aoFavoritar = () => { if (cat === "favoritos") desenha(); };
     $$("#menu a").forEach(a => { const m = a.getAttribute("href").match(/^loja\.html\?cat=([^&]+)/); if (!m) return; a.addEventListener("click", e => { e.preventDefault(); cat = decodeURIComponent(m[1]); history.replaceState(null, "", a.getAttribute("href")); desenha(); menu.classList.remove("aberto"); menuBtn.setAttribute("aria-expanded", "false"); scrollTo({ top: 0, behavior: "smooth" }); }); });
     desenha();
   }
@@ -179,13 +249,54 @@ function iniciar(DADOS) {
     if (d) vaiPara(Number(d.dataset.mpIr));
   });
   /* as cores de um mesmo vestido são as peças com o mesmo "modelo" no painel */
-  const chaveModelo = p => (p.modelo || "").trim().toLocaleLowerCase("pt-BR");
   function cores(p) {
     const k = chaveModelo(p), lista = k ? PRODUTOS.filter(x => chaveModelo(x) === k) : [], box = $("[data-mp-cores]", modal);
     box.hidden = lista.length < 2;
     $("[data-mp-cor]", modal).textContent = p.categoria;
     $("[data-mp-cores-lista]", modal).innerHTML = box.hidden ? "" : lista.map(x => `<button type="button" data-mp-outra="${esc(x.id)}" aria-pressed="${x.id === p.id}"${x.disponivel === false ? ' class="esgotada"' : ""} aria-label="${esc(x.nome)}${x.disponivel === false ? " (esgotado)" : ""}" title="${esc(x.categoria)}">${x.fotos[0] ? `<img src="${foto(x.fotos[0], "s")}" alt="">` : vazia()}</button>`).join("");
   }
+
+  /* parcelas, detalhes, medidas e condições: só aparecem quando a dona preenche no painel */
+  const condicoes = () => [["Pagamento", LOJA.pagamento], ["Entrega", LOJA.entrega], ["Trocas e devoluções", LOJA.trocas]].filter(c => c[1])
+    .map(([t, x]) => `<h4>${t}</h4><p>${esc(x)}</p>`).join("");
+  const dobra = (titulo, corpo) => corpo ? `<details class="dobra"><summary>${titulo}</summary><div>${corpo}</div></details>` : "";
+  function informacoes(p) {
+    const n = Number(LOJA.parcelas) || 0, par = $("[data-mp-parcelas]", modal);
+    par.hidden = !(n > 1 && p.preco > 0);
+    par.textContent = par.hidden ? "" : `ou ${n}x de ${preco(p.preco / n)} sem juros`;
+    $("[data-mp-dobras]", modal).innerHTML = dobra("Detalhes da peça", p.detalhes ? `<p>${esc(p.detalhes)}</p>` : "") +
+      dobra("Guia de medidas", LOJA.guia_medidas ? `<p>${esc(LOJA.guia_medidas)}</p>` : "") + dobra("Pagamento, entrega e trocas", condicoes());
+  }
+  function sugestoes(p) {
+    const k = chaveModelo(p);
+    const vistos = new Set(k ? [k] : []);
+    const l = PRODUTOS.filter(x => x.id !== p.id && x.disponivel !== false)
+      .sort((a, b) => (b.categoria === p.categoria) - (a.categoria === p.categoria))
+      .filter(x => { const m = chaveModelo(x); if (!m) return true; if (vistos.has(m)) return false; vistos.add(m); return true; }) /* uma cor por modelo */
+      .slice(0, 3);
+    $("[data-mp-mais]", modal).hidden = !l.length;
+    $("[data-mp-mais-lista]", modal).innerHTML = l.map(x => `<button type="button" data-mp-ver="${esc(x.id)}">${x.fotos[0] ? `<img src="${foto(x.fotos[0], "s")}" alt="" loading="lazy">` : vazia()}<span>${esc(x.nome)}</span><small>${preco(x.preco)}</small></button>`).join("");
+  }
+  const botaoFav = p => { const b = $("[data-mp-fav]", modal), on = favs.has(p.id); b.setAttribute("aria-pressed", on); b.textContent = on ? "♥ Nos favoritos" : "♡ Salvar nos favoritos"; };
+  $("[data-mp-fav]", modal).addEventListener("click", () => { favorita(atual.id); botaoFav(atual); });
+  const rodape = $(".rodape");
+  if (rodape && condicoes()) rodape.insertAdjacentHTML("afterbegin", `<div class="rodape-info">${dobra("Pagamento, entrega e trocas", condicoes())}</div>`);
+
+  /* zoom: toque na foto para ver de perto */
+  document.body.insertAdjacentHTML("beforeend", '<div class="zoom" role="dialog" aria-modal="true" aria-label="Foto ampliada" hidden><button type="button" class="fechar" aria-label="Fechar foto">×</button><div class="zoom-rolo"><img alt=""></div></div>');
+  const zoom = $(".zoom"), rolo = $(".zoom-rolo", zoom), zoomImg = $("img", rolo);
+  function abreZoom(i) {
+    zoomImg.src = foto(atual.fotos[i]); zoomImg.alt = atual.nome; zoom.classList.remove("perto"); zoom.hidden = false;
+    $(".fechar", zoom).focus(); abreCamada("zoom", location.href);
+  }
+  const escondeZoom = () => { zoom.hidden = true; const f = $(".fechar", modal); if (f) f.focus({ preventScroll: true }); };
+  galeria.addEventListener("click", e => { const img = e.target.closest("img"); if (img) abreZoom($$("img", galeria).indexOf(img)); });
+  $(".fechar", zoom).addEventListener("click", () => history.back());
+  zoomImg.addEventListener("click", e => {
+    const r = zoomImg.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    if (!zoom.classList.toggle("perto")) return;
+    rolo.scrollTo(zoomImg.offsetWidth * x - rolo.clientWidth / 2, zoomImg.offsetHeight * y - rolo.clientHeight / 2);
+  });
 
   function abreProduto(id, semHistorico, troca) {
     const p = porId[id]; if (!p) return;
@@ -202,7 +313,7 @@ function iniciar(DADOS) {
     $("[data-mp-lista]", modal).innerHTML = (p.tamanhos || []).map(t => `<button class="tamanho" data-tam="${esc(t)}" aria-pressed="false">${esc(t)}</button>`).join("");
     $("[data-mp-erro]", modal).hidden = true;
     if (tamAntes && (p.tamanhos || []).includes(tamAntes)) { tam = tamAntes; $$("[data-tam]", modal).forEach(b => b.setAttribute("aria-pressed", b.dataset.tam === tam)); }
-    cores(p);
+    cores(p); informacoes(p); sugestoes(p); botaoFav(p);
     const add = $("[data-mp-add]", modal);
     add.disabled = p.disponivel === false; add.textContent = p.disponivel === false ? "Esgotado" : "Adicionar à sacola";
     const w = $("[data-mp-whats]", modal); w.dataset.whats = `Olá! Tenho interesse em "${p.nome}". Pode me passar mais detalhes?\n${linkPeca(p.id)}`; w.href = linkWhats(w.dataset.whats); w.target = "_blank";
@@ -212,7 +323,8 @@ function iniciar(DADOS) {
       /* troca de cor: mesma janela, só muda o endereço (o "voltar" continua fechando) */
       const u = new URL(location.href); u.searchParams.set("peca", p.id); history.replaceState(history.state, "", u.href);
       [modal, $(".modal-caixa", modal), $(".mp-info", modal)].forEach(el => el.scrollTo({ top: 0, behavior: "smooth" }));
-      const b = $('[data-mp-outra][aria-pressed="true"]', modal); if (b) b.focus({ preventScroll: true });
+      const b = $('[data-mp-outra][aria-pressed="true"]', modal);
+      (b && !b.closest("[hidden]") ? b : $(".fechar", modal)).focus({ preventScroll: true });
     } else if (!semHistorico) { const u = new URL(location.href); u.searchParams.set("peca", p.id); abreCamada("produto", u.href); }
   }
   const fechaProduto = (peloVoltar) => {
@@ -224,7 +336,8 @@ function iniciar(DADOS) {
   };
   addEventListener("popstate", () => {
     const camada = history.state && history.state.fc, peca = new URLSearchParams(location.search).get("peca");
-    if (camada !== "produto") fechaProduto(true);
+    if (!zoom.hidden) { escondeZoom(); return; } /* voltar com a foto ampliada só fecha a foto */
+    if (camada !== "produto" && camada !== "zoom") fechaProduto(true);
     if (camada !== "sacola") fechaSacola(true);
     if (camada === "produto" && modal.hidden && porId[peca]) abreProduto(peca, true);
   });
@@ -236,6 +349,8 @@ function iniciar(DADOS) {
     } catch (e) { if (e.name !== "AbortError") toast("Não consegui compartilhar. Copie o endereço da página."); }
   });
   document.addEventListener("click", e => {
+    const fav = e.target.closest("[data-fav]"); if (fav) { favorita(fav.dataset.fav); return; }
+    const ver = e.target.closest("[data-mp-ver]"); if (ver) { tam = null; abreProduto(ver.dataset.mpVer, true, true); return; }
     const ab = e.target.closest("[data-abrir]"); if (ab) { abreProduto(ab.dataset.abrir); return; }
     if (e.target.closest("[data-fechar]")) fechaProduto();
     const outra = e.target.closest("[data-mp-outra]"); if (outra) { if (outra.dataset.mpOutra !== atual.id) abreProduto(outra.dataset.mpOutra, true, true); return; }
@@ -250,9 +365,10 @@ function iniciar(DADOS) {
     salva(); conta(true); const nome = atual.nome; fechaProduto(); toast(`${nome} foi para a sacola`);
   });
   document.addEventListener("keydown", e => {
+    if (!zoom.hidden) { if (e.key === "Escape") history.back(); if (e.key === "Tab") { e.preventDefault(); $(".fechar", zoom).focus(); } return; }
     if (e.key === "Tab") {
       const alvo = !modal.hidden ? $(".modal-caixa", modal) : !sacolaEl.hidden ? $(".sacola-painel", sacolaEl) : null; if (!alvo) return;
-      const f = $$("button, a[href], select", alvo).filter(el => !el.closest("[hidden]") && !el.disabled); if (!f.length) return;
+      const f = $$("button, a[href], select, summary", alvo).filter(el => !el.closest("[hidden]") && !el.disabled); if (!f.length) return;
       if (!alvo.contains(document.activeElement)) { e.preventDefault(); f[0].focus(); }
       else if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
       else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }

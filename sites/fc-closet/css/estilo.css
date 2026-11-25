@@ -297,6 +297,18 @@ em { font-style: italic; }
   font: 400 10px/1 var(--f-texto); letter-spacing: .18em; text-transform: uppercase; color: var(--escuro);
 }
 .grade-loja { grid-template-columns: repeat(4, 1fr); }
+.busca input { width: 150px; height: 36px; padding: 0 12px; border: 1px solid var(--linha); border-radius: 0; background: var(--creme); font: 300 16px/1 var(--f-texto); color: var(--escuro); }
+.filtro-tam[hidden] { display: none; }
+.produto.produto-cores .produto-foto .cor-img { opacity: 0; }
+.produto.produto-cores .produto-foto .cor-img.ativa { opacity: 1; }
+.produto.produto-cores.esgotado .produto-foto .cor-img.ativa { opacity: .55; }
+.produto-tons { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; font-size: 11px; color: var(--suave); }
+.tons-pontos { display: flex; gap: 4px; margin-right: 4px; }
+.tons-pontos i { width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--escuro); }
+.tons-pontos i.ativa { background: var(--escuro); }
+.produto-fav { position: absolute; top: 8px; right: 8px; z-index: 2; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: rgba(246,237,231,.88); }
+.produto-fav svg { width: 19px; height: 19px; fill: none; stroke: var(--escuro); stroke-width: 1.4; }
+.produto-fav[aria-pressed="true"] svg { fill: var(--escuro); }
 .grade.entrando .produto { animation: sobe 600ms cubic-bezier(.2,.7,.2,1) both; }
 .vazio { text-align: center; padding: clamp(48px, 8vw, 96px) 0 clamp(24px, 4vw, 48px); color: var(--suave); }
 .vazio h2 { font-size: clamp(32px, 4vw, 48px); font-style: italic; margin-bottom: 16px; }
@@ -340,6 +352,32 @@ em { font-style: italic; }
 .mp-erro { margin: 10px 0 0; font-size: 12px; color: #A8323F; }
 .mp-whats { align-self: center; margin-top: 22px; }
 .mp-whats + .mp-whats { margin-top: 16px; }
+.mp-parcelas { margin: -14px 0 22px; font-size: 13px; color: var(--suave); }
+.mp-galeria .mp-fotos img { cursor: zoom-in; }
+.mp-dobras:not(:empty) { margin-top: 28px; border-bottom: 1px solid var(--linha); }
+.dobra { border-top: 1px solid var(--linha); text-align: left; }
+.dobra summary { display: flex; justify-content: space-between; gap: 12px; padding: 16px 0; cursor: pointer; list-style: none; font: 400 10px/1.4 var(--f-texto); letter-spacing: .24em; text-transform: uppercase; }
+.dobra summary::-webkit-details-marker { display: none; }
+.dobra summary::after { content: "+"; font-size: 14px; }
+.dobra[open] summary::after { content: "−"; }
+.dobra div { padding-bottom: 16px; font-size: 14px; }
+.dobra p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.dobra h4 { margin: 12px 0 4px; font: 400 14px/1.4 var(--f-texto); }
+.dobra h4:first-child { margin-top: 0; }
+.rodape-info { width: min(520px, 100%); margin: 0 auto 32px; border-bottom: 1px solid var(--linha); }
+.mp-mais { margin-top: 28px; }
+.mp-mais[hidden] { display: none; }
+.mp-mais-lista { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.mp-mais-lista button { text-align: left; min-width: 0; align-self: start; }
+.mp-mais-lista img, .mp-mais-lista .joia-vazia { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: 50% 20%; }
+.mp-mais-lista span { display: block; margin-top: 8px; font: 400 15px/1.25 var(--f-titulo); }
+.mp-mais-lista small { display: block; margin-top: 4px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--suave); }
+.zoom { position: fixed; inset: 0; z-index: 75; background: var(--creme); }
+.zoom[hidden] { display: none; }
+.zoom .fechar { background: rgba(246,237,231,.9); border-radius: 50%; }
+.zoom-rolo { width: 100%; height: 100%; overflow: auto; display: flex; }
+.zoom-rolo img { margin: auto; max-width: 100%; max-height: 100%; cursor: zoom-in; }
+.zoom.perto img { flex: none; width: max(240%, 900px); max-width: none; max-height: none; cursor: zoom-out; }
 
 /* ---------- sacola ---------- */
 .sacola { position: fixed; inset: 0; z-index: 70; }
@@ -411,7 +449,11 @@ em { font-style: italic; }
   .mp-fotos img, .mp-fotos .joia-vazia { aspect-ratio: 4 / 5; }
   .whats-fixo { display: grid; }
   .filtros { flex-direction: column; align-items: stretch; gap: 10px; top: var(--altura-topo, 64px); }
-  .filtros-direita { justify-content: space-between; }
+  .filtros-direita { justify-content: space-between; gap: 8px; }
+  .filtros-qtd { display: none; }
+  .busca { flex: 1 1 0; min-width: 0; }
+  .busca input { width: 100%; }
+  .filtros-direita .ordenar select { max-width: 124px; text-overflow: ellipsis; }
 }
 
 @media (max-width: 600px) {

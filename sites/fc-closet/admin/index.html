@@ -76,6 +76,14 @@
         <h2>Nossa marca</h2>
         <label class="campo"><span class="rot">Texto de apresentação</span><textarea id="lSobre" rows="5" maxlength="600"></textarea></label>
         <div class="campo"><span class="rot">Foto da apresentação</span><div class="foto-loja" data-foto="sobre_foto"></div></div>
+        <h2>Compra</h2>
+        <p class="ajuda">Tudo aqui é opcional: o que ficar vazio não aparece no site.</p>
+        <label class="campo"><span class="rot">Parcelamento sem juros</span><select id="lParcelas"><option value="">Não mostrar</option><option value="2">Até 2x</option><option value="3">Até 3x</option><option value="4">Até 4x</option><option value="5">Até 5x</option><option value="6">Até 6x</option><option value="10">Até 10x</option><option value="12">Até 12x</option></select></label>
+        <label class="campo"><span class="rot">Formas de pagamento</span><textarea id="lPagamento" rows="3" maxlength="600"></textarea></label>
+        <label class="campo"><span class="rot">Entrega</span><textarea id="lEntrega" rows="3" maxlength="600" placeholder="Onde entrega, prazo e valor do frete"></textarea></label>
+        <label class="campo"><span class="rot">Trocas e devoluções</span><textarea id="lTrocas" rows="4" maxlength="900"></textarea></label>
+        <p class="ajuda">Compra feita à distância dá à cliente 7 dias, a partir do recebimento, para desistir.</p>
+        <label class="campo"><span class="rot">Guia de medidas</span><textarea id="lMedidas" rows="6" maxlength="1200" placeholder="Um tamanho por linha, com busto, cintura e quadril em cm"></textarea></label>
         <input type="file" id="arquivoLoja" accept="image/*" hidden>
         <p class="erro" id="erroLoja" role="alert" hidden></p>
         <button class="btn" type="submit">Salvar alterações da loja</button>
@@ -128,6 +136,7 @@
     </div>
 
     <label class="campo"><span class="rot">Descrição</span><textarea id="fDesc" rows="4" maxlength="600" placeholder="Tecido, caimento, ocasião..."></textarea></label>
+    <label class="campo"><span class="rot">Detalhes da peça (opcional)</span><textarea id="fDetalhes" rows="4" maxlength="800" placeholder="Tecido, se estica, forro, bojo, como lavar, altura da modelo e tamanho que ela veste"></textarea></label>
 
     <label class="chk"><input type="checkbox" id="fNovo"><span>Destacar em “Novidades”</span></label>
     <label class="chk"><input type="checkbox" id="fDisp"><span>Disponível para venda (desmarcado = esgotado)</span></label>
@@ -152,6 +161,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="../js/dados.js?v=4"></script>
-<script src="admin.js?v=3"></script>
+<script src="admin.js?v=4"></script>
 </body>
 </html>
