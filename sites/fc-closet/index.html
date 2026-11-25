@@ -8,18 +8,16 @@
   <meta name="theme-color" content="#3A0A12">
   <meta property="og:title" content="FC Closet · Moda • Estilo • Você">
   <meta property="og:description" content="Moda feminina com estilo em cada detalhe. Escolha pelo site e finalize pelo WhatsApp.">
-  <meta property="og:image" content="img/fotos/vinho-costas-abertas-l.webp">
+  <meta property="og:image" content="https://fc-closet.vercel.app/img/fotos/julia-vinho-2-l.webp">
   <link rel="icon" href="img/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="img/icone-192.png">
   <link rel="preload" href="fonts/jost.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/cormorant-italic.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" as="image" href="img/fotos/vinho-costas-abertas-l.webp" imagesrcset="img/fotos/vinho-costas-abertas-m.webp 720w, img/fotos/vinho-costas-abertas-l.webp 1080w" imagesizes="(max-width: 860px) 100vw, 50vw" fetchpriority="high">
-  <link rel="stylesheet" href="css/estilo.css?v=1">
+  <link rel="stylesheet" href="css/estilo.css?v=2">
 </head>
 <body data-pagina="home">
 
-<div class="proto-tag">Protótipo de demonstração · peças, preços e textos de exemplo · <a href="admin/">Ver o painel da dona da loja</a></div>
-<div class="aviso">Atendimento personalizado pelo WhatsApp<span class="aviso-sep">·</span><span class="aviso-extra">Moda • Estilo • Você</span></div>
+<div class="aviso"><span data-aviso>Atendimento personalizado pelo WhatsApp</span><span class="aviso-sep">·</span><span class="aviso-extra">Moda • Estilo • Você</span></div>
 <header class="topo" id="topo">
   <div class="topo-linha">
     <button class="icone menu-btn" id="menuBtn" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu">
@@ -28,7 +26,7 @@
     <a class="topo-loja" href="index.html#sobre">Nossa marca</a>
     <a href="index.html" class="logo" aria-label="FC Closet, página inicial"><img src="img/logo-vinho.png" alt="FC Closet · Fernanda Cardoso" width="82" height="58"></a>
     <div class="topo-acoes">
-      <a class="icone" href="https://www.instagram.com/fc.closeet/" target="_blank" rel="noopener" aria-label="Instagram">
+      <a class="icone" data-insta href="https://www.instagram.com/fc.closeet/" target="_blank" rel="noopener" aria-label="Instagram">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r=".6" class="cheio"/></svg>
       </a>
       <button class="icone sacola-btn" data-abrir-sacola aria-label="Abrir sacola">
@@ -43,14 +41,14 @@
 <main>
   <section class="hero" aria-label="Destaque">
     <figure class="hero-foto hero-foto-a">
-      <img src="img/fotos/vinho-costas-abertas-l.webp" srcset="img/fotos/vinho-costas-abertas-m.webp 720w, img/fotos/vinho-costas-abertas-l.webp 1080w" sizes="(max-width: 860px) 100vw, 50vw" width="1080" height="1583" alt="Modelo com vestido longo vinho de costas abertas" fetchpriority="high">
+      <img data-hero-1 alt="Modelo com peça da FC Closet" width="1080" height="1560" fetchpriority="high">
     </figure>
     <figure class="hero-foto hero-foto-b">
-      <img loading="lazy" decoding="async" src="img/fotos/branco-assimetrico-l.webp" srcset="img/fotos/branco-assimetrico-m.webp 720w, img/fotos/branco-assimetrico-l.webp 1080w" sizes="(max-width: 860px) 100vw, 50vw" width="1080" height="1582" alt="Modelo com vestido longo branco assimétrico">
+      <img data-hero-2 alt="Modelo com peça da FC Closet" width="1080" height="1560" decoding="async">
     </figure>
     <div class="hero-txt">
-      <p class="sobretitulo">1ª coleção</p>
-      <h1>Estilo em cada detalhe</h1>
+      <p class="sobretitulo" data-hero-sobre></p>
+      <h1 data-hero-titulo>Estilo em cada detalhe</h1>
       <a class="link-linha claro" href="loja.html?cat=novidades">Descubra a coleção</a>
     </div>
   </section>
@@ -73,13 +71,13 @@
   <section class="sobre" id="sobre" aria-labelledby="t-sobre">
     <div class="sobre-in">
       <figure class="sobre-foto">
-        <img src="img/fotos/duo-branco-manteiga-l.webp" srcset="img/fotos/duo-branco-manteiga-m.webp 720w, img/fotos/duo-branco-manteiga-l.webp 1080w" sizes="(max-width: 860px) 100vw, 50vw" width="1080" height="1590" alt="Duas modelos com vestidos longos branco e amarelo manteiga" loading="lazy" decoding="async">
+        <img data-sobre-foto alt="Peça da FC Closet" width="1080" height="1560" decoding="async">
       </figure>
       <div class="sobre-txt">
         <img class="sobre-marca" src="img/logo-marca-creme.png" alt="FC Closet, moda estilo você" width="260" height="273" loading="lazy">
         <p class="sobretitulo">Fernanda Cardoso</p>
         <h2 id="t-sobre">Seu próximo<br><em>look favorito</em></h2>
-        <p>Moda feminina pensada nos detalhes: caimento, cor e conforto para você se expressar do seu jeito. Escolha pelo site, monte a sacola e fale direto com a Fernanda.</p>
+        <p data-sobre-texto></p>
         <a class="botao" href="#" data-whats="Olá! Vim pelo site da FC Closet e gostaria de atendimento.">Falar no WhatsApp</a>
       </div>
     </div>
@@ -93,15 +91,10 @@
 
   <section class="secao insta" aria-labelledby="t-insta">
     <div class="cabeca-secao">
-      <h2 class="titulo-secao" id="t-insta">@fc.closeet</h2>
-      <a class="link-linha" href="https://www.instagram.com/fc.closeet/" target="_blank" rel="noopener">Seguir no Instagram</a>
+      <h2 class="titulo-secao" id="t-insta" data-arroba>@fc.closeet</h2>
+      <a class="link-linha" data-insta href="https://www.instagram.com/fc.closeet/" target="_blank" rel="noopener">Seguir no Instagram</a>
     </div>
-    <div class="insta-grade">
-      <a href="https://www.instagram.com/fc.closeet/" target="_blank" rel="noopener"><img src="img/fotos/preto-assimetrico-2-m.webp" srcset="img/fotos/preto-assimetrico-2-s.webp 400w, img/fotos/preto-assimetrico-2-m.webp 720w" sizes="(max-width: 600px) 50vw, 25vw" width="720" height="1034" alt="Vestido preto assimétrico" loading="lazy" decoding="async"></a>
-      <a href="https://www.instagram.com/fc.closeet/" target="_blank" rel="noopener"><img src="img/fotos/manteiga-frente-m.webp" srcset="img/fotos/manteiga-frente-s.webp 400w, img/fotos/manteiga-frente-m.webp 720w" sizes="(max-width: 600px) 50vw, 25vw" width="720" height="992" alt="Vestido longo amarelo manteiga" loading="lazy" decoding="async"></a>
-      <a href="https://www.instagram.com/fc.closeet/" target="_blank" rel="noopener"><img src="img/fotos/branco-sentada-m.webp" srcset="img/fotos/branco-sentada-s.webp 400w, img/fotos/branco-sentada-m.webp 720w" sizes="(max-width: 600px) 50vw, 25vw" width="720" height="1060" alt="Modelo sentada com vestido branco" loading="lazy" decoding="async"></a>
-      <a href="https://www.instagram.com/fc.closeet/" target="_blank" rel="noopener"><img src="img/fotos/vinho-costas-detalhe-m.webp" srcset="img/fotos/vinho-costas-detalhe-s.webp 400w, img/fotos/vinho-costas-detalhe-m.webp 720w" sizes="(max-width: 600px) 50vw, 25vw" width="720" height="1063" alt="Detalhe das costas do vestido vinho" loading="lazy" decoding="async"></a>
-    </div>
+    <div class="insta-grade" data-insta-grade></div>
   </section>
 </main>
 
@@ -111,7 +104,7 @@
   <nav class="rodape-links" aria-label="Rodapé">
     <a href="loja.html">Loja</a>
     <a href="index.html#sobre">Nossa marca</a>
-    <a href="https://www.instagram.com/fc.closeet/" target="_blank" rel="noopener">Instagram</a>
+    <a data-insta href="https://www.instagram.com/fc.closeet/" target="_blank" rel="noopener">Instagram</a>
     <a href="#" data-whats="Olá! Vim pelo site da FC Closet e gostaria de atendimento.">WhatsApp</a>
     <a href="admin/">Painel da lojista</a>
   </nav>
@@ -152,7 +145,7 @@
   </div>
 </aside>
 <div class="toast" data-toast role="status" aria-live="polite"></div>
-<script src="js/dados.js?v=3"></script>
-<script src="js/site.js?v=1" defer></script>
+<script src="js/dados.js?v=4"></script>
+<script src="js/site.js?v=2" defer></script>
 </body>
 </html>

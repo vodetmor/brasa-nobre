@@ -1,18 +1,17 @@
 /* FC Closet · comportamento do site: vitrine, modal de produto, sacola e pedido no WhatsApp.
-   Dados em js/dados.js (e salvos pelo painel /admin). */
-(function () {
+   Os dados vêm do banco (js/dados.js) e são editados no painel /admin. */
+function iniciar(DADOS) {
   "use strict";
   const CFG = window.FC_CONFIG;
-  const PRODUTOS = window.FC_DB.produtos();
-  const CATS = window.FC_DB.categorias();
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+  const LOJA = DADOS.loja || {}, PRODUTOS = DADOS.produtos, CATS = DADOS.categorias;
   const porId = Object.fromEntries(PRODUTOS.map(p => [p.id, p]));
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const preco = v => (v > 0 ? Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "Sob consulta");
   const foto = window.FC_FOTO;
-  const srcGrade = f => f.startsWith("data:") ? `src="${f}"` : `src="${foto(f, "m")}" srcset="${foto(f, "s")} 400w, ${foto(f, "m")} 720w" sizes="(max-width: 600px) 50vw, (max-width: 1100px) 33vw, 25vw"`;
-  const srcCheia = f => f.startsWith("data:") ? `src="${f}"` : `src="${foto(f, "l")}" srcset="${foto(f, "m")} 720w, ${foto(f, "l")} 1080w, ${foto(f)} 1600w" sizes="(max-width: 860px) 100vw, 55vw"`;
+  const srcGrade = f => `src="${foto(f, "m")}" srcset="${foto(f, "s")} 400w, ${foto(f, "m")} 720w" sizes="(max-width: 600px) 50vw, (max-width: 1100px) 33vw, 25vw"`;
+  const srcCheia = f => `src="${foto(f, "l")}" srcset="${foto(f, "m")} 720w, ${foto(f, "l")} 1080w, ${foto(f)} 1600w" sizes="(max-width: 860px) 100vw, 55vw"`;
   const vazia = () => `<div class="joia-vazia"><span>Em breve</span></div>`;
   const slug = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-");
 
@@ -22,9 +21,39 @@
     .map(([id, n]) => `<a href="loja.html?cat=${encodeURIComponent(id)}">${esc(n)}</a>`).join("") +
     `<a href="index.html#sobre">Nossa marca</a>`;
 
-  /* WhatsApp: número configurado ou link do QR da bio (nesse caso o texto do pedido é copiado) */
-  const temNumero = !!CFG.whatsapp;
-  const linkWhats = msg => temNumero ? `https://wa.me/${CFG.whatsapp}?text=${encodeURIComponent(msg)}` : CFG.whatsQr;
+  /* textos e fotos da loja (editados no painel) */
+  const poeFoto = (img, f, alt) => {
+    if (!img) return; const fig = img.closest("figure");
+    if (!f) { if (fig) fig.classList.add("sem-foto"); img.remove(); return; }
+    img.sizes = "(max-width: 860px) 100vw, 50vw";
+    img.srcset = `${foto(f, "m")} 720w, ${foto(f, "l")} 1080w`;
+    img.src = foto(f, "l"); if (alt) img.alt = alt;
+  };
+  const poeTexto = (sel, t) => $$(sel).forEach(el => { if (t != null) { el.textContent = t; el.hidden = !t; } });
+  poeTexto("[data-aviso]", LOJA.aviso);
+  if (!LOJA.aviso) $$(".aviso-sep").forEach(el => { el.hidden = true; });
+  poeTexto("[data-hero-sobre]", LOJA.hero_sobretitulo);
+  poeTexto("[data-hero-titulo]", LOJA.hero_titulo);
+  poeTexto("[data-sobre-texto]", LOJA.sobre_texto);
+  poeFoto($("[data-hero-1]"), LOJA.hero_foto_1);
+  poeFoto($("[data-hero-2]"), LOJA.hero_foto_2);
+  poeFoto($("[data-sobre-foto]"), LOJA.sobre_foto);
+  const instagram = LOJA.instagram != null ? LOJA.instagram : CFG.instagram;
+  $$("a[data-insta]").forEach(a => { if (/^https:\/\//.test(instagram)) a.href = instagram; else a.hidden = true; });
+  const arroba = (instagram.match(/instagram\.com\/([^/?#]+)/) || [])[1];
+  poeTexto("[data-arroba]", arroba ? "@" + arroba : "Instagram");
+  const instaGrade = $("[data-insta-grade]");
+  if (instaGrade) {
+    /* quatro fotos variadas das peças */
+    const lista = [];
+    for (let n = 1; n < 8 && lista.length < 4; n++) PRODUTOS.forEach(p => { const f = (p.fotos || [])[n % (p.fotos || [1]).length]; if (f && lista.length < 4 && !lista.some(x => x.f === f)) lista.push({ f, nome: p.nome }); });
+    if (lista.length < 4 || !/^https:\/\//.test(instagram)) instaGrade.closest("section").hidden = true;
+    else instaGrade.innerHTML = lista.map(x => `<a href="${esc(instagram)}" target="_blank" rel="noopener"><img ${srcGrade(x.f)} width="720" height="1040" alt="${esc(x.nome)}" loading="lazy" decoding="async"></a>`).join("");
+  }
+
+  /* WhatsApp */
+  const numero = LOJA.whatsapp || CFG.whatsapp;
+  const linkWhats = msg => `https://wa.me/${numero}?text=${encodeURIComponent(msg)}`;
   $$("a[data-whats]").forEach(a => { a.href = linkWhats(a.dataset.whats); a.target = "_blank"; a.rel = "noopener"; });
 
   const toastEl = $("[data-toast]");
@@ -33,10 +62,7 @@
     toastEl.textContent = msg; toastEl.classList.add("visivel");
     clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove("visivel"), 3200);
   }
-  async function abreWhats(msg) {
-    if (!temNumero) { try { await navigator.clipboard.writeText(msg); toast("Pedido copiado. Cole na conversa do WhatsApp."); } catch (e) {} }
-    window.open(linkWhats(msg), "_blank", "noopener");
-  }
+  const abreWhats = msg => window.open(linkWhats(msg), "_blank", "noopener");
 
   /* menu mobile */
   const menuBtn = $("#menuBtn");
@@ -104,7 +130,7 @@
   /* sacola */
   const CH = "fc-sacola-v1"; let sacola = [];
   try { sacola = JSON.parse(localStorage.getItem(CH)) || []; } catch (e) {}
-  sacola = sacola.filter(i => porId[i.id]);
+  sacola = sacola.filter(i => porId[i.id] && porId[i.id].disponivel !== false);
   const salva = () => { try { localStorage.setItem(CH, JSON.stringify(sacola)); } catch (e) {} };
   const sacolaEl = $("#sacola"), itensEl = $("[data-sacola-itens]"), vaziaEl = $("[data-sacola-vazia]"), fimEl = $("[data-sacola-fim]");
   function conta(pulo) {
@@ -129,7 +155,6 @@
     if (mn) { const i = sacola[+mn.dataset.menos]; if (--i.qtd < 1) sacola.splice(+mn.dataset.menos, 1); }
     if (rm) sacola.splice(+rm.dataset.remover, 1);
     if (ma || mn || rm) { salva(); desenhaSacola(); }
-    const w = e.target.closest("[data-whats]"); if (w && !w.href) { e.preventDefault(); abreWhats(w.dataset.whats); }
   });
   $("[data-enviar-pedido]").addEventListener("click", () => {
     if (!sacola.length) return;
@@ -187,4 +212,16 @@
     $$(".categoria, .sobre-foto, .sobre-txt, .passo, .insta-grade a, [data-grade='novidades'] .produto").forEach((el, i) => { el.classList.add("revelar"); el.style.transitionDelay = (i % 4) * 80 + "ms"; io.observe(el); });
   }
   conta();
-})();
+}
+
+/* carrega a loja e monta a página */
+window.FC_CARREGA().then(d => { iniciar(d); document.body.classList.add("pronto"); }).catch(() => {
+  const C = window.FC_CONFIG;
+  document.body.classList.add("pronto", "sem-loja");
+  document.querySelectorAll("a[data-whats]").forEach(a => { a.href = `https://wa.me/${C.whatsapp}?text=${encodeURIComponent(a.dataset.whats)}`; a.target = "_blank"; a.rel = "noopener"; });
+  const aviso = document.createElement("div");
+  aviso.className = "falha"; aviso.setAttribute("role", "alert");
+  aviso.innerHTML = `<p>Não conseguimos carregar a loja agora.</p><button class="botao" type="button">Tentar de novo</button><a class="link-linha" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}">Falar no WhatsApp</a>`;
+  aviso.querySelector("button").addEventListener("click", () => location.reload());
+  document.querySelector("main").prepend(aviso);
+});

@@ -1,76 +1,54 @@
 /* =========================================================
-   FC CLOSET · dados da loja (catálogo)
-   Padrão = peças de exemplo (1ª coleção). O painel da dona (/admin)
-   salva alterações no navegador (demonstração). No site final,
-   o painel grava no banco de dados.
+   FC CLOSET · acesso aos dados da loja (Supabase)
+   A chave abaixo é a chave pública do site: só permite o que as
+   regras do banco liberam (visitante lê, apenas a dona edita).
    ========================================================= */
 window.FC_CONFIG = {
-  /* WhatsApp com DDI+DDD (ex.: "5561999999999"). Vazio = usa o link do QR da bio. */
+  url: "https://wormdqmiqagipoovcjxl.supabase.co",
+  chave: "sb_publishable_4TJHSL8jg72dhEPFqW8p9Q_b32uzTu9",
+  /* usados só se a loja não carregar */
   whatsapp: "5561996381700",
-  whatsQr: "https://wa.me/qr/5NHOXKOQ7VK7L1",
-  instagram: "https://www.instagram.com/fc.closeet/",
-  senhaDemo: "closet2026"
+  instagram: "https://www.instagram.com/fc.closeet/"
 };
 
-window.FC_TAM = ["P", "M", "G", "GG"];
-
-window.FC_CATEGORIAS_PADRAO = ["Branco", "Preto", "Vinho", "Manteiga"];
-
-window.FC_PADRAO = [
-  { id: "vestido-julia-preto", nome: "Vestido Júlia Preto", categoria: "Preto", preco: 0, novidade: true, disponivel: true,
-    fotos: ["julia-preto-1", "julia-preto-2", "julia-preto-3", "julia-preto-4"], tamanhos: [],
-    descricao: "Longo tomara que caia com torção no busto, recorte em tule na cintura e faixas soltas na lateral." },
-  { id: "vestido-julia-vinho", nome: "Vestido Júlia Vinho", categoria: "Vinho", preco: 0, novidade: true, disponivel: true,
-    fotos: ["julia-vinho-1", "julia-vinho-2", "julia-vinho-3", "julia-vinho-4"], tamanhos: [],
-    descricao: "Longo tomara que caia com torção no busto, recorte em tule na cintura e faixas soltas na lateral." },
-  { id: "vestido-julia-branco", nome: "Vestido Júlia Branco", categoria: "Branco", preco: 0, novidade: true, disponivel: true,
-    fotos: ["julia-branco-1", "julia-branco-2", "julia-branco-3", "julia-branco-4"], tamanhos: [],
-    descricao: "Longo tomara que caia com torção no busto, recorte em tule na cintura e faixas soltas na lateral." },
-  { id: "vestido-assimetrico-branco", nome: "Vestido Assimétrico Branco", categoria: "Branco", preco: 289.9, novidade: true, disponivel: true,
-    fotos: ["branco-assimetrico", "branco-assimetrico-2", "branco-sentada", "branco-costas"], tamanhos: ["P", "M", "G"],
-    descricao: "Longo em malha, com recorte na cintura e echarpe de amarrar no ombro. Caimento justo e elegante." },
-  { id: "vestido-assimetrico-preto", nome: "Vestido Assimétrico Preto", categoria: "Preto", preco: 289.9, novidade: true, disponivel: true,
-    fotos: ["preto-assimetrico", "preto-assimetrico-2", "preto-assimetrico-3"], tamanhos: ["P", "M", "G"],
-    descricao: "O clássico preto com recorte vazado e laço lateral. Para sair de dia ou de noite." },
-  { id: "vestido-costas-abertas-vinho", nome: "Vestido Costas Abertas Vinho", categoria: "Vinho", preco: 269.9, novidade: true, disponivel: true,
-    fotos: ["vinho-costas-abertas", "vinho-costas-detalhe"], tamanhos: ["P", "M", "G"],
-    descricao: "Longo vinho com costas abertas e modelagem que valoriza a silhueta. A cor da marca." },
-  { id: "vestido-longo-manteiga", nome: "Vestido Longo Manteiga", categoria: "Manteiga", preco: 259.9, novidade: true, disponivel: true,
-    fotos: ["manteiga-fenda", "manteiga-frente"], tamanhos: ["P", "M", "G"],
-    descricao: "Amarelo manteiga com fenda lateral e decote reto. Leve, delicado e cheio de presença." },
-  { id: "vestido-amarracao-manteiga", nome: "Vestido Costas com Amarração", categoria: "Manteiga", preco: 279.9, novidade: false, disponivel: true,
-    fotos: ["duo-branco-manteiga"], tamanhos: ["P", "M", "G"],
-    descricao: "Amarelo manteiga com amarração nas costas e barra com babado. Romântico e marcante." },
-  { id: "vestido-sereia-branco", nome: "Vestido Longo Branco Tomara que Caia", categoria: "Branco", preco: 249.9, novidade: false, disponivel: true,
-    fotos: ["branco-sentada-2", "branco-assimetrico-2"], tamanhos: ["P", "M", "G"],
-    descricao: "Branco puro, tomara que caia, modelagem ajustada até o tornozelo." }
-];
-
-/* capas das categorias (home) */
-window.FC_CAPAS = { Branco: "branco-assimetrico", Preto: "preto-assimetrico", Vinho: "vinho-costas-abertas", Manteiga: "manteiga-fenda" };
-
 (function () {
-  const CHAVE = "fc-catalogo-v1";
-  const CHAVE_CAT = "fc-categorias-v1";
-  const copia = o => JSON.parse(JSON.stringify(o));
-  window.FC_DB = {
-    produtos() {
-      try { const s = localStorage.getItem(CHAVE); if (s) return JSON.parse(s); } catch (e) {}
-      return copia(window.FC_PADRAO);
-    },
-    salvar(lista) {
-      try { localStorage.setItem(CHAVE, JSON.stringify(lista)); return true; }
-      catch (e) { return false; }
-    },
-    categorias() {
-      try { const s = localStorage.getItem(CHAVE_CAT); if (s) return JSON.parse(s); } catch (e) {}
-      return window.FC_CATEGORIAS_PADRAO.slice();
-    },
-    salvarCategorias(l) { try { localStorage.setItem(CHAVE_CAT, JSON.stringify(l)); } catch (e) {} },
-    restaurar() { try { localStorage.removeItem(CHAVE); localStorage.removeItem(CHAVE_CAT); } catch (e) {} },
-    personalizado() { try { return !!localStorage.getItem(CHAVE); } catch (e) { return false; } }
+  const C = window.FC_CONFIG;
+  const CACHE = "fc-loja-v2";
+
+  /* foto: "sb:<id>.<ext>" (enviada pelo painel) ou nome de arquivo em img/fotos/ */
+  window.FC_FOTO = (f, tam, base = "") => {
+    const suf = tam ? "-" + tam : "";
+    if (f.startsWith("sb:")) {
+      const [id, ext] = f.slice(3).split(".");
+      return `${C.url}/storage/v1/object/public/fotos/${encodeURIComponent(id)}${suf}.${ext === "jpg" ? "jpg" : "webp"}`;
+    }
+    return `${base}img/fotos/${encodeURIComponent(f)}${suf}.webp`;
   };
-  /* foto: nome do arquivo em img/fotos/ ou imagem enviada pela dona (data:) */
-  window.FC_FOTO = (f, tam) => f.startsWith("data:") ? f
-    : `img/fotos/${f}${tam === "s" ? "-s" : tam === "m" ? "-m" : tam === "l" ? "-l" : ""}.webp`;
+
+  async function le(caminho) {
+    const corta = new AbortController(), t = setTimeout(() => corta.abort(), 10000);
+    try {
+      const r = await fetch(`${C.url}/rest/v1/${caminho}`, { headers: { apikey: C.chave }, cache: "no-store", signal: corta.signal });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return await r.json();
+    } finally { clearTimeout(t); }
+  }
+
+  /* sempre busca o mais novo; sem conexão, mostra a última versão vista neste aparelho */
+  window.FC_CARREGA = async () => {
+    try {
+      const [loja, categorias, produtos] = await Promise.all([
+        le("loja?select=*&id=eq.1"),
+        le("categorias?select=nome&order=ordem,nome"),
+        le("produtos?select=*&visivel=is.true&order=ordem,criado_em.desc")
+      ]);
+      if (!loja[0]) throw new Error("loja vazia");
+      const d = { loja: loja[0], categorias: categorias.map(c => c.nome), produtos };
+      try { localStorage.setItem(CACHE, JSON.stringify(d)); } catch (e) {}
+      return d;
+    } catch (erro) {
+      try { const s = localStorage.getItem(CACHE); if (s) return JSON.parse(s); } catch (e) {}
+      throw erro;
+    }
+  };
 })();

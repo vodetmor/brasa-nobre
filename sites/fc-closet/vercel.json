@@ -1,0 +1,7 @@
+{
+  "crons": [
+    { "path": "/api/acordar", "schedule": "17 3 * * *" },
+    { "path": "/api/acordar", "schedule": "41 11 * * *" },
+    { "path": "/api/acordar", "schedule": "23 19 * * *" }
+  ]
+}

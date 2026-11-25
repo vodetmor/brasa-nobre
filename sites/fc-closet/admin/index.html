@@ -7,20 +7,20 @@
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#3A0A12">
   <link rel="icon" href="../img/favicon.png" type="image/png">
-  <link rel="stylesheet" href="admin.css?v=1">
+  <link rel="stylesheet" href="admin.css?v=2">
 </head>
 <body>
 
 <!-- ENTRAR -->
-<main class="entrar" id="telaEntrar">
-  <form class="entrar-caixa" id="formEntrar" autocomplete="off">
+<main class="entrar" id="telaEntrar" hidden>
+  <form class="entrar-caixa" id="formEntrar">
     <img src="../img/logo-creme.png" alt="FC Closet" width="150" height="107">
     <h1>Painel da loja</h1>
-    <p>Aqui você adiciona, edita e tira peças do site.</p>
-    <label>Senha <input type="password" id="senha" placeholder="Digite a senha" autofocus></label>
-    <p class="erro" id="erroSenha" hidden>Senha incorreta.</p>
+    <p>Entre para cuidar das peças e dos textos do site.</p>
+    <label>E-mail <input type="email" id="email" autocomplete="username" required></label>
+    <label>Senha <input type="password" id="senha" autocomplete="current-password" required></label>
+    <p class="erro" id="erroEntrar" role="alert" hidden></p>
     <button class="btn" type="submit">Entrar</button>
-    <p class="dica">Demonstração: a senha é <b>closet2026</b></p>
     <a class="voltar" href="../index.html">← Voltar ao site</a>
   </form>
 </main>
@@ -33,29 +33,72 @@
     <a class="barra-link" href="../index.html" target="_blank" rel="noopener">Ver o site</a>
     <button class="barra-link" id="sair">Sair</button>
   </header>
+  <nav class="abas" aria-label="Seções do painel">
+    <button data-aba="pecas" aria-pressed="true">Peças</button>
+    <button data-aba="categorias" aria-pressed="false">Categorias</button>
+    <button data-aba="loja" aria-pressed="false">Loja</button>
+    <button data-aba="conta" aria-pressed="false">Conta</button>
+  </nav>
 
   <main class="conteudo">
-    <div class="resumo">
-      <div><b id="nTotal">0</b><span>peças</span></div>
-      <div><b id="nOn">0</b><span>à venda</span></div>
-      <div><b id="nOff">0</b><span>esgotadas</span></div>
-    </div>
+    <section data-tela="pecas">
+      <div class="resumo">
+        <div><b id="nTotal">0</b><span>peças</span></div>
+        <div><b id="nOn">0</b><span>à venda</span></div>
+        <div><b id="nOff">0</b><span>esgotadas</span></div>
+      </div>
+      <div class="acoes"><button class="btn" id="novo">+ Nova peça</button></div>
+      <p class="nota">O que você salvar aqui aparece no site para todas as clientes.</p>
+      <ul class="lista" id="lista"></ul>
+      <p class="vazio" id="vazio" hidden>Nenhuma peça cadastrada. Toque em “+ Nova peça”.</p>
+    </section>
 
-    <div class="acoes">
-      <button class="btn" id="novo">+ Nova peça</button>
-      <button class="btn-l" id="restaurar">Restaurar peças de exemplo</button>
-    </div>
-    <p class="aviso-demo">Modo demonstração: as mudanças ficam salvas neste aparelho e aparecem na hora no site. Abra o site em outra aba para ver.</p>
+    <section data-tela="categorias" hidden>
+      <p class="nota">As categorias aparecem no menu e na página inicial, nesta ordem.</p>
+      <ul class="lista" id="listaCat"></ul>
+      <form class="linha" id="formCat">
+        <input id="catNova" maxlength="24" placeholder="Nova categoria" aria-label="Nova categoria" required>
+        <button class="btn" type="submit">Adicionar</button>
+      </form>
+    </section>
 
-    <ul class="lista" id="lista"></ul>
-    <p class="vazio" id="vazio" hidden>Nenhuma peça cadastrada. Toque em “+ Nova peça”.</p>
+    <section data-tela="loja" hidden>
+      <form class="bloco" id="formLoja">
+        <h2>Contato</h2>
+        <label class="campo"><span class="rot">WhatsApp (com DDD)</span><input id="lWhats" inputmode="tel" required placeholder="+55 61 90000-0000"></label>
+        <label class="campo"><span class="rot">Link do Instagram</span><input id="lInsta" type="url" placeholder="https://www.instagram.com/..."></label>
+        <h2>Topo do site</h2>
+        <label class="campo"><span class="rot">Faixa de aviso</span><input id="lAviso" maxlength="80"></label>
+        <label class="campo"><span class="rot">Texto pequeno do destaque</span><input id="lSobretitulo" maxlength="40"></label>
+        <label class="campo"><span class="rot">Título do destaque</span><input id="lTitulo" maxlength="60" required></label>
+        <div class="campo"><span class="rot">Foto do destaque (aparece no celular)</span><div class="foto-loja" data-foto="hero_foto_1"></div></div>
+        <div class="campo"><span class="rot">Segunda foto (só no computador)</span><div class="foto-loja" data-foto="hero_foto_2"></div></div>
+        <h2>Nossa marca</h2>
+        <label class="campo"><span class="rot">Texto de apresentação</span><textarea id="lSobre" rows="5" maxlength="600"></textarea></label>
+        <div class="campo"><span class="rot">Foto da apresentação</span><div class="foto-loja" data-foto="sobre_foto"></div></div>
+        <input type="file" id="arquivoLoja" accept="image/*" hidden>
+        <p class="erro" id="erroLoja" role="alert" hidden></p>
+        <button class="btn" type="submit">Salvar alterações da loja</button>
+      </form>
+    </section>
+
+    <section data-tela="conta" hidden>
+      <form class="bloco" id="formSenha">
+        <h2>Trocar senha</h2>
+        <p class="nota" id="contaEmail"></p>
+        <label class="campo"><span class="rot">Nova senha</span><input type="password" id="senha1" minlength="8" autocomplete="new-password" required></label>
+        <label class="campo"><span class="rot">Repita a nova senha</span><input type="password" id="senha2" minlength="8" autocomplete="new-password" required></label>
+        <p class="erro" id="erroSenha" role="alert" hidden></p>
+        <button class="btn" type="submit">Salvar nova senha</button>
+      </form>
+    </section>
   </main>
 </div>
 
-<!-- FORMULÁRIO -->
+<!-- FORMULÁRIO DA PEÇA -->
 <div class="folha" id="folha" hidden role="dialog" aria-modal="true" aria-labelledby="folhaT">
   <div class="folha-fundo" data-fechar></div>
-  <form class="folha-caixa" id="form">
+  <form class="folha-caixa" id="form" novalidate>
     <div class="folha-topo"><h2 id="folhaT">Nova peça</h2><button type="button" class="x" data-fechar aria-label="Fechar">×</button></div>
 
     <div class="campo">
@@ -63,39 +106,48 @@
       <div class="fotos" id="fotos"></div>
       <input type="file" id="arquivo" accept="image/*" multiple hidden>
       <button type="button" class="btn-l" id="addFoto">+ Adicionar fotos</button>
-      <p class="ajuda">A primeira foto é a capa. Toque na foto para removê-la.</p>
+      <p class="ajuda">A primeira foto é a capa. Use “Capa” para escolher outra e as setas para mudar a ordem.</p>
     </div>
 
-    <label class="campo"><span class="rot">Nome da peça</span><input id="fNome" required maxlength="60" placeholder="Ex.: Vestido Longo Vinho"></label>
+    <label class="campo"><span class="rot">Nome da peça</span><input id="fNome" maxlength="60" placeholder="Ex.: Vestido Longo Vinho"></label>
 
     <div class="duas">
-      <label class="campo"><span class="rot">Preço (R$)</span><input id="fPreco" inputmode="decimal" placeholder="289,90"></label>
-      <label class="campo"><span class="rot">Categoria</span>
-        <select id="fCat"></select>
-      </label>
+      <label class="campo"><span class="rot">Preço (R$)</span><input id="fPreco" inputmode="decimal" placeholder="Sob consulta"></label>
+      <label class="campo"><span class="rot">Categoria</span><select id="fCat"></select></label>
     </div>
     <label class="campo" id="campoNovaCat" hidden><span class="rot">Nome da nova categoria</span><input id="fNovaCat" maxlength="24" placeholder="Ex.: Conjuntos"></label>
 
     <div class="campo">
       <span class="rot">Tamanhos disponíveis</span>
       <div class="chips" id="fTam"></div>
+      <div class="linha"><input id="fOutroTam" maxlength="12" placeholder="Outro (ex.: 38)" aria-label="Outro tamanho"><button type="button" class="btn-l" id="addTam">Incluir</button></div>
     </div>
 
-    <label class="campo"><span class="rot">Descrição</span><textarea id="fDesc" rows="3" maxlength="300" placeholder="Tecido, caimento, ocasião..."></textarea></label>
+    <label class="campo"><span class="rot">Descrição</span><textarea id="fDesc" rows="4" maxlength="600" placeholder="Tecido, caimento, ocasião..."></textarea></label>
 
-    <label class="chk"><input type="checkbox" id="fNovo"><span>Mostrar em “Novidades”</span></label>
-    <label class="chk"><input type="checkbox" id="fDisp" checked><span>Disponível para venda</span></label>
+    <label class="chk"><input type="checkbox" id="fNovo"><span>Destacar em “Novidades”</span></label>
+    <label class="chk"><input type="checkbox" id="fDisp"><span>Disponível para venda (desmarcado = esgotado)</span></label>
+    <label class="chk"><input type="checkbox" id="fVisivel"><span>Mostrar no site</span></label>
 
-    <p class="erro" id="erroForm" hidden></p>
+    <p class="erro" id="erroForm" role="alert" hidden></p>
     <div class="folha-fim">
       <button type="button" class="btn-l" data-fechar>Cancelar</button>
-      <button type="submit" class="btn">Salvar peça</button>
+      <button type="submit" class="btn" id="salvar">Salvar peça</button>
     </div>
   </form>
 </div>
 
+<!-- ESCOLHER FOTO DAS PEÇAS -->
+<div class="folha" id="escolha" hidden role="dialog" aria-modal="true" aria-labelledby="escolhaT">
+  <div class="folha-fundo" data-fechar-escolha></div>
+  <div class="folha-caixa">
+    <div class="folha-topo"><h2 id="escolhaT">Escolher foto</h2><button type="button" class="x" data-fechar-escolha aria-label="Fechar">×</button></div>
+    <div class="grade-escolha" id="gradeEscolha"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<script src="../js/dados.js?v=3"></script>
-<script src="admin.js?v=1"></script>
+<script src="../js/dados.js?v=4"></script>
+<script src="admin.js?v=2"></script>
 </body>
 </html>
