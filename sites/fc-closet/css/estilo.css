@@ -143,8 +143,8 @@ em { font-style: italic; }
 .hero { position: relative; display: grid; grid-template-columns: 1fr 1fr; height: min(88vh, 900px); min-height: 560px; background: var(--escuro); }
 .hero-foto { overflow: hidden; }
 .hero-foto img { width: 100%; height: 100%; object-fit: cover; animation: respira 18s ease-out both; }
-.hero-foto-a img { object-position: 50% 20%; }
-.hero-foto-b img { object-position: 50% 10%; animation-delay: .2s; }
+.hero-foto-a img { object-position: 50% 30%; }
+.hero-foto-b img { object-position: 50% 0%; animation-delay: .2s; }
 @keyframes respira { from { transform: scale(1.06); } to { transform: scale(1); } }
 .hero::after { content: ""; position: absolute; inset: 0; background: rgba(58,10,18,.18); pointer-events: none; }
 .hero-txt {

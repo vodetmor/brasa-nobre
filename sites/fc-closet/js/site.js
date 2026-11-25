@@ -42,15 +42,6 @@ function iniciar(DADOS) {
   $$("a[data-insta]").forEach(a => { if (/^https:\/\//.test(instagram)) a.href = instagram; else a.hidden = true; });
   const arroba = (instagram.match(/instagram\.com\/([^/?#]+)/) || [])[1];
   poeTexto("[data-arroba]", arroba ? "@" + arroba : "Instagram");
-  const instaGrade = $("[data-insta-grade]");
-  if (instaGrade) {
-    /* quatro fotos variadas das peças */
-    const lista = [];
-    for (let n = 1; n < 8 && lista.length < 4; n++) PRODUTOS.forEach(p => { const f = (p.fotos || [])[n % (p.fotos || [1]).length]; if (f && lista.length < 4 && !lista.some(x => x.f === f)) lista.push({ f, nome: p.nome }); });
-    if (lista.length < 4 || !/^https:\/\//.test(instagram)) instaGrade.closest("section").hidden = true;
-    else instaGrade.innerHTML = lista.map(x => `<a href="${esc(instagram)}" target="_blank" rel="noopener"><img ${srcGrade(x.f)} width="720" height="1040" alt="${esc(x.nome)}" loading="lazy" decoding="async"></a>`).join("");
-  }
-
   /* WhatsApp */
   const numero = LOJA.whatsapp || CFG.whatsapp;
   const linkWhats = msg => `https://wa.me/${numero}?text=${encodeURIComponent(msg)}`;
