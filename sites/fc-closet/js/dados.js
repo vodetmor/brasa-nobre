@@ -6,7 +6,7 @@
    ========================================================= */
 window.FC_CONFIG = {
   /* WhatsApp com DDI+DDD (ex.: "5561999999999"). Vazio = usa o link do QR da bio. */
-  whatsapp: "",
+  whatsapp: "5561996381700",
   whatsQr: "https://wa.me/qr/5NHOXKOQ7VK7L1",
   instagram: "https://www.instagram.com/fc.closeet/",
   senhaDemo: "closet2026"
@@ -17,6 +17,15 @@ window.FC_TAM = ["P", "M", "G", "GG"];
 window.FC_CATEGORIAS_PADRAO = ["Branco", "Preto", "Vinho", "Manteiga"];
 
 window.FC_PADRAO = [
+  { id: "vestido-julia-preto", nome: "Vestido Júlia Preto", categoria: "Preto", preco: 0, novidade: true, disponivel: true,
+    fotos: ["julia-preto-1", "julia-preto-2", "julia-preto-3", "julia-preto-4"], tamanhos: [],
+    descricao: "Longo tomara que caia com torção no busto, recorte em tule na cintura e faixas soltas na lateral." },
+  { id: "vestido-julia-vinho", nome: "Vestido Júlia Vinho", categoria: "Vinho", preco: 0, novidade: true, disponivel: true,
+    fotos: ["julia-vinho-1", "julia-vinho-2", "julia-vinho-3", "julia-vinho-4"], tamanhos: [],
+    descricao: "Longo tomara que caia com torção no busto, recorte em tule na cintura e faixas soltas na lateral." },
+  { id: "vestido-julia-branco", nome: "Vestido Júlia Branco", categoria: "Branco", preco: 0, novidade: true, disponivel: true,
+    fotos: ["julia-branco-1", "julia-branco-2", "julia-branco-3", "julia-branco-4"], tamanhos: [],
+    descricao: "Longo tomara que caia com torção no busto, recorte em tule na cintura e faixas soltas na lateral." },
   { id: "vestido-assimetrico-branco", nome: "Vestido Assimétrico Branco", categoria: "Branco", preco: 289.9, novidade: true, disponivel: true,
     fotos: ["branco-assimetrico", "branco-assimetrico-2", "branco-sentada", "branco-costas"], tamanhos: ["P", "M", "G"],
     descricao: "Longo em malha, com recorte na cintura e echarpe de amarrar no ombro. Caimento justo e elegante." },
