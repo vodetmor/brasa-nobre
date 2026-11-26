@@ -110,3 +110,9 @@ button:disabled{opacity:.4;cursor:default}
 .grade-escolha button{border:0;padding:0;aspect-ratio:3/4;background:var(--nude)}
 .grade-escolha img{width:100%;height:100%;object-fit:cover}
 .ocupado #painel{cursor:progress}
+
+.cor-foto{display:grid;gap:8px;margin-top:6px}
+.cor-foto>div{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.cor-foto button{flex:0 0 64px;height:84px;padding:2px;border:1px solid var(--linha);background:#fff}
+.cor-foto button[aria-pressed="true"]{border:3px solid var(--vinho);padding:0}
+.cor-foto img{width:100%;height:100%;object-fit:cover}

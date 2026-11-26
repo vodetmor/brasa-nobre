@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#3A0A12">
   <link rel="icon" href="../img/favicon.png" type="image/png">
-  <link rel="stylesheet" href="admin.css?v=3">
+  <link rel="stylesheet" href="admin.css?v=4">
 </head>
 <body>
 
@@ -122,12 +122,18 @@
 
     <div class="duas">
       <label class="campo"><span class="rot">Preço (R$)</span><input id="fPreco" inputmode="decimal" placeholder="Sob consulta"></label>
-      <label class="campo"><span class="rot">Categoria</span><select id="fCat"></select></label>
+      <label class="campo"><span class="rot">Cor principal</span><select id="fCat"></select></label>
     </div>
     <label class="campo" id="campoNovaCat" hidden><span class="rot">Nome da nova categoria</span><input id="fNovaCat" maxlength="24" placeholder="Ex.: Conjuntos"></label>
-    <label class="campo"><span class="rot">Modelo (junta as cores)</span><input id="fModelo" maxlength="40" list="listaModelos" placeholder="Ex.: Júlia" autocomplete="off"></label>
+    <div class="campo">
+      <span class="rot">Também vem nestas cores</span>
+      <div class="chips" id="fCores"></div>
+      <div id="fCoresFotos"></div>
+      <p class="ajuda">Marque as outras cores deste vestido e escolha a foto de cada uma. Ele aparece em todas. Cor que não está na lista: crie na aba Categorias.</p>
+    </div>
+    <label class="campo"><span class="rot">Modelo (opcional)</span><input id="fModelo" maxlength="40" list="listaModelos" placeholder="Ex.: Júlia" autocomplete="off"></label>
     <datalist id="listaModelos"></datalist>
-    <p class="ajuda">Só para o mesmo vestido em outra cor: dentro da peça, a cliente pode trocar de cor. Não escreva o tecido aqui. Deixe vazio se o vestido tem uma cor só.</p>
+    <p class="ajuda">Só se cada cor tiver um cadastro separado: o mesmo nome aqui junta os cadastros. Não escreva o tecido.</p>
 
     <div class="campo">
       <span class="rot">Tamanhos disponíveis</span>
@@ -161,6 +167,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="../js/dados.js?v=4"></script>
-<script src="admin.js?v=4"></script>
+<script src="admin.js?v=5"></script>
 </body>
 </html>

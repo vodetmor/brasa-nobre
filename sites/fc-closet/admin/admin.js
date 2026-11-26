@@ -135,7 +135,7 @@
     $("#lista").innerHTML = produtos.map((p, i) => `<li class="item${!p.disponivel || !p.visivel ? " off" : ""}" data-id="${esc(p.id)}">
       ${p.fotos[0] ? `<img src="${esc(fotoA(p.fotos[0]))}" alt="">` : '<span class="sem">Sem foto</span>'}
       <div><h3>${esc(p.nome)}</h3>
-        <p class="meta">${preco(p.preco)} · ${esc(p.categoria)}${p.tamanhos.length ? " · " + esc(p.tamanhos.join(", ")) : ""}${p.modelo ? " · modelo " + esc(p.modelo) : ""}</p>
+        <p class="meta">${preco(p.preco)} · ${esc([p.categoria, ...(p.outras_cores || []).map(x => x.cor)].join(", "))}${p.tamanhos.length ? " · " + esc(p.tamanhos.join(", ")) : ""}${p.modelo ? " · modelo " + esc(p.modelo) : ""}</p>
         <span class="etq ${p.disponivel ? "ok" : "no"}">${p.disponivel ? "À venda" : "Esgotado"}</span>${p.novidade ? '<span class="etq">Novidade</span>' : ""}${p.visivel ? "" : '<span class="etq no">Escondida</span>'}</div>
       <div class="item-acoes">
         <button class="btn-p" data-a="editar">Editar</button>
@@ -221,7 +221,7 @@
     selCat.innerHTML = cats.map(c => `<option value="${esc(c.nome)}"${c.nome === sel ? " selected" : ""}>${esc(c.nome)}</option>`).join("") + '<option value="__nova">+ Nova categoria…</option>';
     $("#campoNovaCat").hidden = selCat.value !== "__nova";
   }
-  selCat.addEventListener("change", () => { $("#campoNovaCat").hidden = selCat.value !== "__nova"; if (selCat.value === "__nova") $("#fNovaCat").focus(); sugereNome(); });
+  selCat.addEventListener("change", () => { $("#campoNovaCat").hidden = selCat.value !== "__nova"; if (selCat.value === "__nova") $("#fNovaCat").focus(); sugereNome(); desenhaCores(); });
   function chipsTam() {
     const todos = [...TAMANHOS, ...[...tams].filter(t => !TAMANHOS.includes(t))];
     $("#fTam").innerHTML = todos.map(t => `<button type="button" class="chip" data-t="${esc(t)}" aria-pressed="${tams.has(t)}">${esc(t)}</button>`).join("");
@@ -230,9 +230,19 @@
   const incluiTam = () => { const t = $("#fOutroTam").value.trim(); if (t) { tams.add(TAMANHOS.find(x => x.toLowerCase() === t.toLowerCase()) || t); $("#fOutroTam").value = ""; chipsTam(); } };
   $("#addTam").addEventListener("click", incluiTam);
   $("#fOutroTam").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); incluiTam(); } });
+  /* outras cores do mesmo vestido: cor marcada -> foto (o próprio item de "fotos") */
+  let extras = new Map();
+  function desenhaCores() {
+    const principal = selCat.value, opcoes = cats.map(c => c.nome).filter(n => n !== principal);
+    $("#fCores").innerHTML = opcoes.map(n => `<button type="button" class="chip" data-cor="${esc(n)}" aria-pressed="${extras.has(n)}">${esc(n)}</button>`).join("");
+    $("#fCoresFotos").innerHTML = opcoes.filter(n => extras.has(n)).map(n => `<div class="cor-foto"><p>Toque na foto da cor <b>${esc(n)}</b></p>${fotos.length ? `<div>${fotos.map((f, i) => `<button type="button" data-cor="${esc(n)}" data-i="${i}" aria-pressed="${extras.get(n) === f}" aria-label="Foto ${i + 1} para ${esc(n)}"><img src="${esc(f.ref ? fotoA(f.ref) : f.url)}" alt=""></button>`).join("")}</div>` : '<p class="ajuda">Adicione as fotos primeiro.</p>'}</div>`).join("");
+  }
+  $("#fCores").addEventListener("click", e => { const b = e.target.closest("[data-cor]"); if (!b) return; const n = b.dataset.cor; extras.has(n) ? extras.delete(n) : extras.set(n, null); desenhaCores(); });
+  $("#fCoresFotos").addEventListener("click", e => { const b = e.target.closest("[data-i]"); if (!b) return; extras.set(b.dataset.cor, fotos[+b.dataset.i]); desenhaCores(); });
   function miniaturas() {
     $("#fotos").innerHTML = fotos.map((f, i) => `<figure class="foto-t"><div><img src="${esc(f.ref ? fotoA(f.ref) : f.url)}" alt="Foto ${i + 1}">${i === 0 ? '<span class="capa">Capa</span>' : ""}<button type="button" class="tira" data-f="tira" data-i="${i}" aria-label="Remover foto ${i + 1}">×</button></div>
       <figcaption><button type="button" data-f="antes" data-i="${i}" aria-label="Mover foto ${i + 1} para antes"${i === 0 ? " disabled" : ""}>‹</button><button type="button" data-f="capa" data-i="${i}"${i === 0 ? " disabled" : ""}>Capa</button><button type="button" data-f="depois" data-i="${i}" aria-label="Mover foto ${i + 1} para depois"${i === fotos.length - 1 ? " disabled" : ""}>›</button></figcaption></figure>`).join("");
+    desenhaCores();
   }
   $("#fotos").addEventListener("click", e => {
     const b = e.target.closest("[data-f]"); if (!b || salvando) return; const i = +b.dataset.i, a = b.dataset.f;
@@ -266,6 +276,7 @@
       selCat.insertAdjacentHTML("afterbegin", '<option value="" disabled>Escolha a cor…</option>'); selCat.value = ""; $("#campoNovaCat").hidden = true;
       sugereNome();
     }
+    extras = new Map((p && p.outras_cores || []).map(x => [x.cor, fotos.find(f => f.ref === x.foto) || null]));
     erroEm("#erroForm"); chipsTam(); miniaturas();
     folha.hidden = false; document.body.style.overflow = "hidden"; $(".folha-caixa", folha).scrollTop = 0;
   }
@@ -294,6 +305,9 @@
       cat = $("#fNovaCat").value.trim(); if (!cat) return erro("Escreva o nome da nova categoria.");
       const ja = cats.find(c => c.nome.toLowerCase() === cat.toLowerCase()); if (ja) cat = ja.nome; else criaCat = true;
     }
+    const outras = [...extras].filter(([n]) => n !== cat && cats.some(c => c.nome === n));
+    const semFoto = outras.find(([, f]) => !fotos.includes(f));
+    if (semFoto) return erro(`Toque na foto da cor ${semFoto[0]}.`);
     incluiTam();
     const botao = $("#salvar"), era = editando, antigas = era ? era.fotos : [], enviadas = [];
     salvando = true; botao.disabled = true;
@@ -302,7 +316,7 @@
       for (const f of fotos) if (!f.ref) { botao.textContent = `Enviando foto ${++n} de ${novas}…`; f.ref = await envia(f.file); enviadas.push(f); }
       botao.textContent = "Salvando…";
       if (criaCat) { await grava("categorias", "POST", { nome: cat, ordem: cats.length + 1 }); cats.push({ nome: cat, ordem: cats.length + 1 }); opcoesCat(cat); }
-      const dados = { nome, modelo, categoria: cat, preco: valor, fotos: fotos.map(f => f.ref), tamanhos: [...TAMANHOS.filter(t => tams.has(t)), ...[...tams].filter(t => !TAMANHOS.includes(t))], descricao: $("#fDesc").value.trim(), detalhes: $("#fDetalhes").value.trim(), novidade: $("#fNovo").checked, disponivel: $("#fDisp").checked, visivel: $("#fVisivel").checked };
+      const dados = { nome, modelo, categoria: cat, outras_cores: outras.map(([cor, f]) => ({ cor, foto: f.ref })), preco: valor, fotos: fotos.map(f => f.ref), tamanhos: [...TAMANHOS.filter(t => tams.has(t)), ...[...tams].filter(t => !TAMANHOS.includes(t))], descricao: $("#fDesc").value.trim(), detalhes: $("#fDetalhes").value.trim(), novidade: $("#fNovo").checked, disponivel: $("#fDisp").checked, visivel: $("#fVisivel").checked };
       await grava(era ? "produtos?id=eq." + era.id : "produtos", era ? "PATCH" : "POST", dados);
       const de = origem; salvando = false; fecha();
       if (de && (de.modelo || "") !== modelo) {
@@ -322,9 +336,9 @@
 
   /* ---------- categorias ---------- */
   function desenhaCats() {
-    $("#listaCat").innerHTML = cats.map((c, i) => { const n = produtos.filter(p => p.categoria === c.nome).length; return `<li class="cat" data-i="${i}">
+    $("#listaCat").innerHTML = cats.map((c, i) => { const n = produtos.filter(p => p.categoria === c.nome).length, tambem = produtos.filter(p => (p.outras_cores || []).some(x => x.cor === c.nome)).length; return `<li class="cat" data-i="${i}">
       <div class="linha"><input value="${esc(c.nome)}" maxlength="24" aria-label="Nome da categoria"><button class="btn-p" data-c="renomear">Salvar nome</button></div>
-      <p class="meta">${n === 1 ? "1 peça" : n + " peças"}</p>
+      <p class="meta">${n + tambem === 1 ? "1 peça" : n + tambem + " peças"}</p>
       <div class="item-acoes"><button class="btn-p" data-c="sobe" aria-label="Subir"${i === 0 ? " disabled" : ""}>↑</button><button class="btn-p" data-c="desce" aria-label="Descer"${i === cats.length - 1 ? " disabled" : ""}>↓</button><button class="btn-p perigo" data-c="apagar"${n ? " disabled" : ""}>${n ? "Mova as peças para apagar" : "Apagar"}</button></div></li>`; }).join("");
   }
   const urlCat = c => "categorias?nome=eq." + encodeURIComponent(c.nome);

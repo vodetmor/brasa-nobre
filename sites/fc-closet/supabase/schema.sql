@@ -53,9 +53,25 @@ create table public.produtos (
   ordem int not null default 0,
   criado_em timestamptz not null default now(),
   modelo text not null default '' check (char_length(modelo) <= 40),
-  detalhes text not null default '' check (char_length(detalhes) <= 800)
+  detalhes text not null default '' check (char_length(detalhes) <= 800),
+  outras_cores jsonb not null default '[]' check (jsonb_typeof(outras_cores) = 'array' and jsonb_array_length(outras_cores) <= 12)
 );
 create index produtos_categoria_idx on public.produtos (categoria);
+
+-- Outras cores de uma peça acompanham a categoria quando ela é renomeada ou apagada.
+create or replace function private.acompanha_cor() returns trigger
+language plpgsql set search_path = ''
+as $$
+begin
+  update public.produtos p set outras_cores = coalesce((
+    select jsonb_agg(case when x->>'cor' = old.nome and tg_op = 'UPDATE' then jsonb_set(x, '{cor}', to_jsonb(new.nome)) else x end order by n)
+    from jsonb_array_elements(p.outras_cores) with ordinality t(x, n)
+    where tg_op = 'UPDATE' or x->>'cor' is distinct from old.nome), '[]'::jsonb)
+  where p.outras_cores @> jsonb_build_array(jsonb_build_object('cor', old.nome));
+  return null;
+end $$;
+create trigger categorias_acompanha_cor after update of nome or delete on public.categorias
+for each row execute function private.acompanha_cor();
 
 alter table public.loja enable row level security;
 alter table public.categorias enable row level security;
