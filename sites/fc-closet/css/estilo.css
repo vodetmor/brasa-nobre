@@ -263,13 +263,19 @@ em { font-style: italic; }
 .rodape-links a { font: 400 10px/1 var(--f-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--texto); padding: 6px 0; }
 .rodape-links a:hover { color: var(--rose); }
 
-/* whatsapp fixo (mobile) */
+/* whatsapp flutuante: botão redondo no celular, com texto em telas maiores */
 .whats-fixo {
   position: fixed; right: 18px; bottom: 18px; z-index: 30;
-  width: 54px; height: 54px; border-radius: 50%; display: none; place-items: center;
+  width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center;
   background: var(--escuro); color: var(--creme); box-shadow: 0 10px 30px rgba(58,10,18,.25);
 }
 .whats-fixo svg { width: 26px; height: 26px; }
+@media (min-width: 861px) {
+  .whats-fixo { right: 28px; bottom: 28px; width: auto; height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 22px 0 18px; border-radius: 24px; transition: transform var(--t); }
+  .whats-fixo svg { width: 22px; height: 22px; }
+  .whats-fixo::after { content: "Fale no WhatsApp"; font: 400 10px/1 var(--f-texto); letter-spacing: .24em; text-transform: uppercase; }
+  .whats-fixo:hover { transform: translateY(-2px); }
+}
 
 /* ---------- página loja ---------- */
 .pagina-loja { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
@@ -442,7 +448,6 @@ em { font-style: italic; }
   .modal { padding: 0; place-items: end stretch; }
   .modal-caixa { grid-template-columns: 1fr; max-height: 94vh; width: 100%; }
   .mp-fotos img, .mp-fotos .joia-vazia { aspect-ratio: 4 / 5; }
-  .whats-fixo { display: grid; }
   .filtros { flex-direction: column; align-items: stretch; gap: 10px; top: var(--altura-topo, 64px); }
   .filtros-direita { justify-content: space-between; gap: 8px; }
   .filtros-qtd { display: none; }
