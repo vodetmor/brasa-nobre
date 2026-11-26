@@ -78,50 +78,11 @@ function iniciar(DADOS) {
     aoFavoritar();
   }
 
-  /* um cartão por modelo: as cores (peças com o mesmo "modelo") passam sozinhas */
   const chaveModelo = p => (p.modelo || "").trim().toLocaleLowerCase("pt-BR");
-  function agrupa(lista) {
-    const grupos = new Map();
-    lista.forEach(p => { const k = chaveModelo(p) || p.id; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(p); });
-    return [...grupos.values()];
-  }
-  const nomeModelo = p => p.nome.split(/\s+/).filter(x => x.toLocaleLowerCase("pt-BR") !== p.categoria.toLocaleLowerCase("pt-BR")).join(" ") || p.nome;
   const selo = p => p.disponivel === false ? '<span class="selo esg">Esgotado</span>' : p.novidade ? '<span class="selo">Novo</span>' : "";
-  function cartaoCores(g) {
-    const p = g[0], midia = g.map((x, i) => x.fotos && x.fotos[0] ? `<img class="cor-img${i ? "" : " ativa"}" ${srcGrade(x.fotos[0])} alt="${esc(x.nome)}" loading="lazy" decoding="async">` : vazia().replace('class="', `class="cor-img${i ? "" : " ativa"} `)).join("");
-    return `<article class="produto produto-cores${p.disponivel === false ? " esgotado" : ""}" data-grupo="${esc(g.map(x => x.id).join(","))}" data-i="0">
-      <div class="produto-midia">
-        <button class="produto-foto" data-abrir="${esc(p.id)}" aria-label="Ver ${esc(p.nome)}"><span data-selo>${selo(p)}</span>${midia}</button>
-        <button type="button" class="produto-fav" data-fav="${esc(p.id)}" aria-pressed="${favs.has(p.id)}" aria-label="Favoritar ${esc(p.nome)}">${coracao}</button>
-        <button class="produto-add" data-abrir="${esc(p.id)}" aria-label="Escolher tamanho de ${esc(p.nome)}">Escolher</button>
-      </div>
-      <button class="produto-link" data-abrir="${esc(p.id)}" tabindex="-1"><span class="produto-nome">${esc(nomeModelo(p))}</span><span class="produto-preco">${preco(p.preco)}</span><span class="produto-tons"><span class="tons-pontos" aria-hidden="true">${g.map((x, i) => `<i${i ? "" : ' class="ativa"'}></i>`).join("")}</span><span data-tom>${esc(p.categoria)}</span> · ${g.length} cores</span></button>
-    </article>`;
-  }
-  function passaCor(art) {
-    const ids = art.dataset.grupo.split(","), i = (Number(art.dataset.i) + 1) % ids.length, p = porId[ids[i]];
-    art.dataset.i = i; art.classList.toggle("esgotado", p.disponivel === false);
-    $$(".cor-img", art).forEach((el, n) => el.classList.toggle("ativa", n === i));
-    $$(".tons-pontos i", art).forEach((el, n) => el.classList.toggle("ativa", n === i));
-    $$("[data-abrir]", art).forEach(b => { b.dataset.abrir = p.id; });
-    $(".produto-foto", art).setAttribute("aria-label", `Ver ${p.nome}`);
-    $(".produto-add", art).setAttribute("aria-label", `Escolher tamanho de ${p.nome}`);
-    const f = $("[data-fav]", art); f.dataset.fav = p.id; f.setAttribute("aria-pressed", favs.has(p.id)); f.setAttribute("aria-label", `Favoritar ${p.nome}`);
-    $("[data-selo]", art).innerHTML = selo(p); $(".produto-preco", art).textContent = preco(p.preco); $("[data-tom]", art).textContent = p.categoria;
-  }
-  /* para quem pediu menos movimento no aparelho, o cartão fica parado */
-  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setInterval(() => {
-    if (document.hidden || $$(".modal, .sacola").some(el => !el.hidden)) return;
-    $$(".produto-cores").forEach(art => {
-      const r = art.getBoundingClientRect();
-      if (r.bottom > 0 && r.top < innerHeight && !art.querySelector(":focus-visible") && !(matchMedia("(hover: hover)").matches && art.matches(":hover"))) passaCor(art);
-    });
-  }, 2600);
 
   /* cartão de produto */
-  function cartao(g) {
-    if (g.length > 1) return cartaoCores(g);
-    const p = g[0];
+  function cartao(p) {
     const f = p.fotos || [];
     const midia = f.length ? `<img ${srcGrade(f[0])} alt="${esc(p.nome)}" loading="lazy" decoding="async">` + (f[1] ? `<img class="foto-2" ${srcGrade(f[1])} alt="" loading="lazy" decoding="async">` : "") : vazia();
     return `<article class="produto${p.disponivel === false ? " esgotado" : ""}">
@@ -137,13 +98,34 @@ function iniciar(DADOS) {
   /* categorias da home */
   const catBox = $("[data-categorias]");
   if (catBox) {
-    const capa = c => { const p = PRODUTOS.find(x => x.categoria === c && x.fotos && x.fotos[0]); return p ? p.fotos[0] : null; };
-    catBox.innerHTML = CATS.map(c => { const cp = capa(c); return `<a class="categoria" href="loja.html?cat=${encodeURIComponent(c)}"><div class="categoria-foto">${cp ? `<img ${srcGrade(cp)} alt="${esc(c)}" loading="lazy" decoding="async">` : vazia()}</div><span class="categoria-nome">${esc(c)}</span></a>`; }).join("");
+    /* a capa de cada cor passa, bem de leve, pelas fotos dos vestidos daquela cor */
+    const capas = c => { const l = PRODUTOS.filter(x => x.categoria === c && x.fotos && x.fotos[0]), tem = l.filter(x => x.disponivel !== false); return (tem.length ? tem : l).map(x => x.fotos[0]); };
+    catBox.innerHTML = CATS.map(c => { const cp = capas(c)[0]; return `<a class="categoria" href="loja.html?cat=${encodeURIComponent(c)}"><div class="categoria-foto">${cp ? `<img ${srcGrade(cp)} alt="${esc(c)}" loading="lazy" decoding="async">` : vazia()}</div><span class="categoria-nome">${esc(c)}</span></a>`; }).join("");
+    const rodas = $$(".categoria-foto", catBox).map((el, n) => ({ el, nome: CATS[n], fotos: capas(CATS[n]), i: 0, ocupada: false })).filter(r => r.fotos.length > 1);
+    function proximaCapa(r) {
+      const caixa = r.el.getBoundingClientRect();
+      if (r.ocupada || caixa.bottom <= 0 || caixa.top >= innerHeight) return;
+      r.ocupada = true;
+      const i = (r.i + 1) % r.fotos.length, nova = new Image();
+      nova.className = "entrando-capa"; nova.alt = r.nome; nova.decoding = "async";
+      nova.sizes = "(max-width: 600px) 50vw, (max-width: 1100px) 33vw, 25vw";
+      nova.srcset = `${foto(r.fotos[i], "s")} 400w, ${foto(r.fotos[i], "m")} 720w`; nova.src = foto(r.fotos[i], "m");
+      /* só troca depois que a próxima foto terminou de carregar, para não piscar */
+      nova.decode().then(() => {
+        r.el.append(nova); void nova.offsetWidth; nova.classList.add("visivel");
+        setTimeout(() => { $$("img", r.el).forEach(x => { if (x !== nova) x.remove(); }); nova.className = ""; r.i = i; r.ocupada = false; }, 1700);
+      }).catch(() => { r.i = i; r.ocupada = false; });
+    }
+    /* uma cor de cada vez; parado para quem pediu menos movimento no aparelho */
+    if (rodas.length && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      let vez = 0;
+      setInterval(() => { if (!document.hidden) proximaCapa(rodas[vez++ % rodas.length]); }, Math.max(900, Math.round(4800 / rodas.length)));
+    }
     catBox.style.setProperty("--n", Math.min(Math.max(CATS.length, 2), 6));
   }
   $$('[data-grade="novidades"]').forEach(g => {
     const l = PRODUTOS.filter(p => p.novidade); const lim = +g.dataset.limite || 8;
-    g.innerHTML = agrupa(l.length ? l : PRODUTOS).slice(0, lim).map(cartao).join("");
+    g.innerHTML = (l.length ? l : PRODUTOS).slice(0, lim).map(cartao).join("");
   });
 
   /* loja */
@@ -172,9 +154,9 @@ function iniciar(DADOS) {
       if (ordem === "novidades") l.sort((a, b) => (b.novidade ? 1 : 0) - (a.novidade ? 1 : 0));
       if (ordem === "menor") l.sort((a, b) => a.preco - b.preco);
       if (ordem === "maior") l.sort((a, b) => b.preco - a.preco);
-      gradeLoja.classList.remove("entrando"); const grupos = agrupa(l); gradeLoja.innerHTML = grupos.map(cartao).join(""); void gradeLoja.offsetWidth; gradeLoja.classList.add("entrando");
+      gradeLoja.classList.remove("entrando"); gradeLoja.innerHTML = l.map(cartao).join(""); void gradeLoja.offsetWidth; gradeLoja.classList.add("entrando");
       vazio.hidden = l.length > 0;
-      qtd.textContent = grupos.length === 1 ? "1 modelo" : grupos.length ? `${grupos.length} modelos` : "";
+      qtd.textContent = l.length === 1 ? "1 peça" : l.length ? `${l.length} peças` : "";
       titulo.textContent = cat === "todas" ? "Todas as peças" : cat === "novidades" ? "Novidades" : cat === "favoritos" ? "Favoritos" : cat;
       document.title = `${titulo.textContent} · FC Closet`;
       $$(".filtro", filtros).forEach(b => b.setAttribute("aria-pressed", b.dataset.cat === cat));

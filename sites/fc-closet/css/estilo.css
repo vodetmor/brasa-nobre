@@ -168,9 +168,11 @@ em { font-style: italic; }
 /* categorias (estilo Vivara: foto + nome abaixo) */
 .categorias { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
 .categoria { display: block; text-align: center; }
-.categoria-foto { aspect-ratio: 3 / 4; overflow: hidden; background: var(--creme-2); }
+.categoria-foto { position: relative; aspect-ratio: 3 / 4; overflow: hidden; background: var(--creme-2); }
 .categoria-foto img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; transition: transform 900ms cubic-bezier(.2,.7,.2,1); }
 .categoria:hover .categoria-foto img { transform: scale(1.05); }
+.categoria-foto img.entrando-capa { position: absolute; inset: 0; opacity: 0; transition: opacity 1600ms ease, transform 900ms cubic-bezier(.2,.7,.2,1); }
+.categoria-foto img.entrando-capa.visivel { opacity: 1; }
 .categoria-nome { display: block; margin-top: 16px; font: 400 11px/1 var(--f-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--escuro); transition: color var(--t); }
 .categoria:hover .categoria-nome { color: var(--rose); }
 
@@ -299,13 +301,6 @@ em { font-style: italic; }
 .grade-loja { grid-template-columns: repeat(4, 1fr); }
 .busca input { width: 150px; height: 36px; padding: 0 12px; border: 1px solid var(--linha); border-radius: 0; background: var(--creme); font: 300 16px/1 var(--f-texto); color: var(--escuro); }
 .filtro-tam[hidden] { display: none; }
-.produto.produto-cores .produto-foto .cor-img { opacity: 0; }
-.produto.produto-cores .produto-foto .cor-img.ativa { opacity: 1; }
-.produto.produto-cores.esgotado .produto-foto .cor-img.ativa { opacity: .55; }
-.produto-tons { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; font-size: 11px; color: var(--suave); }
-.tons-pontos { display: flex; gap: 4px; margin-right: 4px; }
-.tons-pontos i { width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--escuro); }
-.tons-pontos i.ativa { background: var(--escuro); }
 .produto-fav { position: absolute; top: 8px; right: 8px; z-index: 2; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: rgba(246,237,231,.88); }
 .produto-fav svg { width: 19px; height: 19px; fill: none; stroke: var(--escuro); stroke-width: 1.4; }
 .produto-fav[aria-pressed="true"] svg { fill: var(--escuro); }
