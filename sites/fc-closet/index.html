@@ -8,16 +8,25 @@
   <meta name="theme-color" content="#3A0A12">
   <meta property="og:title" content="FC Closet · Moda • Estilo • Você">
   <meta property="og:description" content="Moda feminina com estilo em cada detalhe. Escolha pelo site e finalize pelo WhatsApp.">
-  <meta property="og:image" content="https://fc-closet.vercel.app/img/fotos/vinho-costas-abertas-l.webp">
+  <link rel="canonical" href="https://fc-closet.vercel.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:url" content="https://fc-closet.vercel.app/">
+  <meta property="og:image" content="https://fc-closet.vercel.app/img/compartilhar.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://wormdqmiqagipoovcjxl.supabase.co" crossorigin>
   <link rel="icon" href="img/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="img/icone-192.png">
   <link rel="preload" href="fonts/jost.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/cormorant-italic.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="css/estilo.css?v=13">
+  <link rel="stylesheet" href="css/estilo.css?v=14">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"ClothingStore","name":"FC Closet","url":"https://fc-closet.vercel.app/","image":"https://fc-closet.vercel.app/img/compartilhar.jpg","telephone":"+55 61 99638-1700","sameAs":["https://www.instagram.com/fc.closeet/"]}</script>
 </head>
 <body data-pagina="home">
 
-<div class="aviso"><span data-aviso>Atendimento personalizado pelo WhatsApp</span><span class="aviso-sep">·</span><span class="aviso-extra">Moda • Estilo • Você</span></div>
+<div class="aviso" role="region" aria-label="Aviso"><span data-aviso>Atendimento personalizado pelo WhatsApp</span><span class="aviso-sep">·</span><span class="aviso-extra">Moda • Estilo • Você</span></div>
 <header class="topo" id="topo">
   <div class="topo-linha">
     <button class="icone menu-btn" id="menuBtn" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu">
@@ -114,21 +123,21 @@
     <a href="admin/">Painel da lojista</a>
   </nav>
 </footer>
-<a class="whats-fixo" href="#" data-whats="Olá! Vim pelo site da FC Closet e gostaria de atendimento." aria-label="Falar no WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="cheio" d="M12 2.2A9.7 9.7 0 0 0 3.6 16.8L2.3 21.7l5-1.3A9.7 9.7 0 1 0 12 2.2Zm0 17.7a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 19.9Zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8.9c-.1.2-.3.2-.5.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1 4.9 4.9 0 0 0 1 2.6 11.2 11.2 0 0 0 4.3 3.8c1.6.7 2.2.7 3 .6a2.6 2.6 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .2-1.2c-.1-.1-.3-.2-.5-.3Z"/></svg></a>
+<aside aria-label="Atendimento"><a class="whats-fixo" href="#" data-whats="Olá! Vim pelo site da FC Closet e gostaria de atendimento." aria-label="Falar no WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="cheio" d="M12 2.2A9.7 9.7 0 0 0 3.6 16.8L2.3 21.7l5-1.3A9.7 9.7 0 1 0 12 2.2Zm0 17.7a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 19.9Zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8.9c-.1.2-.3.2-.5.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1 4.9 4.9 0 0 0 1 2.6 11.2 11.2 0 0 0 4.3 3.8c1.6.7 2.2.7 3 .6a2.6 2.6 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .2-1.2c-.1-.1-.3-.2-.5-.3Z"/></svg></a></aside>
 
 <div class="modal" id="modalProduto" role="dialog" aria-modal="true" aria-labelledby="mpNome" hidden>
   <div class="modal-fundo" data-fechar></div>
   <div class="modal-caixa">
     <button class="fechar" data-fechar aria-label="Fechar (Esc)">×</button>
     <div class="mp-galeria">
-      <div class="mp-fotos" data-mp-fotos></div>
+      <div class="mp-fotos" data-mp-fotos tabindex="0" role="group" aria-label="Fotos da peça"></div>
       <button type="button" class="mp-seta ant" data-mp-passo="-1" aria-label="Foto anterior">‹</button>
       <button type="button" class="mp-seta prox" data-mp-passo="1" aria-label="Próxima foto">›</button>
       <div class="mp-pontos" data-mp-pontos></div>
     </div>
     <div class="mp-info">
       <p class="sobretitulo" data-mp-cat></p>
-      <h3 id="mpNome" data-mp-nome></h3>
+      <h2 id="mpNome" data-mp-nome></h2>
       <p class="mp-preco" data-mp-preco></p>
       <p class="mp-parcelas" data-mp-parcelas hidden></p>
       <div class="mp-cores" data-mp-cores hidden>
@@ -157,7 +166,7 @@
 <aside class="sacola" id="sacola" aria-label="Sacola" hidden>
   <div class="sacola-fundo" data-fechar-sacola></div>
   <div class="sacola-painel">
-    <div class="sacola-topo"><h3>Sua sacola</h3><button class="fechar" data-fechar-sacola aria-label="Fechar sacola">×</button></div>
+    <div class="sacola-topo"><h2>Sua sacola</h2><button class="fechar" data-fechar-sacola aria-label="Fechar sacola">×</button></div>
     <ul class="sacola-itens" data-sacola-itens></ul>
     <div class="sacola-vazia" data-sacola-vazia><p>Sua sacola está vazia.</p><a class="link-linha" href="loja.html">Ver a loja</a></div>
     <div class="sacola-fim" data-sacola-fim hidden>
@@ -169,6 +178,6 @@
 </aside>
 <div class="toast" data-toast role="status" aria-live="polite"></div>
 <script src="js/dados.js?v=4"></script>
-<script src="js/site.js?v=11" defer></script>
+<script src="js/site.js?v=12" defer></script>
 </body>
 </html>

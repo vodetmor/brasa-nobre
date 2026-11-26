@@ -270,7 +270,7 @@ em { font-style: italic; }
   background: var(--escuro); color: var(--creme); box-shadow: 0 10px 30px rgba(58,10,18,.25);
 }
 .whats-fixo svg { width: 26px; height: 26px; }
-@media (min-width: 861px) {
+@media (min-width: 1101px) {
   .whats-fixo { right: 28px; bottom: 28px; width: auto; height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 22px 0 18px; border-radius: 24px; transition: transform var(--t); }
   .whats-fixo svg { width: 22px; height: 22px; }
   .whats-fixo::after { content: "Fale no WhatsApp"; font: 400 10px/1 var(--f-texto); letter-spacing: .24em; text-transform: uppercase; }
@@ -332,7 +332,7 @@ em { font-style: italic; }
 .mp-fotos::-webkit-scrollbar { display: none; }
 .mp-fotos img, .mp-fotos .joia-vazia { flex: 0 0 100%; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: 50% 20%; scroll-snap-align: start; }
 .mp-info { padding: clamp(32px, 4vw, 56px); display: flex; flex-direction: column; justify-content: center; }
-.mp-info h3 { font-size: clamp(32px, 3.2vw, 44px); margin-bottom: 10px; }
+.mp-info h2 { font-size: clamp(32px, 3.2vw, 44px); margin-bottom: 10px; }
 .mp-preco { margin: 0 0 22px; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--suave); }
 .mp-desc { margin: 0 0 28px; }
 .mp-cores { margin: 0 0 22px; }
@@ -392,7 +392,7 @@ em { font-style: italic; }
 }
 @keyframes desliza { from { transform: translateX(100%); } }
 .sacola-topo { display: flex; align-items: center; justify-content: space-between; padding: 22px 24px; border-bottom: 1px solid var(--linha); }
-.sacola-topo h3 { font: 400 13px/1 var(--f-texto); letter-spacing: .26em; text-transform: uppercase; }
+.sacola-topo h2 { font: 400 13px/1 var(--f-texto); letter-spacing: .26em; text-transform: uppercase; }
 .sacola-topo .fechar { position: static; }
 .sacola-itens { list-style: none; margin: 0; padding: 8px 24px; overflow: auto; flex: 1; }
 .sacola-item { display: grid; grid-template-columns: 76px 1fr auto; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--linha); align-items: start; }
@@ -509,11 +509,11 @@ em { font-style: italic; }
   .sobre-in { grid-template-columns: 1fr; }
   .sobre-foto img { min-height: 0; aspect-ratio: 4 / 5; max-height: none; }
   .passos { grid-template-columns: 1fr; gap: 28px; }
-  .categorias.cinco { grid-template-columns: repeat(2, 1fr); }
 }
-.categorias.cinco { grid-template-columns: repeat(var(--n, 4), 1fr); }
-@media (max-width: 1100px) { .categorias.cinco { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 600px) { .categorias.cinco { grid-template-columns: repeat(2, 1fr); } .rodape .logo-rodape { height: 80px; } }
+.categorias.cinco { display: flex; flex-wrap: wrap; justify-content: center; }
+.categorias.cinco .categoria { width: calc((100% - (var(--n, 4) - 1) * 16px) / var(--n, 4) - .1px); }
+@media (max-width: 1100px) { .categorias.cinco { gap: 28px 14px; } .categorias.cinco .categoria { width: calc((100% - 28px) / 3 - .1px); } }
+@media (max-width: 600px) { .categorias.cinco .categoria { width: calc((100% - 14px) / 2 - .1px); } .rodape .logo-rodape { height: 80px; } }
 .sacola-total { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 12px; font: 400 11px/1 var(--f-texto); letter-spacing: .22em; text-transform: uppercase; }
 .sacola-total b { font: 400 22px/1 var(--f-titulo); letter-spacing: 0; text-transform: none; }
 .mp-info .botao[disabled] { cursor: not-allowed; }
@@ -542,3 +542,18 @@ em { font-style: italic; }
 .mp-galeria .mp-fotos img { max-height: calc(100vh - 74px); }
 @media (max-width: 860px) { .mp-galeria .mp-fotos img { max-height: 68vh; } }
 @media (min-width: 600px) { .mp-galeria .mp-fotos img { object-fit: contain; } }
+
+/* computador: menu em uma linha ("Nossa marca" já fica no canto) e todos os filtros à vista */
+@media (min-width: 861px) {
+  .menu { column-gap: clamp(16px, 2.2vw, 34px); }
+  .menu a[href$="#sobre"] { display: none; }
+  .filtros { position: static; flex-wrap: wrap; justify-content: center; gap: 10px 18px; }
+  .filtros-cats { flex: 1 1 100%; flex-wrap: wrap; justify-content: center; }
+}
+@media (max-width: 374px) {
+  .filtros { position: static; }
+  .filtros-direita { flex-wrap: wrap; }
+  .busca { flex-basis: 100%; }
+  .filtros-direita .ordenar { flex: 1 1 0; }
+  .filtros-direita .ordenar select { width: 100%; max-width: none; }
+}

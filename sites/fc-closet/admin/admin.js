@@ -109,7 +109,9 @@
   async function move(lista, i, passo, caminho) {
     const j = i + passo; if (j < 0 || j >= lista.length) return;
     const nova = lista.slice(); [nova[i], nova[j]] = [nova[j], nova[i]];
-    for (let n = 0; n < nova.length; n++) if (nova[n].ordem !== n + 1) await grava(caminho(nova[n]), "PATCH", { ordem: n + 1 });
+    const mudar = nova.map((x, n) => [x, n + 1]).filter(([x, o]) => x.ordem !== o);
+    /* grava em pequenos grupos: bem mais rápido quando há muitas peças */
+    for (let n = 0; n < mudar.length; n += 6) await Promise.all(mudar.slice(n, n + 6).map(([x, o]) => grava(caminho(x), "PATCH", { ordem: o })));
   }
   function confirma(b) {
     if (b.dataset.sure) return true;
@@ -133,7 +135,7 @@
     $("#nOff").textContent = produtos.filter(p => !p.disponivel).length;
     $("#vazio").hidden = produtos.length > 0;
     $("#lista").innerHTML = produtos.map((p, i) => `<li class="item${!p.disponivel || !p.visivel ? " off" : ""}" data-id="${esc(p.id)}">
-      ${p.fotos[0] ? `<img src="${esc(fotoA(p.fotos[0]))}" alt="">` : '<span class="sem">Sem foto</span>'}
+      ${p.fotos[0] ? `<img src="${esc(fotoA(p.fotos[0]))}" alt="" loading="lazy">` : '<span class="sem">Sem foto</span>'}
       <div><h3>${esc(p.nome)}</h3>
         <p class="meta">${preco(p.preco)} · ${esc([p.categoria, ...(p.outras_cores || []).map(x => x.cor)].join(", "))}${p.tamanhos.length ? " · " + esc(p.tamanhos.join(", ")) : ""}${p.modelo ? " · modelo " + esc(p.modelo) : ""}</p>
         <span class="etq ${p.disponivel ? "ok" : "no"}">${p.disponivel ? "À venda" : "Esgotado"}</span>${p.novidade ? '<span class="etq">Novidade</span>' : ""}${p.visivel ? "" : '<span class="etq no">Escondida</span>'}</div>

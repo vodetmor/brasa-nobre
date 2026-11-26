@@ -88,11 +88,17 @@ function iniciar(DADOS) {
   const daCor = (p, c) => coresDe(p).find(x => x.cor === c);
   const fotoDa = (p, c) => (daCor(p, c) || coresDe(p)[0]).foto;
 
+  /* peças com o mesmo nome (um cadastro por cor): o pedido precisa dizer a cor */
+  const nomeIgual = p => PRODUTOS.some(x => x.id !== p.id && x.nome.trim().toLocaleLowerCase("pt-BR") === p.nome.trim().toLocaleLowerCase("pt-BR"));
+  const corDe = (p, c) => c || (coresDe(p).length === 1 && nomeIgual(p) ? p.categoria : null);
+
+  const temMouse = matchMedia("(hover: hover)").matches;
+
   /* cartão de produto: no filtro de uma cor, mostra a foto daquela cor */
   function cartao(p, cor) {
     const varias = coresDe(p).length > 1, naCor = varias && daCor(p, cor);
     const f = naCor ? [naCor.foto].filter(Boolean) : p.fotos || [];
-    const midia = f.length ? `<img ${srcGrade(f[0])} alt="${esc(p.nome)}" loading="lazy" decoding="async">` + (f[1] ? `<img class="foto-2" ${srcGrade(f[1])} alt="" loading="lazy" decoding="async">` : "") : vazia();
+    const midia = f.length ? `<img ${srcGrade(f[0])} alt="${esc(p.nome)}" loading="lazy" decoding="async">` + (f[1] && temMouse ? `<img class="foto-2" ${srcGrade(f[1])} alt="" loading="lazy" decoding="async">` : "") : vazia();
     const dc = naCor ? ` data-cor="${esc(cor)}"` : "";
     return `<article class="produto${p.disponivel === false ? " esgotado" : ""}">
       <div class="produto-midia">
@@ -109,14 +115,14 @@ function iniciar(DADOS) {
   if (catBox) {
     /* a capa de cada cor passa, bem de leve, pelas fotos dos vestidos daquela cor */
     const capas = c => { const l = PRODUTOS.filter(x => daCor(x, c) && fotoDa(x, c)), tem = l.filter(x => x.disponivel !== false); return (tem.length ? tem : l).map(x => fotoDa(x, c)); };
-    catBox.innerHTML = CATS.map(c => { const cp = capas(c)[0]; return `<a class="categoria" href="loja.html?cat=${encodeURIComponent(c)}"><div class="categoria-foto">${cp ? `<img ${srcGrade(cp)} alt="${esc(c)}" loading="lazy" decoding="async">` : vazia()}</div><span class="categoria-nome">${esc(c)}</span></a>`; }).join("");
+    catBox.innerHTML = CATS.map(c => { const cp = capas(c)[0]; return `<a class="categoria" href="loja.html?cat=${encodeURIComponent(c)}"><div class="categoria-foto">${cp ? `<img ${srcGrade(cp)} alt="" loading="lazy" decoding="async">` : vazia()}</div><span class="categoria-nome">${esc(c)}</span></a>`; }).join("");
     const rodas = $$(".categoria-foto", catBox).map((el, n) => ({ el, nome: CATS[n], fotos: capas(CATS[n]), i: 0, ocupada: false })).filter(r => r.fotos.length > 1);
     function proximaCapa(r) {
       const caixa = r.el.getBoundingClientRect();
       if (r.ocupada || caixa.bottom <= 0 || caixa.top >= innerHeight) return;
       r.ocupada = true;
       const i = (r.i + 1) % r.fotos.length, nova = new Image();
-      nova.className = "entrando-capa"; nova.alt = r.nome; nova.decoding = "async";
+      nova.className = "entrando-capa"; nova.alt = ""; nova.decoding = "async";
       nova.sizes = "(max-width: 600px) 50vw, (max-width: 1100px) 33vw, 25vw";
       nova.srcset = `${foto(r.fotos[i], "s")} 400w, ${foto(r.fotos[i], "m")} 720w`; nova.src = foto(r.fotos[i], "m");
       /* só troca depois que a próxima foto terminou de carregar, para não piscar */
@@ -130,7 +136,8 @@ function iniciar(DADOS) {
       let vez = 0;
       setInterval(() => { if (!document.hidden) proximaCapa(rodas[vez++ % rodas.length]); }, Math.max(900, Math.round(4800 / rodas.length)));
     }
-    catBox.style.setProperty("--n", Math.min(Math.max(CATS.length, 2), 6));
+    const n = CATS.length;
+    catBox.style.setProperty("--n", n <= 6 ? Math.max(n, 2) : Math.min(Math.ceil(n / 2), 6));
   }
   $$('[data-grade="novidades"]').forEach(g => {
     const l = PRODUTOS.filter(p => p.novidade); const lim = +g.dataset.limite || 8;
@@ -199,9 +206,10 @@ function iniciar(DADOS) {
   }
   function desenhaSacola() {
     vaziaEl.hidden = sacola.length > 0; fimEl.hidden = !sacola.length;
-    itensEl.innerHTML = sacola.map((i, x) => { const p = porId[i.id], f = fotoDa(p, i.cor); return `<li class="sacola-item">${f ? `<img src="${foto(f, "s")}" alt="">` : vazia()}<div><p class="si-nome">${esc(p.nome)}</p><p class="si-det">${i.cor ? `Cor ${esc(i.cor)} · ` : ""}${i.tam ? `Tamanho ${esc(i.tam)} · ` : ""}${preco(p.preco)}</p><div class="qtd"><button data-menos="${x}" aria-label="Diminuir">−</button><span>${i.qtd}</span><button data-mais="${x}" aria-label="Aumentar">+</button></div></div><button class="si-remover" data-remover="${x}">Remover</button></li>`; }).join("");
+    itensEl.innerHTML = sacola.map((i, x) => { const p = porId[i.id], f = fotoDa(p, i.cor), c = corDe(p, i.cor); return `<li class="sacola-item">${f ? `<img src="${foto(f, "s")}" alt="">` : vazia()}<div><p class="si-nome">${esc(p.nome)}</p><p class="si-det">${c ? `Cor ${esc(c)} · ` : ""}${i.tam ? `Tamanho ${esc(i.tam)} · ` : ""}${preco(p.preco)}</p><div class="qtd"><button data-menos="${x}" aria-label="Diminuir">−</button><span>${i.qtd}</span><button data-mais="${x}" aria-label="Aumentar">+</button></div></div><button class="si-remover" data-remover="${x}">Remover</button></li>`; }).join("");
     const total = sacola.reduce((s, i) => s + i.qtd * (porId[i.id].preco || 0), 0);
-    const t = $("[data-sacola-total]"); if (t) t.textContent = total ? preco(total) : "";
+    const semPreco = sacola.some(i => !(porId[i.id].preco > 0));
+    const t = $("[data-sacola-total]"); if (t) t.textContent = total ? preco(total) + (semPreco ? " + itens sob consulta" : "") : sacola.length ? "Sob consulta" : "";
     conta();
   }
   let focoS = null;
@@ -218,7 +226,7 @@ function iniciar(DADOS) {
   });
   $("[data-enviar-pedido]").addEventListener("click", () => {
     if (!sacola.length) return;
-    const linhas = sacola.map(i => { const p = porId[i.id]; const det = [i.cor && `cor ${i.cor}`, i.tam && `tam. ${i.tam}`].filter(Boolean).join(", "); return `• ${i.qtd}x ${p.nome}${det ? ` (${det})` : ""}: ${preco(p.preco)}`; });
+    const linhas = sacola.map(i => { const p = porId[i.id]; const c = corDe(p, i.cor), det = [c && `cor ${c}`, i.tam && `tam. ${i.tam}`].filter(Boolean).join(", "); return `• ${i.qtd}x ${p.nome}${det ? ` (${det})` : ""}: ${preco(p.preco)}`; });
     abreWhats(`Olá, Fernanda! Montei minha sacola pelo site da FC Closet:\n\n${linhas.join("\n")}\n\nPode confirmar disponibilidade, valores e frete?`);
   });
 
@@ -256,6 +264,8 @@ function iniciar(DADOS) {
     $("[data-mp-cor]", modal).textContent = varias ? cor || "escolha" : atual.categoria;
     $("[data-mp-cat]", modal).textContent = varias ? cor || nomes : atual.categoria;
     $$("[data-mp-tom]", modal).forEach(b => b.setAttribute("aria-pressed", b.dataset.mpTom === cor));
+    const c = corDe(atual, cor), w = $("[data-mp-whats]", modal);
+    w.dataset.whats = `Olá! Tenho interesse em "${atual.nome}"${c ? ` (cor ${c})` : ""}. Pode me passar mais detalhes?\n${linkPeca(atual.id)}`; w.href = linkWhats(w.dataset.whats); w.target = "_blank";
   }
 
   /* parcelas, detalhes, medidas e condições: só aparecem quando a dona preenche no painel */
@@ -304,7 +314,7 @@ function iniciar(DADOS) {
     const p = porId[id]; if (!p) return;
     const tamAntes = troca ? tam : null;
     atual = p; tam = null; cor = coresDe(p).length > 1 && daCor(p, corPedida) ? corPedida : null; if (!troca) ultimo = document.activeElement;
-    $("[data-mp-fotos]", modal).innerHTML = p.fotos.length ? p.fotos.map((f, i) => `<img ${srcCheia(f)} alt="${esc(p.nome)}${i ? `, foto ${i + 1}` : ""}">`).join("") : vazia();
+    $("[data-mp-fotos]", modal).innerHTML = p.fotos.length ? p.fotos.map((f, i) => `<img ${srcCheia(f)} alt="${esc(p.nome)}${i ? `, foto ${i + 1}` : ""}"${i ? ' loading="lazy"' : ""} decoding="async">`).join("") : vazia();
     pontos.innerHTML = p.fotos.length > 1 ? p.fotos.map((f, i) => `<button type="button" data-mp-ir="${i}" aria-label="Ver foto ${i + 1}"></button>`).join("") : "";
     $$(".mp-seta", modal).forEach(b => { b.hidden = p.fotos.length < 2; });
     $("[data-mp-nome]", modal).textContent = p.nome;
@@ -317,7 +327,6 @@ function iniciar(DADOS) {
     cores(p); informacoes(p); sugestoes(p); botaoFav(p);
     const add = $("[data-mp-add]", modal);
     add.disabled = p.disponivel === false; add.textContent = p.disponivel === false ? "Esgotado" : "Adicionar à sacola";
-    const w = $("[data-mp-whats]", modal); w.dataset.whats = `Olá! Tenho interesse em "${p.nome}". Pode me passar mais detalhes?\n${linkPeca(p.id)}`; w.href = linkWhats(w.dataset.whats); w.target = "_blank";
     modal.hidden = false; document.body.style.overflow = "hidden"; $(".fechar", modal).focus();
     galeria.scrollLeft = cor ? Math.max(0, p.fotos.indexOf(fotoDa(p, cor))) * galeria.clientWidth : 0; marca();
     if (troca) {
