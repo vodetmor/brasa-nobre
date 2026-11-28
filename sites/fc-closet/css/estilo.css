@@ -345,6 +345,7 @@ em { font-style: italic; }
 .mp-cores-lista img, .mp-cores-lista .joia-vazia { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; }
 .mp-cores-lista .esgotada img { opacity: .4; }
 .mp-cores-lista button.tom { width: 62px; height: auto; display: flex; flex-direction: column; gap: 6px; }
+.mp-cores-lista button.tom small { font-size: .56rem; line-height: 1; letter-spacing: .06em; text-transform: uppercase; opacity: .75; }
 .mp-cores-lista .tom img, .mp-cores-lista .tom .joia-vazia { height: 74px; }
 .mp-cores-lista .tom span { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; line-height: 1.2; padding-bottom: 3px; overflow-wrap: anywhere; }
 .mp-tamanhos { border: 0; padding: 0; margin: 0 0 26px; }

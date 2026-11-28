@@ -54,7 +54,8 @@ create table public.produtos (
   criado_em timestamptz not null default now(),
   modelo text not null default '' check (char_length(modelo) <= 40),
   detalhes text not null default '' check (char_length(detalhes) <= 800),
-  outras_cores jsonb not null default '[]' check (jsonb_typeof(outras_cores) = 'array' and jsonb_array_length(outras_cores) <= 12)
+  outras_cores jsonb not null default '[]' check (jsonb_typeof(outras_cores) = 'array' and jsonb_array_length(outras_cores) <= 12),
+  cores_esgotadas text[] not null default '{}' check (cardinality(cores_esgotadas) <= 13)
 );
 create index produtos_categoria_idx on public.produtos (categoria);
 
@@ -68,6 +69,9 @@ begin
     from jsonb_array_elements(p.outras_cores) with ordinality t(x, n)
     where tg_op = 'UPDATE' or x->>'cor' is distinct from old.nome), '[]'::jsonb)
   where p.outras_cores @> jsonb_build_array(jsonb_build_object('cor', old.nome));
+  update public.produtos p set cores_esgotadas = case when tg_op = 'UPDATE'
+    then array_replace(p.cores_esgotadas, old.nome, new.nome) else array_remove(p.cores_esgotadas, old.nome) end
+  where old.nome = any(p.cores_esgotadas);
   return null;
 end $$;
 create trigger categorias_acompanha_cor after update of nome or delete on public.categorias

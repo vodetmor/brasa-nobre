@@ -131,6 +131,11 @@
       <div id="fCoresFotos"></div>
       <p class="ajuda">Marque as outras cores deste vestido e escolha a foto de cada uma. Ele aparece em todas. Cor que não está na lista: crie na aba Categorias.</p>
     </div>
+    <div class="campo" id="campoEsg" hidden>
+      <span class="rot">Esgotou em alguma cor?</span>
+      <div class="chips" id="fEsg"></div>
+      <p class="ajuda">Toque na cor que acabou e salve. As outras cores continuam à venda. Quando repor, toque de novo.</p>
+    </div>
     <label class="campo"><span class="rot">Modelo (opcional)</span><input id="fModelo" maxlength="40" list="listaModelos" placeholder="Ex.: Júlia" autocomplete="off"></label>
     <datalist id="listaModelos"></datalist>
     <p class="ajuda">Só se cada cor tiver um cadastro separado: o mesmo nome aqui junta os cadastros. Não escreva o tecido.</p>
@@ -145,7 +150,7 @@
     <label class="campo"><span class="rot">Detalhes da peça (opcional)</span><textarea id="fDetalhes" rows="4" maxlength="800" placeholder="Tecido, se estica, forro, bojo, como lavar, altura da modelo e tamanho que ela veste"></textarea></label>
 
     <label class="chk"><input type="checkbox" id="fNovo"><span>Destacar em “Novidades”</span></label>
-    <label class="chk"><input type="checkbox" id="fDisp"><span>Disponível para venda (desmarcado = esgotado)</span></label>
+    <label class="chk"><input type="checkbox" id="fDisp"><span>Disponível para venda (desmarcado = peça inteira esgotada)</span></label>
     <label class="chk"><input type="checkbox" id="fVisivel"><span>Mostrar no site</span></label>
 
     <p class="erro" id="erroForm" role="alert" hidden></p>
@@ -167,6 +172,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="../js/dados.js?v=4"></script>
-<script src="admin.js?v=6"></script>
+<script src="admin.js?v=7"></script>
 </body>
 </html>

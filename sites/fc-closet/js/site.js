@@ -79,7 +79,6 @@ function iniciar(DADOS) {
   }
 
   const chaveModelo = p => (p.modelo || "").trim().toLocaleLowerCase("pt-BR");
-  const selo = p => p.disponivel === false ? '<span class="selo esg">Esgotado</span>' : p.novidade ? '<span class="selo">Novo</span>' : "";
 
   /* um vestido pode vir em várias cores: a principal (categoria) e as outras marcadas no painel, cada uma com sua foto */
   const coresDe = p => [{ cor: p.categoria, foto: (p.fotos || [])[0] }, ...(Array.isArray(p.outras_cores) ? p.outras_cores : [])
@@ -87,6 +86,12 @@ function iniciar(DADOS) {
     .map(x => ({ cor: x.cor, foto: (p.fotos || []).includes(x.foto) ? x.foto : (p.fotos || [])[0] }))];
   const daCor = (p, c) => coresDe(p).find(x => x.cor === c);
   const fotoDa = (p, c) => (daCor(p, c) || coresDe(p)[0]).foto;
+  /* esgotado: a peça inteira (disponivel) ou só algumas cores (cores_esgotadas). Sem cor, só conta se todas acabaram */
+  const corFora = (p, c) => Array.isArray(p.cores_esgotadas) && p.cores_esgotadas.includes(c);
+  const esgotada = (p, c) => p.disponivel === false || (daCor(p, c) ? corFora(p, c) : coresDe(p).every(x => corFora(p, x.cor)));
+  /* fotos de vitrine: se a cor principal acabou, mostra primeiro uma cor que ainda tem */
+  const vitrine = p => { const livre = corFora(p, p.categoria) && coresDe(p).find(x => !corFora(p, x.cor)); return livre && livre.foto ? [livre.foto] : p.fotos || []; };
+  const selo = (p, c) => esgotada(p, c) ? '<span class="selo esg">Esgotado</span>' : p.novidade ? '<span class="selo">Novo</span>' : "";
 
   /* peças com o mesmo nome (um cadastro por cor): o pedido precisa dizer a cor */
   const nomeIgual = p => PRODUTOS.some(x => x.id !== p.id && x.nome.trim().toLocaleLowerCase("pt-BR") === p.nome.trim().toLocaleLowerCase("pt-BR"));
@@ -97,12 +102,12 @@ function iniciar(DADOS) {
   /* cartão de produto: no filtro de uma cor, mostra a foto daquela cor */
   function cartao(p, cor) {
     const varias = coresDe(p).length > 1, naCor = varias && daCor(p, cor);
-    const f = naCor ? [naCor.foto].filter(Boolean) : p.fotos || [];
+    const f = naCor ? [naCor.foto].filter(Boolean) : vitrine(p);
     const midia = f.length ? `<img ${srcGrade(f[0])} alt="${esc(p.nome)}" loading="lazy" decoding="async">` + (f[1] && temMouse ? `<img class="foto-2" ${srcGrade(f[1])} alt="" loading="lazy" decoding="async">` : "") : vazia();
     const dc = naCor ? ` data-cor="${esc(cor)}"` : "";
-    return `<article class="produto${p.disponivel === false ? " esgotado" : ""}">
+    return `<article class="produto${esgotada(p, cor) ? " esgotado" : ""}">
       <div class="produto-midia">
-        <button class="produto-foto" data-abrir="${esc(p.id)}"${dc} aria-label="Ver ${esc(p.nome)}">${selo(p)}${midia}</button>
+        <button class="produto-foto" data-abrir="${esc(p.id)}"${dc} aria-label="Ver ${esc(p.nome)}">${selo(p, cor)}${midia}</button>
         <button type="button" class="produto-fav" data-fav="${esc(p.id)}" aria-pressed="${favs.has(p.id)}" aria-label="Favoritar ${esc(p.nome)}">${coracao}</button>
         <button class="produto-add" data-abrir="${esc(p.id)}"${dc} aria-label="Escolher tamanho de ${esc(p.nome)}">Escolher</button>
       </div>
@@ -114,7 +119,7 @@ function iniciar(DADOS) {
   const catBox = $("[data-categorias]");
   if (catBox) {
     /* a capa de cada cor passa, bem de leve, pelas fotos dos vestidos daquela cor */
-    const capas = c => { const l = PRODUTOS.filter(x => daCor(x, c) && fotoDa(x, c)), tem = l.filter(x => x.disponivel !== false); return (tem.length ? tem : l).map(x => fotoDa(x, c)); };
+    const capas = c => { const l = PRODUTOS.filter(x => daCor(x, c) && fotoDa(x, c)), tem = l.filter(x => !esgotada(x, c)); return (tem.length ? tem : l).map(x => fotoDa(x, c)); };
     catBox.innerHTML = CATS.map(c => { const cp = capas(c)[0]; return `<a class="categoria" href="loja.html?cat=${encodeURIComponent(c)}"><div class="categoria-foto">${cp ? `<img ${srcGrade(cp)} alt="" loading="lazy" decoding="async">` : vazia()}</div><span class="categoria-nome">${esc(c)}</span></a>`; }).join("");
     const rodas = $$(".categoria-foto", catBox).map((el, n) => ({ el, nome: CATS[n], fotos: capas(CATS[n]), i: 0, ocupada: false })).filter(r => r.fotos.length > 1);
     function proximaCapa(r) {
@@ -164,7 +169,7 @@ function iniciar(DADOS) {
       let l = cat === "todas" ? PRODUTOS.slice() : cat === "novidades" ? PRODUTOS.filter(p => p.novidade) : cat === "favoritos" ? PRODUTOS.filter(p => favs.has(p.id)) : PRODUTOS.filter(p => daCor(p, cat));
       const termos = plano(busca).split(/\s+/).filter(Boolean);
       if (termos.length) l = l.filter(p => { const t = plano(`${p.nome} ${coresDe(p).map(x => x.cor).join(" ")} ${p.modelo || ""} ${p.descricao || ""}`); return termos.every(x => t.includes(x)); });
-      if (tamF) l = l.filter(p => p.disponivel !== false && (p.tamanhos || []).includes(tamF));
+      if (tamF) l = l.filter(p => !esgotada(p, cat) && (p.tamanhos || []).includes(tamF));
       textoVazio.textContent = busca.trim() || tamF ? "Nada encontrado com esse filtro. Tente outra busca ou chame a Fernanda." : cat === "favoritos" ? "Toque no coração de uma peça para guardar aqui." : textoPadrao;
       if (ordem === "az") l.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
       if (ordem === "novidades") l.sort((a, b) => (b.novidade ? 1 : 0) - (a.novidade ? 1 : 0));
@@ -196,8 +201,9 @@ function iniciar(DADOS) {
   /* sacola */
   const CH = "fc-sacola-v1"; let sacola = [];
   try { sacola = JSON.parse(localStorage.getItem(CH)) || []; } catch (e) {}
-  sacola = sacola.filter(i => porId[i.id] && porId[i.id].disponivel !== false);
+  sacola = sacola.filter(i => porId[i.id]);
   sacola.forEach(i => { if (i.cor && !daCor(porId[i.id], i.cor)) delete i.cor; });
+  sacola = sacola.filter(i => !esgotada(porId[i.id], i.cor));
   const salva = () => { try { localStorage.setItem(CH, JSON.stringify(sacola)); } catch (e) {} };
   const sacolaEl = $("#sacola"), itensEl = $("[data-sacola-itens]"), vaziaEl = $("[data-sacola-vazia]"), fimEl = $("[data-sacola-fim]");
   function conta(pulo) {
@@ -253,8 +259,8 @@ function iniciar(DADOS) {
     const k = chaveModelo(p), irmas = k ? PRODUTOS.filter(x => chaveModelo(x) === k) : [], proprias = coresDe(p), varias = proprias.length > 1;
     const box = $("[data-mp-cores]", modal); box.hidden = !varias && irmas.length < 2;
     const mini = f => f ? `<img src="${foto(f, "s")}" alt="">` : vazia();
-    const daPeca = x => `<button type="button" data-mp-outra="${esc(x.id)}" aria-pressed="${x.id === p.id && !varias}"${x.disponivel === false ? ' class="esgotada"' : ""} aria-label="${esc(x.nome)}${x.disponivel === false ? " (esgotado)" : ""}" title="${esc(x.categoria)}">${mini(x.fotos[0])}</button>`;
-    const tom = x => `<button type="button" class="tom" data-mp-tom="${esc(x.cor)}" aria-pressed="false">${mini(x.foto)}<span>${esc(x.cor)}</span></button>`;
+    const daPeca = x => `<button type="button" data-mp-outra="${esc(x.id)}" aria-pressed="${x.id === p.id && !varias}"${esgotada(x) ? ' class="esgotada"' : ""} aria-label="${esc(x.nome)}${esgotada(x) ? " (esgotado)" : ""}" title="${esc(x.categoria)}">${mini(vitrine(x)[0])}</button>`;
+    const tom = x => { const fora = esgotada(p, x.cor); return `<button type="button" class="tom${fora ? " esgotada" : ""}" data-mp-tom="${esc(x.cor)}" aria-pressed="false">${mini(x.foto)}<span>${esc(x.cor)}</span>${fora ? "<small>Esgotado</small>" : ""}</button>`; };
     $("[data-mp-cores-lista]", modal).innerHTML = box.hidden ? "" : varias ? proprias.map(tom).join("") + irmas.filter(x => x.id !== p.id).map(daPeca).join("") : irmas.map(daPeca).join("");
     $("[data-mp-erro-cor]", modal).hidden = true;
     marcaCor();
@@ -264,6 +270,8 @@ function iniciar(DADOS) {
     $("[data-mp-cor]", modal).textContent = varias ? cor || "escolha" : atual.categoria;
     $("[data-mp-cat]", modal).textContent = varias ? cor || nomes : atual.categoria;
     $$("[data-mp-tom]", modal).forEach(b => b.setAttribute("aria-pressed", b.dataset.mpTom === cor));
+    const add = $("[data-mp-add]", modal), fora = esgotada(atual, cor);
+    add.disabled = fora; add.textContent = !fora ? "Adicionar à sacola" : varias && cor && atual.disponivel !== false ? "Esgotado nesta cor" : "Esgotado";
     const c = corDe(atual, cor), w = $("[data-mp-whats]", modal);
     w.dataset.whats = `Olá! Tenho interesse em "${atual.nome}"${c ? ` (cor ${c})` : ""}. Pode me passar mais detalhes?\n${linkPeca(atual.id)}`; w.href = linkWhats(w.dataset.whats); w.target = "_blank";
   }
@@ -282,12 +290,12 @@ function iniciar(DADOS) {
   function sugestoes(p) {
     const k = chaveModelo(p);
     const vistos = new Set(k ? [k] : []);
-    const l = PRODUTOS.filter(x => x.id !== p.id && x.disponivel !== false)
+    const l = PRODUTOS.filter(x => x.id !== p.id && !esgotada(x))
       .sort((a, b) => (b.categoria === p.categoria) - (a.categoria === p.categoria))
       .filter(x => { const m = chaveModelo(x); if (!m) return true; if (vistos.has(m)) return false; vistos.add(m); return true; }) /* uma cor por modelo */
       .slice(0, 3);
     $("[data-mp-mais]", modal).hidden = !l.length;
-    $("[data-mp-mais-lista]", modal).innerHTML = l.map(x => `<button type="button" data-mp-ver="${esc(x.id)}">${x.fotos[0] ? `<img src="${foto(x.fotos[0], "s")}" alt="" loading="lazy">` : vazia()}<span>${esc(x.nome)}</span><small>${preco(x.preco)}</small></button>`).join("");
+    $("[data-mp-mais-lista]", modal).innerHTML = l.map(x => `<button type="button" data-mp-ver="${esc(x.id)}">${vitrine(x)[0] ? `<img src="${foto(vitrine(x)[0], "s")}" alt="" loading="lazy">` : vazia()}<span>${esc(x.nome)}</span><small>${preco(x.preco)}</small></button>`).join("");
   }
   const botaoFav = p => { const b = $("[data-mp-fav]", modal), on = favs.has(p.id); b.setAttribute("aria-pressed", on); b.textContent = on ? "♥ Nos favoritos" : "♡ Salvar nos favoritos"; };
   $("[data-mp-fav]", modal).addEventListener("click", () => { favorita(atual.id); botaoFav(atual); });
@@ -325,8 +333,6 @@ function iniciar(DADOS) {
     $("[data-mp-erro]", modal).hidden = true;
     if (tamAntes && (p.tamanhos || []).includes(tamAntes)) { tam = tamAntes; $$("[data-tam]", modal).forEach(b => b.setAttribute("aria-pressed", b.dataset.tam === tam)); }
     cores(p); informacoes(p); sugestoes(p); botaoFav(p);
-    const add = $("[data-mp-add]", modal);
-    add.disabled = p.disponivel === false; add.textContent = p.disponivel === false ? "Esgotado" : "Adicionar à sacola";
     modal.hidden = false; document.body.style.overflow = "hidden"; $(".fechar", modal).focus();
     galeria.scrollLeft = cor ? Math.max(0, p.fotos.indexOf(fotoDa(p, cor))) * galeria.clientWidth : 0; marca();
     if (troca) {
@@ -370,7 +376,7 @@ function iniciar(DADOS) {
     if (t) { tam = t.dataset.tam; $$("[data-tam]", modal).forEach(b => b.setAttribute("aria-pressed", b === t)); $("[data-mp-erro]", modal).hidden = true; }
   });
   $("[data-mp-add]", modal).addEventListener("click", () => {
-    if (atual.disponivel === false) return;
+    if (esgotada(atual, cor)) return;
     if (coresDe(atual).length > 1 && !cor) { const er = $("[data-mp-erro-cor]", modal); er.hidden = false; er.scrollIntoView({ block: "nearest" }); return; }
     if ((atual.tamanhos || []).length && !tam) { $("[data-mp-erro]", modal).hidden = false; return; }
     const ex = sacola.find(i => i.id === atual.id && i.tam === tam && (i.cor || null) === cor);

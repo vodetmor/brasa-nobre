@@ -129,16 +129,20 @@
   });
 
   /* ---------- lista de peças ---------- */
+  const coresDa = p => [p.categoria, ...(p.outras_cores || []).map(x => x.cor)];
+  const semCores = p => coresDa(p).filter(c => (p.cores_esgotadas || []).includes(c));
+  /* esgotada por inteiro: marcada na peça ou em todas as cores dela */
+  const acabou = p => !p.disponivel || semCores(p).length === coresDa(p).length;
   function desenha() {
     $("#nTotal").textContent = produtos.length;
-    $("#nOn").textContent = produtos.filter(p => p.disponivel && p.visivel).length;
-    $("#nOff").textContent = produtos.filter(p => !p.disponivel).length;
+    $("#nOn").textContent = produtos.filter(p => !acabou(p) && p.visivel).length;
+    $("#nOff").textContent = produtos.filter(acabou).length;
     $("#vazio").hidden = produtos.length > 0;
-    $("#lista").innerHTML = produtos.map((p, i) => `<li class="item${!p.disponivel || !p.visivel ? " off" : ""}" data-id="${esc(p.id)}">
+    $("#lista").innerHTML = produtos.map((p, i) => `<li class="item${acabou(p) || !p.visivel ? " off" : ""}" data-id="${esc(p.id)}">
       ${p.fotos[0] ? `<img src="${esc(fotoA(p.fotos[0]))}" alt="" loading="lazy">` : '<span class="sem">Sem foto</span>'}
       <div><h3>${esc(p.nome)}</h3>
         <p class="meta">${preco(p.preco)} · ${esc([p.categoria, ...(p.outras_cores || []).map(x => x.cor)].join(", "))}${p.tamanhos.length ? " · " + esc(p.tamanhos.join(", ")) : ""}${p.modelo ? " · modelo " + esc(p.modelo) : ""}</p>
-        <span class="etq ${p.disponivel ? "ok" : "no"}">${p.disponivel ? "À venda" : "Esgotado"}</span>${p.novidade ? '<span class="etq">Novidade</span>' : ""}${p.visivel ? "" : '<span class="etq no">Escondida</span>'}</div>
+        <span class="etq ${acabou(p) ? "no" : "ok"}">${acabou(p) ? "Esgotado" : "À venda"}</span>${!acabou(p) && semCores(p).length ? `<span class="etq no">Acabou: ${esc(semCores(p).join(", "))}</span>` : ""}${p.novidade ? '<span class="etq">Novidade</span>' : ""}${p.visivel ? "" : '<span class="etq no">Escondida</span>'}</div>
       <div class="item-acoes">
         <button class="btn-p" data-a="editar">Editar</button>
         <button class="btn-p" data-a="cor">+ Outra cor</button>
@@ -233,8 +237,16 @@
   $("#addTam").addEventListener("click", incluiTam);
   $("#fOutroTam").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); incluiTam(); } });
   /* outras cores do mesmo vestido: cor marcada -> foto (o próprio item de "fotos") */
-  let extras = new Map();
+  let extras = new Map(), fora = new Set();
+  /* esgotada só em algumas cores: aparece quando a peça tem mais de uma */
+  function desenhaEsgotadas() {
+    const principal = selCat.value, lista = [principal, ...cats.map(c => c.nome).filter(n => n !== principal && extras.has(n))].filter(n => cats.some(c => c.nome === n));
+    $("#campoEsg").hidden = !extras.size || lista.length < 2;
+    $("#fEsg").innerHTML = lista.map(n => `<button type="button" class="chip" data-esg="${esc(n)}" aria-pressed="${fora.has(n)}">${esc(n)}${fora.has(n) ? " · esgotada" : ""}</button>`).join("");
+  }
+  $("#fEsg").addEventListener("click", e => { const b = e.target.closest("[data-esg]"); if (!b) return; const n = b.dataset.esg; fora.has(n) ? fora.delete(n) : fora.add(n); desenhaEsgotadas(); });
   function desenhaCores() {
+    desenhaEsgotadas();
     const principal = selCat.value, opcoes = cats.map(c => c.nome).filter(n => n !== principal);
     $("#fCores").innerHTML = opcoes.map(n => `<button type="button" class="chip" data-cor="${esc(n)}" aria-pressed="${extras.has(n)}">${esc(n)}</button>`).join("");
     $("#fCoresFotos").innerHTML = opcoes.filter(n => extras.has(n)).map(n => `<div class="cor-foto"><p>Toque na foto da cor <b>${esc(n)}</b></p>${fotos.length ? `<div>${fotos.map((f, i) => `<button type="button" data-cor="${esc(n)}" data-i="${i}" aria-pressed="${extras.get(n) === f}" aria-label="Foto ${i + 1} para ${esc(n)}"><img src="${esc(f.ref ? fotoA(f.ref) : f.url)}" alt=""></button>`).join("")}</div>` : '<p class="ajuda">Adicione as fotos primeiro.</p>'}</div>`).join("");
@@ -279,6 +291,7 @@
       sugereNome();
     }
     extras = new Map((p && p.outras_cores || []).map(x => [x.cor, fotos.find(f => f.ref === x.foto) || null]));
+    fora = new Set(p && p.cores_esgotadas || []);
     erroEm("#erroForm"); chipsTam(); miniaturas();
     folha.hidden = false; document.body.style.overflow = "hidden"; $(".folha-caixa", folha).scrollTop = 0;
   }
@@ -318,7 +331,7 @@
       for (const f of fotos) if (!f.ref) { botao.textContent = `Enviando foto ${++n} de ${novas}…`; f.ref = await envia(f.file); enviadas.push(f); }
       botao.textContent = "Salvando…";
       if (criaCat) { await grava("categorias", "POST", { nome: cat, ordem: cats.length + 1 }); cats.push({ nome: cat, ordem: cats.length + 1 }); opcoesCat(cat); }
-      const dados = { nome, modelo, categoria: cat, outras_cores: outras.map(([cor, f]) => ({ cor, foto: f.ref })), preco: valor, fotos: fotos.map(f => f.ref), tamanhos: [...TAMANHOS.filter(t => tams.has(t)), ...[...tams].filter(t => !TAMANHOS.includes(t))], descricao: $("#fDesc").value.trim(), detalhes: $("#fDetalhes").value.trim(), novidade: $("#fNovo").checked, disponivel: $("#fDisp").checked, visivel: $("#fVisivel").checked };
+      const dados = { nome, modelo, categoria: cat, outras_cores: outras.map(([cor, f]) => ({ cor, foto: f.ref })), cores_esgotadas: outras.length ? [cat, ...outras.map(([n]) => n)].filter(n => fora.has(n)) : [], preco: valor, fotos: fotos.map(f => f.ref), tamanhos: [...TAMANHOS.filter(t => tams.has(t)), ...[...tams].filter(t => !TAMANHOS.includes(t))], descricao: $("#fDesc").value.trim(), detalhes: $("#fDetalhes").value.trim(), novidade: $("#fNovo").checked, disponivel: $("#fDisp").checked, visivel: $("#fVisivel").checked };
       await grava(era ? "produtos?id=eq." + era.id : "produtos", era ? "PATCH" : "POST", dados);
       const de = origem; salvando = false; fecha();
       if (de && (de.modelo || "") !== modelo) {
